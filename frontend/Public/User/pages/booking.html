@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Book Tickets - EventHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    .payment-radio:checked + label {
+      border-color: #4f46e5;
+      background-color: #f5f3ff;
+      color: #4f46e5;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header / Logo Corner -->
+  <header class="w-full p-6 flex justify-between items-center">
+    <div class="flex items-center gap-2 group cursor-pointer">
+      <div class="bg-indigo-600 p-2 rounded-xl transition-transform group-hover:rotate-12">
+        <i data-lucide="calendar" class="text-white w-6 h-6"></i>
+      </div>
+      <span class="text-2xl font-extrabold tracking-tight text-slate-900">Event<span class="text-indigo-600">Hub</span></span>
+    </div>
+    <div class="hidden md:block">
+      <button onclick="history.back()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-xl transition-all shadow-md shadow-indigo-200 text-sm">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+        Back
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto max-w-5xl px-4 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Left Column: Event Summary -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-indigo-600 rounded-3xl p-8 text-white shadow-xl shadow-indigo-200 relative overflow-hidden">
+          <div class="relative z-10">
+            <span class="px-3 py-1 bg-indigo-500/50 rounded-full text-xs font-bold uppercase tracking-widest">Selected Event</span>
+            <h1 id="event-title" class="text-3xl font-bold mt-4 leading-tight"></h1>
+            
+            <div class="mt-8 space-y-4">
+              <div class="flex items-center gap-3 opacity-90">
+                <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                <span id="event-date" class="font-medium"></span>
+              </div>
+              <div class="flex items-center gap-3 opacity-90">
+                <i data-lucide="map-pin" class="w-5 h-5"></i>
+                <span id="event-location" class="font-medium"></span>
+              </div>
+              <div class="flex items-center gap-3 opacity-90">
+                <i data-lucide="ticket" class="w-5 h-5"></i>
+                <span class="font-medium"><span id="ticket-price"></span> per person</span>
+              </div>
+            </div>
+          </div>
+          <!-- Decorative circle -->
+          <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500 rounded-full opacity-30"></div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+          <h3 class="text-slate-900 font-bold mb-4">Order Summary</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between text-slate-500 text-sm">
+              <span>Tickets × <span id="summary-qty">1</span></span>
+              <span>₹<span id="summary-subtotal">0</span></span>
+            </div>
+            <div class="flex justify-between text-slate-500 text-sm">
+              <span>Service Fee</span>
+              <span>₹0.00</span>
+            </div>
+            <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+              <span class="text-slate-900 font-bold">Total Amount</span>
+              <span class="text-2xl font-extrabold text-indigo-600">₹<span id="total-amount">0</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Booking Form -->
+      <div class="lg:col-span-7">
+        <form id="booking-form" class="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-8">
+          
+          <!-- Step 1: Details -->
+          <section>
+            <h2 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <span class="w-7 h-7 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-sm">1</span>
+              Attendee Information
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label for="num-tickets" class="text-sm font-bold text-slate-700">Number of Tickets</label>
+                <input type="number" id="num-tickets" min="1" max="10" value="1" required
+                  class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+              </div>
+              <div class="space-y-2">
+                <label for="ticket-holder" class="text-sm font-bold text-slate-700">Ticket Holder Name</label>
+                <input type="text" id="ticket-holder" placeholder="Your full name" required autocomplete="name"
+                  class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+              </div>
+            </div>
+          </section>
+
+          <!-- Step 2: Payment (hidden automatically for free events) -->
+          <section id="payment-section">
+            <h2 class="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+              <span class="w-7 h-7 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-sm">2</span>
+              Payment Method <span class="text-xs font-normal text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full ml-2">(Demo Mode)</span>
+            </h2>
+            
+            <div class="flex gap-4 mb-8">
+              <div class="flex-1">
+                <input type="radio" name="payment" id="pay-card" value="card" checked class="hidden payment-radio">
+                <label for="pay-card" class="flex flex-col items-center justify-center p-4 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all font-semibold text-slate-600">
+                  <i data-lucide="credit-card" class="w-6 h-6 mb-2"></i>
+                  Card
+                </label>
+              </div>
+              <div class="flex-1">
+                <input type="radio" name="payment" id="pay-upi" value="upi" class="hidden payment-radio">
+                <label for="pay-upi" class="flex flex-col items-center justify-center p-4 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all font-semibold text-slate-600">
+                  <i data-lucide="smartphone" class="w-6 h-6 mb-2"></i>
+                  UPI
+                </label>
+              </div>
+            </div>
+
+            <!-- Card Details -->
+            <div id="card-details" class="space-y-4 animate-in fade-in duration-300">
+              <div class="space-y-2">
+                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Card Number</label>
+                <div class="relative">
+                  <input type="text" id="card-number" value="4242 4242 4242 4242" placeholder="0000 0000 0000 0000" maxlength="19"
+                    class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+                  <i data-lucide="credit-card" class="absolute left-4 top-3.5 text-slate-400 w-5 h-5"></i>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Expiry</label>
+                  <input type="text" id="expiry-date" value="12/30" placeholder="MM/YY" maxlength="5"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div class="space-y-2">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">CVV</label>
+                  <input type="password" id="cvv" value="123" placeholder="***" maxlength="3"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+              </div>
+            </div>
+
+            <!-- UPI Details -->
+            <div id="upi-details" class="hidden space-y-4 animate-in fade-in duration-300">
+              <p class="text-sm text-slate-500 mb-4">Select your preferred UPI app to continue</p>
+              <div class="grid grid-cols-3 gap-3">
+                <button type="button" class="flex flex-col items-center p-3 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group">
+                  <div class="w-10 h-10 bg-slate-100 rounded-full mb-2 flex items-center justify-center group-hover:bg-white">
+                    <i data-lucide="zap" class="w-5 h-5 text-indigo-600"></i>
+                  </div>
+                  <span class="text-xs font-bold text-slate-600">GPay</span>
+                </button>
+                <button type="button" class="flex flex-col items-center p-3 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group">
+                  <div class="w-10 h-10 bg-slate-100 rounded-full mb-2 flex items-center justify-center group-hover:bg-white">
+                    <i data-lucide="phone" class="w-5 h-5 text-indigo-600"></i>
+                  </div>
+                  <span class="text-xs font-bold text-slate-600">PhonePe</span>
+                </button>
+                <button type="button" class="flex flex-col items-center p-3 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group">
+                  <div class="w-10 h-10 bg-slate-100 rounded-full mb-2 flex items-center justify-center group-hover:bg-white">
+                    <i data-lucide="wallet" class="w-5 h-5 text-indigo-600"></i>
+                  </div>
+                  <span class="text-xs font-bold text-slate-600">Paytm</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 text-lg">
+            <span id="submit-label">Confirm &amp; Pay ₹<span id="btn-total">0</span></span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- Booking success modal (custom, centered) -->
+  <style>
+    /* Booking confirmation modal */
+    #booking-modal {
+      position: fixed; inset: 0;
+      background: rgba(7, 9, 26, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 5000;
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 1.5rem;
+      animation: bmFade 0.25s ease-out;
+    }
+    #booking-modal.show { display: flex; }
+    @keyframes bmFade { from { opacity: 0; } to { opacity: 1; } }
+    .bm-card {
+      background: white;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 560px;
+      max-height: 92vh;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.4);
+      display: flex; flex-direction: column;
+      animation: bmZoom 0.35s cubic-bezier(.2,.9,.3,1.2);
+    }
+    @keyframes bmZoom {
+      from { opacity: 0; transform: scale(0.94); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .bm-head {
+      position: relative;
+      padding: 1.6rem 1.6rem 1.4rem;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      color: white;
+      text-align: center;
+      overflow: hidden;
+    }
+    .bm-head::before, .bm-head::after {
+      content: ''; position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+    }
+    .bm-head::before { width: 180px; height: 180px; top: -100px; right: -80px; }
+    .bm-head::after  { width: 140px; height: 140px; bottom: -80px; left: -60px; }
+    .bm-check {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: white;
+      color: #10b981;
+      display: grid; place-items: center;
+      font-size: 1.6rem;
+      margin: 0 auto 0.8rem;
+      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+      position: relative; z-index: 1;
+      animation: bmPop 0.5s cubic-bezier(.2,.9,.3,1.2) 0.1s both;
+    }
+    @keyframes bmPop {
+      0%   { transform: scale(0.4); opacity: 0; }
+      60%  { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    .bm-head h3 { position: relative; z-index: 1; font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .bm-head p  { position: relative; z-index: 1; opacity: 0.9; font-size: 0.92rem; }
+    .bm-close {
+      position: absolute; top: 12px; right: 12px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(6px);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: grid; place-items: center;
+      font-size: 0.85rem;
+      transition: background 0.2s;
+      z-index: 2;
+    }
+    .bm-close:hover { background: rgba(255,255,255,0.32); }
+
+    .bm-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      background: linear-gradient(180deg, #fafbff 0%, #ffffff 100%);
+    }
+    .bm-meta {
+      text-align: center;
+      margin-bottom: 1.2rem;
+    }
+    .bm-meta .name {
+      font-size: 1.05rem; font-weight: 700; color: #1f2937;
+    }
+    .bm-meta .count {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 4px 14px;
+      background: rgba(99,102,241,0.1);
+      color: #6366f1;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .bm-qr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 1.5rem;
+    }
+    .bm-qr-cell {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 8px;
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+    .bm-qr-cell:hover { transform: translateY(-2px); box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1); }
+    .bm-qr-cell img { width: 100%; height: auto; max-width: 130px; border-radius: 6px; }
+    .bm-qr-cell .seat-no {
+      font-size: 0.75rem; font-weight: 700;
+      color: #6366f1;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .bm-qr-cell .code {
+      font-size: 0.7rem; color: #94a3b8;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      word-break: break-all; text-align: center; line-height: 1.3;
+    }
+
+    .bm-actions {
+      display: flex; gap: 10px;
+      padding-top: 0.5rem;
+      border-top: 1px solid #f1f5f9;
+      padding: 1rem 1.5rem 1.5rem;
+    }
+    .bm-actions button {
+      flex: 1;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.25s ease;
+      border: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 0.92rem;
+    }
+    .bm-actions .bm-view {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .bm-actions .bm-view:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(236,72,153,0.45); }
+    .bm-actions .bm-secondary {
+      background: rgba(99,102,241,0.08);
+      color: #6366f1;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .bm-actions .bm-secondary:hover { background: rgba(99,102,241,0.15); }
+  </style>
+
+  <div id="booking-modal" role="dialog" aria-modal="true" aria-labelledby="bm-title">
+    <div class="bm-card">
+      <div class="bm-head">
+        <button id="booking-modal-close" class="bm-close" aria-label="Close"><i class="fas fa-times"></i></button>
+        <div class="bm-check"><i class="fas fa-check"></i></div>
+        <h3 id="bm-title">Booking Confirmed</h3>
+        <p>Your tickets are ready — show any QR at the entrance.</p>
+      </div>
+      <div class="bm-body">
+        <div class="bm-meta">
+          <div class="name" id="modal-booking-name">Name</div>
+          <span class="count" id="modal-booking-count">1 person</span>
+        </div>
+        <div id="booking-qr" class="bm-qr-grid"></div>
+      </div>
+      <div class="bm-actions">
+        <button id="view-ticket-btn" class="bm-view"><i class="fas fa-ticket"></i> View Ticket</button>
+        <button id="modal-close-secondary" class="bm-secondary"><i class="fas fa-xmark"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/Public/js/popup.js"></script>
+  <!-- qrcode@1.5.3 dropped the prebuilt browser bundle from npm; load 1.5.0 (last with build/qrcode.min.js) and fall back to cdnjs. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <script>
+    if (typeof QRCode === 'undefined' || !QRCode.toCanvas) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.0/qrcode.min.js"><\/script>');
+    }
+  </script>
+  <script src="../js/pages/booking.js"></script>
+  <script>
+    lucide.createIcons();
+
+    // UI Logic
+    const numTicketsInput = document.getElementById('num-tickets');
+    let ticketPrice = 0; // Will be updated by booking.js
+    const totalDisplay = document.getElementById('total-amount');
+    const btnTotal = document.getElementById('btn-total');
+    const summaryQty = document.getElementById('summary-qty');
+    const summarySubtotal = document.getElementById('summary-subtotal');
+
+    const cardDetails = document.getElementById('card-details');
+    const upiDetails = document.getElementById('upi-details');
+    const paymentRadios = document.getElementsByName('payment');
+
+    const paymentSection = document.getElementById('payment-section');
+    const submitLabel = document.getElementById('submit-label');
+
+    // Function called by booking.js when price is fetched
+    window.updateBookingPrice = (price) => {
+      ticketPrice = Number(price) || 0;
+      const isFree = ticketPrice <= 0;
+      // Hide the payment section entirely for free events.
+      if (paymentSection) paymentSection.style.display = isFree ? 'none' : '';
+      // Make sure the form does not require card/cvv when payment is hidden
+      // (these were optional anyway, but we also clear so a stray empty value
+      //  doesn't break free-event submissions).
+      if (isFree) {
+        ['card-number','expiry-date','cvv'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+      // Hide the "Service Fee" line and the "Total Amount" row visually for free
+      // events isn't necessary — totals will read ₹0 — but we re-label the
+      // submit button so the action makes sense.
+      updateTotals();
+    };
+
+    function updateTotals() {
+      const qty = parseInt(numTicketsInput.value) || 0;
+      const total = qty * ticketPrice;
+      totalDisplay.textContent = total;
+      summaryQty.textContent = qty;
+      summarySubtotal.textContent = total;
+      if (submitLabel) {
+        if (ticketPrice <= 0) {
+          submitLabel.innerHTML = `Confirm Registration · ${qty} ticket${qty === 1 ? '' : 's'}`;
+        } else {
+          submitLabel.innerHTML = `Confirm &amp; Pay ₹<span id="btn-total">${total}</span>`;
+        }
+      }
+    }
+
+    // Update Totals on input
+    numTicketsInput.addEventListener('input', updateTotals);
+    numTicketsInput.addEventListener('change', updateTotals);
+
+    // Toggle Payment Methods
+    paymentRadios.forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (e.target.value === 'card') {
+          cardDetails.classList.remove('hidden');
+          upiDetails.classList.add('hidden');
+        } else {
+          cardDetails.classList.add('hidden');
+          upiDetails.classList.remove('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

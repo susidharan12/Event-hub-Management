@@ -1,0 +1,14 @@
+{
+  "name": "eventhub-frontend",
+  "version": "1.0.0",
+  "description": "EventHub Frontend",
+  "scripts": {
+    "start": "live-server --port=5050 --host=127.0.0.1"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "cors": "^2.8.6"
+  }
+}

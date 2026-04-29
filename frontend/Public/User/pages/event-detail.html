@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Event Details — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --dark: #0b1020;
+      --darker: #07091a;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --light: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* ───────── Floating glass navbar (matches dashboard) ───────── */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1280px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .navbar.scrolled {
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4); }
+      50%     { box-shadow: 0 8px 28px rgba(236, 72, 153, 0.55); }
+    }
+    .logo .grad { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .btn {
+      padding: 0.7rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+    .btn-disabled, .btn-disabled:hover {
+      background: #cbd5e1;
+      color: white;
+      box-shadow: none;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* ───────── Page wrapper / background flair ───────── */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ───────── Loading / error message (used by event-detail.js) ───────── */
+    #loading {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .skeleton-hero {
+      height: 360px;
+      border-radius: 24px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+      margin-bottom: 1.5rem;
+    }
+    .skeleton-row { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
+    .skeleton-block {
+      height: 200px;
+      border-radius: 18px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ───────── Event header ───────── */
+    .event-header {
+      position: relative;
+      height: 460px;
+      border-radius: 26px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+      background: linear-gradient(135deg, #ddd6fe, #fbcfe8);
+      box-shadow: var(--shadow-card);
+      animation: heroIn 0.9s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes heroIn {
+      from { opacity: 0; transform: translateY(28px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .event-header img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 8s linear;
+    }
+    .event-header.loaded img { transform: scale(1.06); }
+    .event-header::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(11,16,32,0) 30%, rgba(11,16,32,0.7) 100%);
+      pointer-events: none;
+    }
+
+    .event-badge {
+      position: absolute;
+      top: 22px; left: 22px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      color: var(--primary);
+      border-radius: 999px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      z-index: 2;
+      animation: fadeUp 0.9s ease-out 0.3s both;
+    }
+    .date-chip {
+      position: absolute;
+      top: 22px; right: 22px;
+      background: rgba(15,23,42,0.78);
+      backdrop-filter: blur(10px);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 16px;
+      text-align: center;
+      line-height: 1;
+      z-index: 2;
+      animation: fadeUp 0.9s ease-out 0.4s both;
+    }
+    .date-chip .day { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 700; }
+    .date-chip .month { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; margin-top: 2px; }
+
+    .header-overlay-text {
+      position: absolute;
+      left: 28px; bottom: 28px; right: 28px;
+      color: white;
+      z-index: 2;
+      animation: fadeUp 0.9s ease-out 0.5s both;
+    }
+    .header-overlay-text .h-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      margin-bottom: 0.7rem;
+    }
+    .header-overlay-text h1 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      line-height: 1.1;
+      max-width: 80%;
+      text-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ───────── Main content grid ───────── */
+    .event-content {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+      align-items: start;
+    }
+
+    .main-info h1 {
+      display: none; /* the existing event-detail.js writes the title here, but we also show in hero overlay */
+    }
+    .meta-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.8rem;
+      animation: fadeUp 0.8s ease-out 0.5s both;
+    }
+    .meta-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px;
+      background: white;
+      border: 1px solid rgba(99,102,241,0.08);
+      border-radius: 14px;
+      box-shadow: var(--shadow-card);
+      transition: all 0.3s ease;
+    }
+    .meta-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+    .meta-icon {
+      width: 42px; height: 42px;
+      border-radius: 11px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 1.05rem;
+      flex-shrink: 0;
+    }
+    .meta-text { line-height: 1.25; }
+    .meta-text .label { display: block; font-size: 0.72rem; text-transform: uppercase; color: var(--muted); letter-spacing: 0.06em; font-weight: 600; }
+    .meta-text .value { display: block; font-weight: 600; color: var(--ink); margin-top: 3px; word-break: break-word; }
+
+    .description {
+      background: white;
+      padding: 2rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .description::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .description h3 {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .description h3 i {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+    .description p { color: #475569; }
+
+    /* ───────── Booking card ───────── */
+    .booking-card {
+      background: white;
+      padding: 2rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: sticky;
+      top: calc(var(--nav-height) + 32px);
+      animation: fadeUp 0.9s ease-out 0.4s both;
+      overflow: hidden;
+    }
+    .booking-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .price-tag {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.6rem;
+      font-weight: 800;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.25rem;
+    }
+    .price-sub {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+    .seats-info {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+      border: 1px solid rgba(16,185,129,0.18);
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      color: #047857;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .seats-info i { color: var(--success); }
+    /* override booking button (it has class btn btn-primary by default) */
+    #book-btn {
+      display: flex;
+      width: 100%;
+      justify-content: center;
+      padding: 1rem;
+      font-size: 1.05rem;
+      border-radius: 14px;
+    }
+    #book-btn::after {
+      content: '\f054'; /* fa-chevron-right */
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      margin-left: 8px;
+      transition: transform 0.3s ease;
+    }
+    #book-btn:hover::after { transform: translateX(4px); }
+    #book-btn.btn-disabled::after { display: none; }
+
+    /* Get directions — same shape as #book-btn, emerald→cyan gradient.
+       Hidden by default; the inline enrichment script flips display: flex
+       when event.map_url is set. */
+    #get-directions-btn {
+      display: none;
+      width: 100%;
+      padding: 1rem;
+      font-size: 1.05rem;
+      border-radius: 14px;
+      margin-top: 12px;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      color: white;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 10px 24px rgba(16, 185, 129, 0.3);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      font-family: inherit;
+    }
+    #get-directions-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(6, 182, 212, 0.45);
+    }
+    #get-directions-btn::after {
+      content: '\f054'; /* fa-chevron-right */
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      margin-left: 4px;
+      transition: transform 0.3s ease;
+    }
+    #get-directions-btn:hover::after { transform: translateX(4px); }
+    #auth-warning {
+      color: var(--danger);
+      font-size: 0.88rem;
+      margin-top: 1rem;
+      padding: 10px 12px;
+      background: #fef2f2;
+      border: 1px solid #fee2e2;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    /* ───────── Gallery section ───────── */
+    .gallery-section {
+      margin-top: 3rem;
+      animation: fadeUp 0.9s ease-out 0.6s both;
+    }
+    .section-head {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .section-head .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    .section-head h2 {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800;
+    }
+    .section-head p { color: var(--muted); margin-top: 0.4rem; }
+
+    /* ───────── Horizontal scroll gallery (fixed-size cards) ───────── */
+    .gallery-wrap {
+      position: relative;
+      margin-top: 1.5rem;
+    }
+    .gallery {
+      display: flex;
+      gap: 1.1rem;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 0.5rem 0.25rem 1.25rem;
+      /* Fade-mask the edges so the strip blends into the page. */
+      mask-image: linear-gradient(90deg, transparent 0, black 28px, black calc(100% - 28px), transparent 100%);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0, black 28px, black calc(100% - 28px), transparent 100%);
+    }
+    /* When the loop is active we suppress smooth-scroll so the
+       seamless wrap-around jump is invisible. */
+    .gallery.is-looping { scroll-behavior: auto; }
+    /* Hide the native scrollbar (still scrollable via wheel/drag/buttons). */
+    .gallery::-webkit-scrollbar { height: 0; display: none; }
+    .gallery { scrollbar-width: none; -ms-overflow-style: none; }
+
+    .gallery-item {
+      position: relative;
+      flex: 0 0 320px;          /* fixed width */
+      height: 220px;            /* fixed height */
+      border-radius: 18px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.4s cubic-bezier(.2,.9,.3,1.2), box-shadow 0.4s;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: tileIn 0.55s ease-out forwards;
+      background: linear-gradient(135deg, #ddd6fe, #fbcfe8);
+    }
+    .gallery-item:nth-child(1) { animation-delay: 0.05s; }
+    .gallery-item:nth-child(2) { animation-delay: 0.1s; }
+    .gallery-item:nth-child(3) { animation-delay: 0.15s; }
+    .gallery-item:nth-child(4) { animation-delay: 0.2s; }
+    .gallery-item:nth-child(5) { animation-delay: 0.25s; }
+    .gallery-item:nth-child(6) { animation-delay: 0.3s; }
+    .gallery-item:nth-child(7) { animation-delay: 0.35s; }
+    .gallery-item:nth-child(8) { animation-delay: 0.4s; }
+    .gallery-item:nth-child(9) { animation-delay: 0.45s; }
+    .gallery-item:nth-child(10) { animation-delay: 0.5s; }
+    @keyframes tileIn { to { opacity: 1; transform: translateY(0); } }
+
+    .gallery-item img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s ease;
+      display: block;
+    }
+    .gallery-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-card-hover); }
+    .gallery-item:hover img { transform: scale(1.08); }
+    .gallery-item::after {
+      content: '\f00e'; /* fa-search-plus */
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(11, 16, 32, 0.55);
+      color: white;
+      font-size: 1.6rem;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      backdrop-filter: blur(2px);
+    }
+    .gallery-item:hover::after { opacity: 1; }
+    .gallery-item.cover-pill::before {
+      content: 'COVER';
+      position: absolute;
+      top: 12px; left: 12px;
+      padding: 4px 10px;
+      background: var(--gradient-hero);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      border-radius: 999px;
+      z-index: 2;
+    }
+
+    /* Scroll buttons */
+    .gallery-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      border: none;
+      background: white;
+      color: var(--ink);
+      box-shadow: 0 10px 24px rgba(15,23,42,0.18);
+      cursor: pointer;
+      display: grid; place-items: center;
+      transition: all 0.25s ease;
+      z-index: 3;
+      font-size: 0.95rem;
+    }
+    .gallery-nav:hover {
+      background: var(--gradient-hero);
+      color: white;
+      transform: translateY(-50%) scale(1.08);
+      box-shadow: 0 14px 30px rgba(99,102,241,0.4);
+    }
+    .gallery-nav:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: translateY(-50%);
+      box-shadow: 0 4px 12px rgba(15,23,42,0.1);
+    }
+    .gallery-nav:disabled:hover {
+      background: white;
+      color: var(--ink);
+      transform: translateY(-50%);
+    }
+    .gallery-nav.prev { left: -8px; }
+    .gallery-nav.next { right: -8px; }
+
+    .gallery-empty {
+      width: 100%;
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      background: white;
+      border-radius: 18px;
+      border: 1px dashed #cbd5e1;
+      color: var(--muted);
+    }
+    .gallery-empty i {
+      font-size: 2rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    @media (max-width: 600px) {
+      .gallery-item { flex: 0 0 260px; height: 180px; }
+      .gallery-nav { display: none; } /* on mobile users swipe instead */
+    }
+
+    /* ───────── Lightbox ───────── */
+    .lightbox {
+      position: fixed; inset: 0;
+      background: rgba(7, 9, 26, 0.92);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 5000;
+      padding: 2rem;
+      animation: lbFade 0.25s ease-out;
+    }
+    .lightbox.show { display: flex; }
+    @keyframes lbFade { from { opacity: 0; } to { opacity: 1; } }
+
+    .lightbox-img-wrap {
+      position: relative;
+      max-width: 90vw;
+      max-height: 86vh;
+      animation: lbZoom 0.35s cubic-bezier(.2,.9,.3,1.2);
+    }
+    @keyframes lbZoom {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .lightbox-img-wrap img {
+      max-width: 90vw;
+      max-height: 86vh;
+      border-radius: 14px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+      display: block;
+    }
+    .lightbox-counter {
+      position: absolute;
+      top: -38px; left: 0;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 600;
+      opacity: 0.8;
+    }
+    .lb-btn {
+      position: absolute;
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.12);
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+    }
+    .lb-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.06); }
+    .lb-prev { left: -22px; top: 50%; transform: translateY(-50%); }
+    .lb-prev:hover { left: -22px; top: 50%; transform: translateY(-50%) scale(1.06); }
+    .lb-next { right: -22px; top: 50%; transform: translateY(-50%); }
+    .lb-next:hover { right: -22px; top: 50%; transform: translateY(-50%) scale(1.06); }
+    .lb-close { top: -50px; right: 0; }
+
+    @media (max-width: 768px) {
+      .lb-prev { left: 8px; }
+      .lb-next { right: 8px; }
+    }
+
+    /* ───────── Responsive ───────── */
+    @media (max-width: 900px) {
+      .event-content { grid-template-columns: 1fr; }
+      .booking-card { position: static; }
+      .event-header { height: 320px; }
+      .header-overlay-text h1 { max-width: 100%; }
+      .skeleton-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating glass navbar (matches dashboard) -->
+  <nav class="navbar" id="navbar">
+    <a href="dashboard.html" class="logo">
+      <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+      Event<span class="grad">Hub</span>
+    </a>
+    <button onclick="history.length > 1 ? history.back() : (window.location.href='dashboard.html')" class="btn btn-primary">
+      <i class="fas fa-arrow-left"></i> Back
+    </button>
+  </nav>
+
+  <!-- Loading skeleton (event-detail.js hides this when ready) -->
+  <div id="loading" class="page">
+    <div class="container">
+      <div class="skeleton-hero"></div>
+      <div class="skeleton-row">
+        <div class="skeleton-block"></div>
+        <div class="skeleton-block"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main details -->
+  <div id="event-details" class="page" style="display:none;">
+    <div class="container">
+
+      <!-- Hero header -->
+      <div class="event-header" id="event-header">
+        <span class="event-badge" id="detail-category">Category</span>
+        <div class="date-chip" id="header-date-chip">
+          <div class="day" id="header-day">--</div>
+          <div class="month" id="header-month">---</div>
+        </div>
+        <img id="detail-image" src="" alt="Event Image">
+        <div class="header-overlay-text">
+          <span class="h-eyebrow"><i class="fas fa-calendar-check"></i> Live event</span>
+          <h1 id="header-title-mirror">Event Title</h1>
+        </div>
+      </div>
+
+      <div class="event-content">
+        <div class="main-info">
+          <!-- detail-title is filled by event-detail.js but hidden via CSS; we mirror it into header-title-mirror -->
+          <h1 id="detail-title">Event Title</h1>
+
+          <!-- Meta row -->
+          <div class="meta-row">
+            <div class="meta-item">
+              <div class="meta-icon"><i class="fas fa-calendar-alt"></i></div>
+              <div class="meta-text">
+                <span class="label">Date & Time</span>
+                <span class="value" id="detail-date">—</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-icon"><i class="fas fa-map-marker-alt"></i></div>
+              <div class="meta-text">
+                <span class="label">Venue</span>
+                <span class="value" id="detail-location">—</span>
+              </div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-icon"><i class="fas fa-tag"></i></div>
+              <div class="meta-text">
+                <span class="label">Category</span>
+                <span class="value" id="meta-category">—</span>
+              </div>
+            </div>
+            <!-- City / Place — only rendered when the organizer set it. -->
+            <div class="meta-item" id="meta-place-card" style="display:none;">
+              <div class="meta-icon"><i class="fas fa-city"></i></div>
+              <div class="meta-text">
+                <span class="label">City / Place</span>
+                <span class="value" id="meta-place">—</span>
+              </div>
+            </div>
+            <!-- Map link — only rendered when the organizer set it. -->
+            <div class="meta-item" id="meta-map-card" style="display:none;">
+              <div class="meta-icon" style="background:linear-gradient(135deg,rgba(16,185,129,0.18),rgba(6,182,212,0.18));color:#10b981;"><i class="fas fa-map-location-dot"></i></div>
+              <div class="meta-text" style="min-width:0;">
+                <span class="label">Map</span>
+                <a id="meta-map-link" href="#" target="_blank" rel="noopener" class="value" style="color:var(--primary);text-decoration:none;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Open in maps</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="description">
+            <h3><i class="fas fa-circle-info"></i> About this Event</h3>
+            <p id="detail-desc">Description goes here…</p>
+          </div>
+        </div>
+
+        <!-- Booking card -->
+        <div class="booking-card">
+          <div class="price-tag" id="detail-price">₹0</div>
+          <div class="price-sub">per ticket</div>
+          <div class="seats-info">
+            <i class="fas fa-chair"></i>
+            <span><span id="detail-seats">0</span> seats remaining</span>
+          </div>
+          <button id="book-btn" class="btn btn-primary">Book Ticket</button>
+          <p id="auth-warning" style="display:none;">Please login to book tickets.</p>
+          <!-- Get directions — sized to match #book-btn exactly (width:100%, padding:1rem, font:1.05rem, radius:14px). -->
+          <a id="get-directions-btn" href="#" target="_blank" rel="noopener">
+            <i class="fas fa-map-location-dot"></i> Get directions
+          </a>
+        </div>
+      </div>
+
+      <!-- Photo gallery -->
+      <section class="gallery-section">
+        <div class="section-head">
+          <span class="eyebrow">Event gallery</span>
+          <h2>Photos from this event</h2>
+          <p>Every image uploaded by the organizer.</p>
+        </div>
+        <div class="gallery-wrap">
+          <button class="gallery-nav prev" id="gallery-prev" aria-label="Previous photos"><i class="fas fa-chevron-left"></i></button>
+          <div class="gallery" id="event-gallery">
+            <!-- filled by inline script -->
+          </div>
+          <button class="gallery-nav next" id="gallery-next" aria-label="More photos"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="lightbox-img-wrap">
+      <span class="lightbox-counter" id="lb-counter">1 / 1</span>
+      <button class="lb-btn lb-close" id="lb-close" aria-label="Close"><i class="fas fa-times"></i></button>
+      <button class="lb-btn lb-prev" id="lb-prev" aria-label="Previous"><i class="fas fa-chevron-left"></i></button>
+      <img id="lb-img" src="" alt="">
+      <button class="lb-btn lb-next" id="lb-next" aria-label="Next"><i class="fas fa-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <script src="/Public/js/popup.js"></script>
+  <script src="/Public/js/chat-widget.js"></script>
+  <!-- Existing event-detail.js fills detail-* IDs and wires the booking button -->
+  <script src="../js/pages/event-detail.js"></script>
+
+  <script>
+    // Inline enhancements: gallery + lightbox + cover-image preference + title mirror.
+    // The external event-detail.js already populates detail-* fields and triggers the booking flow.
+    (function () {
+      const SERVER_URL = 'http://localhost:3000';
+      const API_BASE = 'http://localhost:3000/api';
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const eventId = urlParams.get('id');
+
+      function resolveUrl(u) {
+        if (!u) return null;
+        return u.startsWith('/') ? `${SERVER_URL}${u}` : u;
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      function formatDateChip(iso) {
+        if (!iso) return null;
+        const d = new Date(iso);
+        if (isNaN(d)) return null;
+        return {
+          day: String(d.getDate()).padStart(2, '0'),
+          month: d.toLocaleString('en-US', { month: 'short' })
+        };
+      }
+
+      // Navbar shadow on scroll
+      const navbar = document.getElementById('navbar');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 30) navbar.classList.add('scrolled');
+        else navbar.classList.remove('scrolled');
+      });
+
+      async function enrichPage() {
+        if (!eventId) return;
+        try {
+          const res = await fetch(`${API_BASE}/events/${eventId}`);
+          if (!res.ok) return;
+          const event = await res.json();
+
+          // Prefer image_url (organizer's chosen cover) over images[0]
+          const coverImg = document.getElementById('detail-image');
+          const cover = resolveUrl(event.image_url) || (event.images && event.images.length > 0 ? resolveUrl(event.images[0]) : null);
+          if (cover) {
+            coverImg.src = cover;
+            coverImg.onload = () => document.getElementById('event-header').classList.add('loaded');
+          }
+
+          // Mirror the title into the hero overlay (without removing the JS-managed #detail-title)
+          const titleEl = document.getElementById('detail-title');
+          const mirror = document.getElementById('header-title-mirror');
+          if (titleEl && mirror) {
+            mirror.textContent = titleEl.textContent || event.title || 'Event';
+            // Keep it in sync if event-detail.js updates later
+            new MutationObserver(() => { mirror.textContent = titleEl.textContent || event.title || 'Event'; })
+              .observe(titleEl, { childList: true, characterData: true, subtree: true });
+          }
+
+          // Fill the date chip in the header
+          const chip = formatDateChip(event.event_date);
+          if (chip) {
+            document.getElementById('header-day').textContent = chip.day;
+            document.getElementById('header-month').textContent = chip.month;
+          }
+
+          // Fill meta-category card (event-detail.js writes to #detail-category which is the floating badge)
+          const metaCat = document.getElementById('meta-category');
+          if (metaCat) metaCat.textContent = event.category || '—';
+
+          // Place / city — only show the card when set.
+          const metaPlaceCard = document.getElementById('meta-place-card');
+          const metaPlace     = document.getElementById('meta-place');
+          if (event.place && event.place.trim()) {
+            if (metaPlace) metaPlace.textContent = event.place.trim();
+            if (metaPlaceCard) metaPlaceCard.style.display = '';
+          }
+
+          // Map URL — show as a meta card (with link) AND as a prominent
+          // "Get directions" button on the booking sidebar.
+          const metaMapCard   = document.getElementById('meta-map-card');
+          const metaMapLink   = document.getElementById('meta-map-link');
+          const directionsBtn = document.getElementById('get-directions-btn');
+          if (event.map_url && event.map_url.trim()) {
+            const url = event.map_url.trim();
+            if (metaMapLink) {
+              metaMapLink.href = url;
+              metaMapLink.textContent = url.replace(/^https?:\/\//, '').slice(0, 32) + (url.length > 32 ? '…' : '');
+              metaMapLink.title = url;
+            }
+            if (metaMapCard)    metaMapCard.style.display = '';
+            if (directionsBtn) {
+              directionsBtn.href = url;
+              directionsBtn.style.display = 'flex'; // match #book-btn (full-width)
+            }
+          }
+
+          // Build the gallery: cover + every image in images[], deduped, in order.
+          const gallery = document.getElementById('event-gallery');
+          const urls = [];
+          if (event.image_url) urls.push(resolveUrl(event.image_url));
+          if (Array.isArray(event.images)) {
+            for (const u of event.images) {
+              const r = resolveUrl(u);
+              if (r && !urls.includes(r)) urls.push(r);
+            }
+          }
+
+          const prevBtn = document.getElementById('gallery-prev');
+          const nextBtn = document.getElementById('gallery-next');
+
+          if (urls.length === 0) {
+            gallery.innerHTML = `
+              <div class="gallery-empty">
+                <i class="fas fa-images"></i>
+                <p>No photos uploaded for this event yet.</p>
+              </div>`;
+            if (prevBtn) prevBtn.style.display = 'none';
+            if (nextBtn) nextBtn.style.display = 'none';
+            return;
+          }
+
+          // Render the urls TWICE so the strip can loop seamlessly: when the
+          // user (or auto-scroll) reaches the end of the first half, we silently
+          // jump back to the matching offset in the duplicate, creating an
+          // infinite circular feel. data-index uses the original index so the
+          // lightbox always opens the right photo.
+          const loopList = urls.length > 1 ? [...urls, ...urls] : urls.slice();
+          gallery.innerHTML = loopList.map((u, i) => {
+            const original = i % urls.length;
+            return `
+              <div class="gallery-item ${original === 0 && event.image_url ? 'cover-pill' : ''}" data-index="${original}">
+                <img src="${escapeHtml(u)}" alt="Event photo ${original + 1}" loading="lazy">
+              </div>
+            `;
+          }).join('');
+
+          // ───────── Circular auto-scroll ─────────
+          const canLoop = urls.length > 1;
+          let halfWidth = 0;             // width of the first (original) set of items
+          let paused = false;
+          let resumeTimer = null;
+
+          function measure() {
+            // The full strip is roughly 2× the original; halfWidth is the offset
+            // where the duplicate set begins, so we can wrap there.
+            halfWidth = canLoop ? gallery.scrollWidth / 2 : 0;
+          }
+          function pauseAutoScroll(forMs) {
+            paused = true;
+            if (resumeTimer) clearTimeout(resumeTimer);
+            if (forMs) resumeTimer = setTimeout(() => { paused = false; }, forMs);
+          }
+          function resumeAutoScroll() {
+            if (resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+            paused = false;
+          }
+
+          function autoTick() {
+            if (canLoop && !paused && halfWidth > 0) {
+              gallery.classList.add('is-looping');
+              gallery.scrollLeft += 0.55;             // ~33 px/sec at 60fps
+              if (gallery.scrollLeft >= halfWidth) {
+                gallery.scrollLeft -= halfWidth;       // invisible wrap
+              }
+              gallery.classList.remove('is-looping');
+            }
+            requestAnimationFrame(autoTick);
+          }
+
+          // Pause when the user is hovering / interacting with the strip.
+          gallery.addEventListener('mouseenter', () => pauseAutoScroll());
+          gallery.addEventListener('mouseleave', () => resumeAutoScroll());
+          gallery.addEventListener('touchstart', () => pauseAutoScroll(), { passive: true });
+          gallery.addEventListener('touchend',   () => pauseAutoScroll(2500), { passive: true });
+          // Pause when the page is in the background (saves CPU and avoids a
+          // huge skip on resume because rAF is throttled in hidden tabs).
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden) pauseAutoScroll(); else resumeAutoScroll();
+          });
+
+          // Manual prev/next: scroll a fixed distance, briefly pause auto-scroll,
+          // and on prev wrap into the duplicate so we never hit the left edge.
+          function scrollByCard(dir) {
+            const card = gallery.querySelector('.gallery-item');
+            const step = card ? (card.getBoundingClientRect().width + 18) : 320;
+            if (canLoop && dir < 0 && gallery.scrollLeft < step) {
+              gallery.scrollLeft += halfWidth; // jump into the duplicate before scrolling left
+            }
+            gallery.scrollBy({ left: dir * step * 1.4, behavior: 'smooth' });
+            pauseAutoScroll(3000);
+          }
+          if (prevBtn) {
+            prevBtn.addEventListener('click', () => scrollByCard(-1));
+            prevBtn.disabled = false;
+          }
+          if (nextBtn) {
+            nextBtn.addEventListener('click', () => scrollByCard(+1));
+            nextBtn.disabled = false;
+          }
+          // With circular looping there's no real "edge", so don't toggle disabled
+          // states based on scrollLeft — keep the buttons always enabled.
+
+          // Wait for images to lay out, measure, then start the loop.
+          window.addEventListener('resize', measure);
+          // Re-measure once images load (their width can change before then).
+          gallery.querySelectorAll('img').forEach(img => {
+            img.addEventListener('load', measure, { once: true });
+          });
+          requestAnimationFrame(() => { measure(); requestAnimationFrame(autoTick); });
+
+          // Lightbox wiring
+          const lightbox = document.getElementById('lightbox');
+          const lbImg = document.getElementById('lb-img');
+          const lbCounter = document.getElementById('lb-counter');
+          let currentIndex = 0;
+
+          function openLB(i) {
+            currentIndex = i;
+            lbImg.src = urls[currentIndex];
+            lbCounter.textContent = `${currentIndex + 1} / ${urls.length}`;
+            lightbox.classList.add('show');
+            document.body.style.overflow = 'hidden';
+          }
+          function closeLB() {
+            lightbox.classList.remove('show');
+            document.body.style.overflow = '';
+          }
+          function nextLB() { openLB((currentIndex + 1) % urls.length); }
+          function prevLB() { openLB((currentIndex - 1 + urls.length) % urls.length); }
+
+          gallery.querySelectorAll('.gallery-item').forEach(el => {
+            el.addEventListener('click', () => openLB(parseInt(el.dataset.index, 10)));
+          });
+          document.getElementById('lb-close').addEventListener('click', closeLB);
+          document.getElementById('lb-next').addEventListener('click', nextLB);
+          document.getElementById('lb-prev').addEventListener('click', prevLB);
+          lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLB(); });
+          document.addEventListener('keydown', (e) => {
+            if (!lightbox.classList.contains('show')) return;
+            if (e.key === 'Escape') closeLB();
+            if (e.key === 'ArrowRight') nextLB();
+            if (e.key === 'ArrowLeft') prevLB();
+          });
+
+        } catch (err) {
+          console.warn('Gallery enrichment failed:', err);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', enrichPage);
+    })();
+  </script>
+</body>
+</html>

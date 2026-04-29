@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sample Event Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0; }
+        .sample-image { 
+            width: 300px; height: 200px; display: flex; align-items: center; justify-content: center; 
+            color: white; font-size: 24px; font-weight: bold; border-radius: 10px; cursor: pointer;
+            text-align: center; transition: transform 0.2s;
+        }
+        .sample-image:hover { transform: scale(1.05); }
+        .instructions { background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Sample Event Images for Dashboard Testing</h1>
+    
+    <div class="instructions">
+        <h3>How to use:</h3>
+        <ol>
+            <li>Right-click on any image below</li>
+            <li>Select "Save image as..."</li>
+            <li>Save as JPG or PNG format</li>
+            <li>Use this image when creating events in the dashboard</li>
+        </ol>
+    </div>
+
+    <div class="image-grid">
+        <canvas class="sample-image" width="300" height="200" data-text="🎵 MUSIC CONCERT" data-gradient="linear-gradient(45deg, #ff6b6b, #4ecdc4)"></canvas>
+        <canvas class="sample-image" width="300" height="200" data-text="💻 TECH CONFERENCE" data-gradient="linear-gradient(45deg, #667eea, #764ba2)"></canvas>
+        <canvas class="sample-image" width="300" height="200" data-text="🎨 ART WORKSHOP" data-gradient="linear-gradient(45deg, #f093fb, #f5576c)"></canvas>
+        <canvas class="sample-image" width="300" height="200" data-text="⚽ SPORTS EVENT" data-gradient="linear-gradient(45deg, #43e97b, #38f9d7)"></canvas>
+        <canvas class="sample-image" width="300" height="200" data-text="🍕 FOOD FESTIVAL" data-gradient="linear-gradient(45deg, #fa709a, #fee140)"></canvas>
+        <canvas class="sample-image" width="300" height="200" data-text="📚 BOOK READING" data-gradient="linear-gradient(45deg, #a8edea, #fed6e3)"></canvas>
+    </div>
+
+    <script>
+        document.querySelectorAll('canvas.sample-image').forEach((canvas, index) => {
+            const ctx = canvas.getContext('2d');
+            const text = canvas.dataset.text;
+            
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 300, 200);
+            const gradients = [
+                ['#ff6b6b', '#4ecdc4'],
+                ['#667eea', '#764ba2'],
+                ['#f093fb', '#f5576c'],
+                ['#43e97b', '#38f9d7'],
+                ['#fa709a', '#fee140'],
+                ['#a8edea', '#fed6e3']
+            ];
+            
+            gradient.addColorStop(0, gradients[index][0]);
+            gradient.addColorStop(1, gradients[index][1]);
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 300, 200);
+            
+            // Add text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0,0,0,0.5)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(text, 150, 110);
+            
+            // Add click to download
+            canvas.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.download = `sample-event-${index + 1}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        });
+    </script>
+</body>
+</html>

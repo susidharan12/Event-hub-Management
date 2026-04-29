@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>My Bookings — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --dark: #0b1020;
+      --darker: #07091a;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --gray: #6b7280; /* preserved — booking-history.js inlines color: var(--gray) */
+      --light: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* ───────── Floating glass navbar ───────── */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1280px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .navbar.scrolled {
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4); }
+      50%     { box-shadow: 0 8px 28px rgba(236, 72, 153, 0.55); }
+    }
+    .logo .grad { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 500;
+      font-size: 0.94rem;
+      position: relative;
+      padding: 6px 2px;
+      transition: color 0.25s;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute;
+      left: 0; bottom: 0;
+      width: 0; height: 2px;
+      background: var(--gradient-hero);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    .nav-links a:hover, .nav-links a.active { color: var(--primary); }
+    .nav-links a:hover::after, .nav-links a.active::after { width: 100%; }
+
+    .btn {
+      padding: 0.7rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+    .btn-outline {
+      background: white;
+      color: var(--ink);
+      border: 1px solid #e5e7eb;
+    }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-1px); }
+
+    /* ───────── Page wrapper ───────── */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ───────── Page heading ───────── */
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.6rem;
+      animation: fadeUp 0.8s ease-out both;
+    }
+    .page-head .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    .page-head h1 {
+      font-size: clamp(2rem, 4.5vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+    .page-head h1 .grad {
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .page-head p { color: var(--muted); }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ───────── Tabs (booking-history.js targets .tab elements + textContent) ───────── */
+    .booking-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      padding: 6px;
+      background: white;
+      border: 1px solid rgba(99,102,241,0.08);
+      border-radius: 16px;
+      box-shadow: var(--shadow-card);
+      width: fit-content;
+      animation: fadeUp 0.85s ease-out 0.1s both;
+    }
+    .tab {
+      padding: 0.75rem 1.4rem;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: var(--gray);
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+    .tab:hover { color: var(--primary); background: rgba(99,102,241,0.06); }
+    .tab.active {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 6px 16px rgba(99,102,241,0.35);
+    }
+
+    /* ───────── Booking card (rendered by booking-history.js — must keep display:flex) ───────── */
+    .booking-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 4rem;
+    }
+
+    .booking-card {
+      display: flex;                    /* required: filterBookings sets style.display = 'flex' */
+      background: white;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      transition: transform 0.4s cubic-bezier(.2,.9,.3,1.2), box-shadow 0.4s;
+      position: relative;
+      animation: cardIn 0.55s ease-out both;
+    }
+    .booking-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-card-hover); }
+    .booking-card::before {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0; left: 0;
+      width: 4px;
+      background: var(--gradient-hero);
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+    .booking-card:hover::before { opacity: 1; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .event-img {
+      width: 260px;
+      flex-shrink: 0;
+      background-size: cover;
+      background-position: center;
+      background-color: #ddd6fe;
+      position: relative;
+      transition: transform 0.6s ease;
+    }
+    .event-img::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.45));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .booking-card:hover .event-img::after { opacity: 1; }
+
+    .booking-details {
+      padding: 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-width: 0;
+    }
+    .booking-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .status-badge {
+      padding: 0.4rem 0.95rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-confirmed {
+      background: rgba(16,185,129,0.12);
+      color: var(--success);
+      border: 1px solid rgba(16,185,129,0.25);
+    }
+    .status-pending {
+      background: rgba(245,158,11,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(245,158,11,0.25);
+    }
+    .status-past {
+      background: rgba(107,114,128,0.1);
+      color: var(--gray);
+      border: 1px solid rgba(107,114,128,0.2);
+    }
+
+    .event-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      line-height: 1.25;
+    }
+    .event-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.2rem;
+    }
+    .event-meta span { display: inline-flex; align-items: center; gap: 6px; }
+    .event-meta i {
+      margin-right: 0;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 0.95rem;
+    }
+
+    .booking-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .ticket-id {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(236,72,153,0.1));
+      color: var(--primary);
+      padding: 0.3rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    /* booking-history.js renders <button class="btn btn-primary"> — give it the new look */
+    .booking-footer .btn {
+      padding: 0.6rem 1.2rem;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+    }
+
+    /* Skeleton loader */
+    .skel-card {
+      display: flex;
+      background: white;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      height: 200px;
+    }
+    .skel-img {
+      width: 260px;
+      flex-shrink: 0;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    .skel-body { flex: 1; padding: 1.5rem; }
+    .skel-line {
+      height: 14px; border-radius: 7px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+      margin-bottom: 12px;
+    }
+    .skel-line.w-50 { width: 50%; }
+    .skel-line.w-80 { width: 80%; }
+    .skel-line.w-30 { width: 30%; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    @media (max-width: 768px) {
+      .booking-card { flex-direction: column; }
+      .event-img { width: 100%; height: 200px; }
+      .nav-links { display: none; }
+      .skel-card { flex-direction: column; height: auto; }
+      .skel-img { width: 100%; height: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating glass navbar -->
+  <nav class="navbar" id="navbar-shell">
+    <a href="dashboard.html" class="logo">
+      <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+      Event<span class="grad">Hub</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="dashboard.html">Home</a></li>
+      <li><a href="dashboard.html#events">Events</a></li>
+      <li><a href="booking-history.html" class="active">My Bookings</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+    <button onclick="history.length > 1 ? history.back() : (window.location.href='dashboard.html')" class="btn btn-primary">
+      <i class="fas fa-arrow-left"></i> Back
+    </button>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+
+      <div class="page-head">
+        <div>
+          <span class="eyebrow">Booking history</span>
+          <h1>My <span class="grad">bookings</span></h1>
+          <p>Manage your tickets and upcoming experiences in one place.</p>
+        </div>
+        <a href="dashboard.html#events" class="btn btn-primary"><i class="fas fa-plus"></i> Book new event</a>
+      </div>
+
+      <!-- Tabs (booking-history.js relies on tab.textContent containing All/Upcoming/Past) -->
+      <div class="booking-tabs">
+        <div class="tab active" onclick="filterBookings('all')">All Bookings</div>
+        <div class="tab" onclick="filterBookings('upcoming')">Upcoming</div>
+        <div class="tab" onclick="filterBookings('past')">Past Events</div>
+      </div>
+
+      <div class="booking-list" id="bookingContainer">
+        <!-- Skeleton placeholders (booking-history.js replaces this on load) -->
+        <div class="skel-card">
+          <div class="skel-img"></div>
+          <div class="skel-body">
+            <div class="skel-line w-30"></div>
+            <div class="skel-line w-80"></div>
+            <div class="skel-line w-50"></div>
+            <div class="skel-line w-30"></div>
+          </div>
+        </div>
+        <div class="skel-card">
+          <div class="skel-img"></div>
+          <div class="skel-body">
+            <div class="skel-line w-30"></div>
+            <div class="skel-line w-80"></div>
+            <div class="skel-line w-50"></div>
+            <div class="skel-line w-30"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Navbar shadow on scroll
+    const navbarShell = document.getElementById('navbar-shell');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 30) navbarShell.classList.add('scrolled');
+      else navbarShell.classList.remove('scrolled');
+    });
+  </script>
+
+  <script src="/Public/js/popup.js"></script>
+  <script src="/Public/js/chat-widget.js"></script>
+  <!-- booking-history.js: loads bookings into #bookingContainer and wires window.filterBookings -->
+  <script src="../js/pages/booking-history.js"></script>
+</body>
+</html>

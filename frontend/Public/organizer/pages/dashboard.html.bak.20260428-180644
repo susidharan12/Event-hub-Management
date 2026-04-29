@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organizer Dashboard - EventHub</title>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../js/config.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --primary-light: #a5b4fc;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --dark: #1f2937;
+      --light: #f9fafb;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gradient-primary: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 4px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 12px 30px rgba(99,102,241,0.15);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--dark);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
+
+    /* Header */
+    .header {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(99,102,241,0.1);
+      padding: 1rem 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+    .header-content { display: flex; justify-content: space-between; align-items: center; }
+    .logo-wrap { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
+    .logo-icon-box {
+      background: var(--gradient-primary);
+      padding: 10px;
+      border-radius: 12px;
+      display: flex;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .logo-text { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
+    .logo-text span {
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-nav { display: flex; gap: 2rem; align-items: center; }
+    .header-nav > a {
+      color: var(--gray-700);
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+      position: relative;
+      padding: 6px 0;
+      transition: color 0.2s;
+    }
+    .header-nav > a:hover { color: var(--primary); }
+    .header-nav > a:hover::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--gradient-primary);
+      border-radius: 2px;
+    }
+
+    .user-menu {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+    .user-menu:hover { background: rgba(99,102,241,0.06); }
+    .user-info-top { text-align: right; line-height: 1.2; }
+    .user-info-top .name { display: block; font-weight: 700; font-size: 0.9rem; color: var(--dark); }
+    .user-info-top .role { display: block; font-size: 0.75rem; color: var(--gray-500); }
+    .user-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.05rem;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+
+    /* Dropdown */
+    .profile-dropdown {
+      position: absolute;
+      top: 56px;
+      right: 0;
+      background: white;
+      width: 240px;
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+      border: 1px solid var(--gray-200);
+      display: none;
+      flex-direction: column;
+      padding: 0.5rem;
+      z-index: 1000;
+      animation: dropDown 0.2s ease;
+    }
+    @keyframes dropDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .profile-dropdown.active { display: flex; }
+    .dropdown-header {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--gray-100);
+      margin-bottom: 0.4rem;
+    }
+    .dropdown-header .u-name { display: block; font-weight: 700; font-size: 0.95rem; }
+    .dropdown-header .u-email { display: block; font-size: 0.8rem; color: var(--gray-500); margin-top: 2px; }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0.7rem 1rem; text-decoration: none;
+      color: var(--dark); font-size: 0.9rem;
+      border-radius: 10px;
+      border: none; background: none;
+      width: 100%; text-align: left;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .dropdown-item:hover { background: var(--gray-100); }
+
+    /* Layout */
+    .main-content { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; padding: 2rem 0; }
+
+    /* Sidebar */
+    .sidebar {
+      background: white;
+      border-radius: 16px;
+      padding: 1.25rem;
+      height: fit-content;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(99,102,241,0.06);
+      position: sticky;
+      top: 90px;
+    }
+    .sidebar-menu { list-style: none; }
+    .sidebar-menu li { margin-bottom: 0.35rem; }
+    .sidebar-menu a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0.8rem 1rem;
+      border-radius: 10px;
+      color: var(--gray-700);
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.92rem;
+      transition: all 0.2s ease;
+    }
+    .sidebar-menu a:hover {
+      background: var(--gray-100);
+      color: var(--primary);
+      transform: translateX(2px);
+    }
+    .sidebar-menu a.active {
+      background: var(--gradient-primary);
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(99,102,241,0.35);
+      transform: translateX(0);
+    }
+    .sidebar-menu a.active:hover { color: white; transform: translateX(0); }
+
+    /* Sections */
+    .section {
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(99,102,241,0.06);
+      display: none;
+    }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .section h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--gray-100);
+      padding-bottom: 1rem;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, white 0%, #fafbff 100%);
+      padding: 1.5rem;
+      border-radius: 14px;
+      border: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-primary);
+    }
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(99,102,241,0.12);
+    }
+    .stat-icon {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      color: white;
+      box-shadow: 0 6px 14px rgba(99,102,241,0.25);
+    }
+    .stat-card p { color: var(--gray-500); font-size: 0.85rem; margin-bottom: 4px; }
+    .stat-card h3 { font-size: 1.8rem; font-weight: 800; color: var(--dark); }
+
+    /* Forms */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: var(--gray-700); }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      background: var(--gray-50);
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+    }
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--gradient-primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.4); }
+
+    /* Event List */
+    .event-card {
+      display: flex; gap: 1.5rem; padding: 1.2rem;
+      border: 1px solid var(--gray-200); border-radius: 14px;
+      margin-bottom: 1rem; align-items: center;
+      transition: all 0.2s ease;
+    }
+    .event-card:hover { border-color: var(--primary-light); box-shadow: var(--shadow); }
+    .event-card img { width: 150px; height: 100px; border-radius: 10px; object-fit: cover; }
+    .event-details { flex: 1; }
+    .event-actions { display: flex; gap: 0.5rem; }
+    .btn-edit { background: #e0e7ff; color: var(--primary); }
+    .btn-delete { background: #fee2e2; color: var(--danger); }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(17, 24, 39, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 2000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-content {
+      background: white; border-radius: 20px; padding: 2.5rem;
+      width: 90%; max-width: 500px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+      text-align: center; animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-icon { font-size: 3rem; margin-bottom: 1rem; color: var(--success); }
+    .modal-title { font-size: 1.5rem; font-weight: 700; margin: 1rem 0; }
+    .modal-message { font-size: 1rem; color: var(--gray-500); margin: 1rem 0 1.5rem; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 1rem; justify-content: center; }
+    .modal-btn { padding: 0.8rem 1.5rem; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .modal-btn-primary { background: var(--gradient-primary); color: white; }
+    .modal-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(99,102,241,0.3); }
+    .modal-btn-secondary { background: var(--gray-200); color: var(--dark); }
+    .modal-btn-secondary:hover { background: var(--gray-300); }
+
+    /* Profile Image Upload */
+    .profile-upload-section { margin-bottom: 2rem; }
+    .profile-label { display: block; font-weight: 700; font-size: 1.05rem; margin-bottom: 1rem; color: var(--dark); }
+    .profile-upload-container {
+      display: grid; grid-template-columns: 220px 1fr; gap: 2rem;
+      padding: 1.5rem;
+      background: var(--gradient-soft);
+      border: 2px dashed var(--primary-light);
+      border-radius: 14px;
+      transition: all 0.2s ease;
+    }
+    .profile-upload-container:hover { border-color: var(--primary); }
+    .profile-preview {
+      width: 220px; height: 130px;
+      border-radius: 12px; overflow: hidden;
+      background: white; border: 2px solid var(--gray-200);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .profile-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 8px;
+      color: var(--gray-500); text-align: center;
+    }
+    .profile-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-upload-info h4 { margin-bottom: 0.5rem; color: var(--dark); }
+    .profile-upload-info p { color: var(--gray-500); margin-bottom: 1rem; line-height: 1.5; font-size: 0.9rem; }
+    .upload-btn-wrapper { margin-bottom: 0.5rem; }
+    .upload-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gradient-primary); color: white; border: none;
+      padding: 0.75rem 1.5rem; border-radius: 10px;
+      font-weight: 600; cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .upload-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.4); }
+    .profile-upload-info small { color: var(--gray-500); font-size: 0.85rem; }
+
+    /* File Upload */
+    .file-upload-label {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 600; margin-bottom: 0.5rem; color: var(--dark);
+    }
+    .file-upload-container { margin-top: 0.5rem; }
+    .file-upload-area {
+      border: 2px dashed var(--primary-light); border-radius: 14px;
+      padding: 2rem; background: var(--gradient-soft);
+      cursor: pointer; transition: all 0.3s ease;
+      text-align: center;
+    }
+    .file-upload-area:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .file-upload-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+    .file-upload-content h4 { margin: 0; color: var(--dark); }
+    .file-upload-content p { margin: 0; color: var(--gray-500); }
+    .file-types { font-size: 0.85rem; color: var(--gray-500); }
+
+    /* Images Row */
+    .images-row {
+      display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;
+      max-height: 220px; overflow-y: auto;
+    }
+    .image-item {
+      position: relative; width: 120px; height: 80px;
+      border-radius: 10px; overflow: hidden;
+      border: 2px solid var(--gray-200); background: white;
+      transition: transform 0.2s;
+    }
+    .image-item:hover { transform: scale(1.04); }
+    .image-item img { width: 100%; height: 100%; object-fit: cover; }
+    .adjust-btn {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,0,0,0.7); color: white; border: none;
+      border-radius: 6px; padding: 4px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .adjust-btn:hover { background: rgba(0,0,0,0.9); }
+
+    /* Action Buttons */
+    .action-buttons-container { display: flex; justify-content: center; gap: 1rem; margin-top: 2rem; }
+    .action-btn {
+      padding: 0.85rem 2rem; border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: all 0.3s ease;
+    }
+    .btn-save {
+      background: var(--gradient-primary);
+      color: white;
+      box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+    }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
+    .btn-preview { background: var(--accent); color: white; }
+    .btn-preview:hover { background: #d97706; transform: translateY(-1px); }
+    .btn-create { background: var(--success); color: white; }
+    .btn-create:hover { background: #059669; transform: translateY(-1px); }
+    .btn-create:disabled, .btn-preview:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* Event Preview Card */
+    .event-preview-card {
+      background: white; border-radius: 14px; padding: 1.5rem;
+      box-shadow: var(--shadow); margin-top: 2rem;
+      border: 1px solid var(--gray-200);
+    }
+    .preview-image { width: 100%; height: 220px; border-radius: 10px; object-fit: cover; margin-bottom: 1rem; }
+    .preview-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .preview-details { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .preview-detail { display: flex; align-items: center; gap: 8px; color: var(--gray-500); }
+    .preview-description { color: var(--gray-700); line-height: 1.6; }
+
+    /* Save Button */
+    .save-btn-container { display: flex; justify-content: center; margin-top: 2rem; }
+    .save-btn {
+      background: var(--gradient-primary);
+      color: white; border: none;
+      padding: 1rem 3rem; border-radius: 12px;
+      font-size: 1.1rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+      transition: all 0.3s ease;
+    }
+    .save-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
+    .save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .file-preview {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 1rem; margin-top: 1rem;
+    }
+    .file-preview-item {
+      position: relative; border-radius: 10px; overflow: hidden;
+      background: white; border: 1px solid var(--gray-200);
+    }
+    .file-preview-item img { width: 100%; height: 80px; object-fit: cover; }
+    .file-preview-item .file-name {
+      padding: 0.5rem; font-size: 0.75rem; color: var(--gray-500);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .main-content { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .profile-upload-container { grid-template-columns: 1fr; }
+      .preview-details { grid-template-columns: 1fr; }
+      .header-nav { gap: 1rem; }
+      .header-nav > a { display: none; }
+      .sidebar { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <div class="logo-wrap">
+        <div class="logo-icon-box"><i data-lucide="calendar-days" color="white"></i></div>
+        <div class="logo-text">Event<span>Hub</span></div>
+      </div>
+      <nav class="header-nav">
+        <a onclick="showSection('events')">My Events</a>
+        <a onclick="showSection('create')">Create Event</a>
+        <div class="user-menu" onclick="toggleDropdown()">
+          <div class="user-info-top">
+            <span class="name" id="top-username">Loading...</span>
+            <span class="role" id="top-email">...</span>
+          </div>
+          <div class="user-avatar" id="user-initials">U</div>
+          <div class="profile-dropdown" id="profile-dropdown">
+            <div class="dropdown-header">
+              <span class="u-name" id="drop-username">User Name</span>
+              <span class="u-email" id="drop-email">user@example.com</span>
+            </div>
+            <button class="dropdown-item" onclick="showSection('profile')"><i data-lucide="user"></i> Profile</button>
+            <button class="dropdown-item" onclick="logout()" style="color:var(--danger)"><i data-lucide="log-out"></i> Logout</button>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="main-content">
+      <aside class="sidebar">
+        <ul class="sidebar-menu">
+          <li><a onclick="showSection('dashboard')" id="nav-dashboard" class="active"><i data-lucide="layout-dashboard"></i> Dashboard</a></li>
+          <li><a onclick="showSection('events')" id="nav-events"><i data-lucide="calendar"></i> My Events</a></li>
+          <li><a onclick="showSection('create')" id="nav-create"><i data-lucide="plus-circle"></i> Create Event</a></li>
+          <li><a onclick="showSection('bookings')" id="nav-bookings"><i data-lucide="ticket"></i> Bookings</a></li>
+          <li><a onclick="showSection('earnings')" id="nav-earnings"><i data-lucide="indian-rupee"></i> Earnings</a></li>
+          <li><a onclick="showSection('messages')" id="nav-messages"><i data-lucide="message-square"></i> Messages</a></li>
+        </ul>
+      </aside>
+
+      <div class="dashboard-content">
+        <!-- Dashboard -->
+        <section id="dashboard-section" class="section active">
+          <h2>Dashboard Overview</h2>
+          <div class="stats-grid" style="margin-top:1.5rem">
+            <div class="stat-card"><div class="stat-icon" style="background:var(--primary)"><i data-lucide="calendar"></i></div><div><p>Total Events</p><h3 id="stat-events">0</h3></div></div>
+            <div class="stat-card"><div class="stat-icon" style="background:var(--success)"><i data-lucide="indian-rupee"></i></div><div><p>Revenue</p><h3>₹0</h3></div></div>
+          </div>
+        </section>
+
+        <!-- My Events (Edit Format) -->
+        <section id="events-section" class="section">
+          <div class="section-header">
+            <h2>My Events</h2>
+            <button class="btn btn-primary" onclick="showSection('create')">Create New</button>
+          </div>
+          <div id="events-list-container">
+            <p>Loading your events...</p>
+          </div>
+        </section>
+
+        <!-- Create/Edit Event -->
+        <section id="create-section" class="section">
+          <h2 id="form-title">Create New Event</h2>
+          <form id="event-form" style="margin-top:1.5rem">
+            <input type="hidden" id="edit-event-id">
+            
+            <!-- Profile Image Upload -->
+            <div class="profile-upload-section">
+              <label class="profile-label">Event Profile Image</label>
+              <div class="profile-upload-container">
+                <div class="profile-preview" id="profile-preview">
+                  <div class="profile-placeholder">
+                    <i data-lucide="image" size="48"></i>
+                    <span>Event Cover</span>
+                  </div>
+                </div>
+                <div class="profile-upload-info">
+                  <h4>Upload Event Cover Image</h4>
+                  <p>Choose a high-quality image that represents your event. This will be displayed as the main event card image.</p>
+                  <div class="upload-btn-wrapper">
+                    <button type="button" class="upload-btn" onclick="document.getElementById('profile-image').click()">
+                      <i data-lucide="upload"></i>
+                      Choose Profile Image
+                    </button>
+                    <input type="file" id="profile-image" accept="image/*" style="display:none">
+                  </div>
+                  <small>Recommended: 800x400px, Max 5MB</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group"><label>Event Title</label><input type="text" id="ev-title" required></div>
+              <div class="form-group"><label>Category</label><input type="text" id="ev-cat" placeholder="e.g. Concert, Tech, Workshop" required></div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group"><label>Date</label><input type="datetime-local" id="ev-date" required></div>
+              <div class="form-group"><label>Location</label><input type="text" id="ev-loc" required></div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group"><label>Price (₹)</label><input type="number" id="ev-price" required></div>
+              <div class="form-group"><label>Seats</label><input type="number" id="ev-seats" required></div>
+            </div>
+            <div class="form-group"><label>Description</label><textarea id="ev-desc" rows="3"></textarea></div>
+            
+            <!-- Additional Images Upload -->
+            <div class="form-group">
+              <label class="file-upload-label">
+                <i data-lucide="images"></i>
+                Additional Event Images (Max 10)
+              </label>
+              <div class="file-upload-container">
+                <div class="file-upload-area" onclick="document.getElementById('ev-files').click()">
+                  <div class="file-upload-content">
+                    <i data-lucide="upload-cloud" size="32"></i>
+                    <h4>Upload Additional Images</h4>
+                    <p>Drag & drop images here or click to browse</p>
+                    <span class="file-types">PNG, JPG, JPEG up to 5MB each</span>
+                  </div>
+                </div>
+                <input type="file" id="ev-files" multiple accept="image/*" style="display:none">
+                <div id="images-row" class="images-row"></div>
+              </div>
+            </div>
+            
+            <div class="action-buttons-container">
+              <button type="submit" class="action-btn btn-save" id="save-btn">
+                <i data-lucide="save"></i>
+                Save Event
+              </button>
+              <button type="button" class="action-btn btn-preview" id="preview-btn" onclick="previewEvent()" disabled>
+                <i data-lucide="eye"></i>
+                Preview
+              </button>
+              <button type="button" class="action-btn btn-create" id="create-btn" onclick="createEvent()" disabled>
+                <i data-lucide="plus-circle"></i>
+                Create Event
+              </button>
+            </div>
+            
+            <!-- Event Preview -->
+            <div id="event-preview" class="event-preview-card" style="display:none;">
+              <img id="preview-image" class="preview-image" src="" alt="Event Preview">
+              <h3 id="preview-title" class="preview-title"></h3>
+              <div class="preview-details">
+                <div class="preview-detail">
+                  <i data-lucide="calendar"></i>
+                  <span id="preview-date"></span>
+                </div>
+                <div class="preview-detail">
+                  <i data-lucide="map-pin"></i>
+                  <span id="preview-location"></span>
+                </div>
+                <div class="preview-detail">
+                  <i data-lucide="indian-rupee"></i>
+                  <span id="preview-price"></span>
+                </div>
+                <div class="preview-detail">
+                  <i data-lucide="users"></i>
+                  <span id="preview-seats"></span> seats
+                </div>
+              </div>
+              <p id="preview-description" class="preview-description"></p>
+            </div>
+          </form>
+        </section>
+
+        <!-- Profile Section -->
+        <section id="profile-section" class="section">
+          <h2>My Profile</h2>
+          <div class="form-grid" style="margin-top:1.5rem">
+            <div class="form-group"><label>Name</label><input type="text" id="prof-name" readonly></div>
+            <div class="form-group"><label>Email</label><input type="email" id="prof-email" readonly></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group"><label>Mobile</label><input type="text" id="prof-mobile" readonly></div>
+            <div class="form-group"><label>Role</label><input type="text" id="prof-role" readonly></div>
+          </div>
+        </section>
+
+        <!-- Other Sections -->
+        <section id="bookings-section" class="section"><h2>Bookings</h2><p>Manage your ticket sales here.</p></section>
+        <section id="earnings-section" class="section"><h2>Earnings</h2><p>Your total revenue: ₹0</p></section>
+        <section id="messages-section" class="section"><h2>Messages</h2><p>No new messages from attendees.</p></section>
+      </div>
+    </div>
+  </main>
+
+  <!-- Event Creation Modal -->
+  <div id="event-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-icon" id="modal-icon"><i data-lucide="check-circle"></i></div>
+      <h3 class="modal-title" id="modal-title">Event Created!</h3>
+      <div class="modal-message" id="modal-message">Your event has been successfully created.</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-primary" id="modal-btn-primary" onclick="handleModalPrimary()">See My Events</button>
+        <button class="modal-btn modal-btn-secondary" id="modal-btn-secondary" onclick="handleModalSecondary()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+  <script>
+    // Initialize Lucide icons once on load. Form handlers are wired in dashboard.js.
+    if (window.lucide && window.lucide.createIcons) lucide.createIcons();
+  </script>
+</body>
+</html>

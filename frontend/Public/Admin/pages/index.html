@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EventHub Admin</title>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header-inner container">
+      <div class="admin-logo">EventHub</div>
+      <nav class="admin-nav">
+        <button id="profile-btn" class="btn btn-secondary">Profile</button>
+        <button id="logout-btn" class="btn btn-primary">Logout</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Centered dashboard content -->
+  <main class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content container">
+      <div class="admin-home">
+        <h1>Admin Dashboard</h1>
+        <p>Manage events and payment settings from a single place.</p>
+
+        <div class="admin-actions">
+          <button class="btn btn-primary" id="go-create">Create Event</button>
+          <button class="btn btn-primary" id="go-edit">Edit Events</button>
+          <button class="btn btn-primary" id="go-payment">Add Payment Details</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById('go-create').onclick = () => {
+      window.location.href = 'create.html';
+    };
+    document.getElementById('go-edit').onclick = () => {
+      window.location.href = 'edit.html';
+    };
+    document.getElementById('go-payment').onclick = () => {
+      window.location.href = 'payment.html';
+    };
+
+    // Initialize payment button based on existing data
+    function initializePaymentButton() {
+      const paymentBtn = document.getElementById('go-payment');
+      const hasPaymentConfig = localStorage.getItem('eventhub-admin-payment-set') === 'true';
+      
+      if (hasPaymentConfig) {
+        paymentBtn.textContent = 'Update Payment Details';
+        paymentBtn.classList.add('update-mode');
+      } else {
+        paymentBtn.textContent = 'Add Payment Details';
+        paymentBtn.classList.remove('update-mode');
+      }
+    }
+
+    // Initialize on page load
+    initializePaymentButton();
+  </script>
+
+  <!-- Load services and utilities -->
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/api.js"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <script src="../../js/components/modal.js"></script>
+  <script>
+    document.getElementById('profile-btn').addEventListener('click', () => {
+      window.location.href = 'profile.html';
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

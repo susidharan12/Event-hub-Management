@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>User Profile — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --dark: #0b1020;
+      --darker: #07091a;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --light: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* ───────── Floating glass navbar (matches dashboard) ───────── */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1280px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .navbar.scrolled {
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4); }
+      50%     { box-shadow: 0 8px 28px rgba(236, 72, 153, 0.55); }
+    }
+    .logo .grad { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; }
+    .nav-links a {
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 500;
+      font-size: 0.94rem;
+      position: relative;
+      padding: 6px 2px;
+      transition: color 0.25s;
+    }
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      left: 0; bottom: 0;
+      width: 0; height: 2px;
+      background: var(--gradient-hero);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    .nav-links a:hover { color: var(--primary); }
+    .nav-links a:hover::after { width: 100%; }
+
+    .btn {
+      padding: 0.7rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+
+    /* ───────── Page wrapper ───────── */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ───────── Page heading ───────── */
+    .page-head {
+      margin-bottom: 2.4rem;
+      animation: fadeUp 0.8s ease-out both;
+    }
+    .page-head .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    .page-head h1 {
+      font-size: clamp(2rem, 4.5vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+    .page-head h1 .grad {
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .page-head p { color: var(--muted); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ───────── Two-column grid ───────── */
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 5fr 7fr;
+      gap: 1.75rem;
+      align-items: start;
+    }
+
+    /* Card base */
+    .card {
+      background: white;
+      border-radius: 22px;
+      padding: 2rem;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card.with-stripe::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+
+    .card.reveal-1 { animation: fadeUp 0.85s ease-out 0.1s both; }
+    .card.reveal-2 { animation: fadeUp 0.9s ease-out 0.25s both; }
+    .card.reveal-3 { animation: fadeUp 0.95s ease-out 0.4s both; }
+
+    /* ───────── Personal details ───────── */
+    .profile-head {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .avatar-big {
+      position: relative;
+      width: 84px; height: 84px;
+      border-radius: 22px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2rem;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(139, 92, 246, 0.35);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .avatar-big > img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-edit-btn {
+      position: absolute;
+      bottom: -6px; right: -6px;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+      background: white;
+      color: var(--primary);
+      cursor: pointer;
+      display: grid; place-items: center;
+      font-size: 0.8rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    }
+    .avatar-edit-btn:hover { background: var(--primary); color: white; transform: scale(1.08); }
+    .profile-head h2 {
+      font-size: 1.25rem;
+      margin-bottom: 4px;
+    }
+    .role-pill {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .info-list { margin-top: 1.2rem; }
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0.95rem 0;
+      border-bottom: 1px solid #f1f5f9;
+      transition: padding-left 0.25s ease;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row:hover { padding-left: 6px; }
+    .info-icon {
+      width: 38px; height: 38px;
+      border-radius: 11px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+    .info-row .info-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+    .info-row .label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .info-row .value {
+      color: var(--ink);
+      font-weight: 600;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    /* ───────── Help card (gradient) ───────── */
+    .help-card {
+      position: relative;
+      background: var(--gradient-hero);
+      color: white;
+      border-radius: 22px;
+      padding: 1.8rem;
+      overflow: hidden;
+      box-shadow: 0 16px 36px rgba(99,102,241,0.35);
+    }
+    .help-card::before {
+      content: '';
+      position: absolute;
+      width: 220px; height: 220px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      bottom: -100px; right: -80px;
+      animation: floatSlow 8s ease-in-out infinite;
+    }
+    .help-card::after {
+      content: '\f128'; /* fa-question */
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      bottom: -20px; right: 18px;
+      font-size: 6rem;
+      color: rgba(255,255,255,0.18);
+    }
+    @keyframes floatSlow {
+      0%,100% { transform: translate(0,0); }
+      50%     { transform: translate(-12px,-14px); }
+    }
+    .help-card h3 { font-size: 1.05rem; margin-bottom: 0.4rem; position: relative; z-index: 1; }
+    .help-card p {
+      color: rgba(255,255,255,0.85);
+      font-size: 0.9rem;
+      margin-bottom: 1.1rem;
+      position: relative;
+      z-index: 1;
+    }
+    .help-card .help-btn {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0.6rem 1.2rem;
+      background: white;
+      color: var(--primary);
+      border: none;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+    .help-card .help-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
+
+    /* ───────── Update form ───────── */
+    .form-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.6rem;
+    }
+    .form-head-icon {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 1rem;
+    }
+    .form-head h2 { font-size: 1.25rem; }
+
+    .form-group { margin-bottom: 1.3rem; }
+    .form-group .label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.55rem;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap .input-icon {
+      position: absolute;
+      left: 16px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      transition: color 0.2s ease;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.95rem 1rem 0.95rem 3rem;
+      border: 2px solid #eef2ff;
+      border-radius: 14px;
+      background: #fafbff;
+      font-size: 0.97rem;
+      font-family: inherit;
+      color: var(--ink);
+      transition: all 0.25s ease;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+    }
+    .form-group input:focus + .input-icon,
+    .input-wrap:focus-within .input-icon { color: var(--primary); }
+
+    .save-btn {
+      width: 100%;
+      padding: 1rem 1.4rem;
+      background: var(--gradient-hero);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 24px rgba(99,102,241,0.35);
+      margin-top: 0.5rem;
+      font-family: inherit;
+    }
+    .save-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(236,72,153,0.45); }
+    .save-btn:active { transform: translateY(0); }
+    .save-btn i { transition: transform 0.3s ease; }
+    .save-btn:hover i { transform: rotate(-8deg) scale(1.05); }
+
+    /* ───────── Modal ───────── */
+    #modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 9, 26, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    #modal[style*="display: flex"], #modal[style*="display:flex"] { animation: modalFade 0.25s ease-out; }
+    @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+
+    .modal-card {
+      background: white;
+      border-radius: 22px;
+      padding: 2.2rem;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      animation: modalZoom 0.35s cubic-bezier(.2,.9,.3,1.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .modal-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    @keyframes modalZoom {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .modal-icon-wrap {
+      width: 64px; height: 64px;
+      margin: 0 auto 1.1rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      display: grid; place-items: center;
+      color: var(--primary);
+    }
+    #modal h2 { font-size: 1.35rem; margin-bottom: 0.5rem; }
+    #modal p { color: var(--muted); margin-bottom: 1.6rem; line-height: 1.55; }
+    #modal-confirm {
+      width: 100%;
+      padding: 0.95rem 1rem;
+      background: var(--gradient-hero);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 0.98rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+      font-family: inherit;
+    }
+    #modal-confirm:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+
+    /* ───────── Responsive ───────── */
+    @media (max-width: 900px) {
+      .profile-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating glass navbar (matches dashboard) -->
+  <nav class="navbar" id="navbar-shell">
+    <a href="dashboard.html" class="logo">
+      <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+      Event<span class="grad">Hub</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="dashboard.html">Home</a></li>
+      <li><a href="dashboard.html#events">Events</a></li>
+      <li><a href="booking-history.html">My Bookings</a></li>
+    </ul>
+    <button onclick="history.length > 1 ? history.back() : (window.location.href='dashboard.html')" class="btn btn-primary">
+      <i class="fas fa-arrow-left"></i> Back
+    </button>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+
+      <div class="page-head">
+        <span class="eyebrow">Profile</span>
+        <h1>Account <span class="grad">Settings</span></h1>
+        <p>Manage your profile information and contact details.</p>
+      </div>
+
+      <div class="profile-grid">
+
+        <!-- Left column -->
+        <div>
+          <div class="card with-stripe reveal-1">
+            <div class="profile-head">
+              <div class="avatar-big" id="avatar-wrap">
+                <span id="avatar-initial">U</span>
+                <button type="button" class="avatar-edit-btn" onclick="document.getElementById('avatar-input').click()" title="Change profile photo">
+                  <i class="fas fa-camera"></i>
+                </button>
+                <input type="file" id="avatar-input" accept="image/*" style="display:none">
+              </div>
+              <div>
+                <h2>Personal Details</h2>
+                <span class="role-pill" id="user-category">Loading...</span>
+              </div>
+            </div>
+
+            <div class="info-list">
+              <div class="info-row">
+                <div class="info-icon"><i class="fas fa-user"></i></div>
+                <div class="info-text">
+                  <span class="label">Full Name</span>
+                  <span class="value" id="user-name">---</span>
+                </div>
+              </div>
+              <div class="info-row">
+                <div class="info-icon"><i class="fas fa-phone"></i></div>
+                <div class="info-text">
+                  <span class="label">Mobile</span>
+                  <span class="value" id="user-mobile">---</span>
+                </div>
+              </div>
+              <div class="info-row">
+                <div class="info-icon"><i class="fas fa-envelope"></i></div>
+                <div class="info-text">
+                  <span class="label">Email Address</span>
+                  <span class="value" id="user-email">---</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="help-card reveal-2" style="margin-top: 1.5rem;">
+            <h3>Need Help?</h3>
+            <p>Having trouble with your account or bookings? Our team is one click away.</p>
+            <button class="help-btn" onclick="window.location.href='dashboard.html'">
+              <i class="fas fa-headset"></i> Contact Support
+            </button>
+          </div>
+        </div>
+
+        <!-- Right column: update form -->
+        <div>
+          <div class="card with-stripe reveal-3">
+            <div class="form-head">
+              <div class="form-head-icon"><i class="fas fa-pen-to-square"></i></div>
+              <h2>Update Information</h2>
+            </div>
+
+            <form id="update-form" novalidate>
+              <div class="form-group">
+                <label class="label" for="mobile">Mobile Number</label>
+                <div class="input-wrap">
+                  <input type="text" id="mobile" name="mobile" required placeholder="Enter new mobile number" autocomplete="tel">
+                  <i class="fas fa-phone input-icon"></i>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="label" for="email">Email Address</label>
+                <div class="input-wrap">
+                  <input type="email" id="email" name="email" required placeholder="Enter new email address" autocomplete="email">
+                  <i class="fas fa-envelope input-icon"></i>
+                </div>
+              </div>
+
+              <button type="submit" class="save-btn">
+                <i class="fas fa-floppy-disk"></i> Save Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal (kept identical IDs so profile.js's showModal works) -->
+  <div id="modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-icon-wrap"><i class="fas fa-circle-info" style="font-size:1.5rem;"></i></div>
+      <h2 id="modal-title">Notification</h2>
+      <p id="modal-message">Your profile has been updated successfully.</p>
+      <button id="modal-confirm">Got it</button>
+    </div>
+  </div>
+
+  <script>
+    // Navbar shadow on scroll + avatar handling + avatar upload
+    (function () {
+      const API_BASE = 'http://localhost:3000/api';
+      const SERVER_URL = 'http://localhost:3000';
+
+      const nav = document.getElementById('navbar-shell');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 30) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+      });
+
+      // Sync the avatar initial from #user-name (profile.js writes the name there).
+      const nameEl = document.getElementById('user-name');
+      const wrap = document.getElementById('avatar-wrap');
+      function setInitialFromName() {
+        const text = (nameEl.textContent || '').trim();
+        const ch = (text && text !== '---' && text !== 'N/A') ? text.charAt(0).toUpperCase() : 'U';
+        // Only update if there's no <img> already filling the avatar.
+        const existingInitial = document.getElementById('avatar-initial');
+        if (existingInitial && existingInitial.tagName === 'SPAN') existingInitial.textContent = ch;
+      }
+      setInitialFromName();
+      new MutationObserver(setInitialFromName).observe(nameEl, { childList: true, characterData: true, subtree: true });
+
+      function setAvatarImage(url) {
+        if (!url) return;
+        const full = url.startsWith('http') ? url : SERVER_URL + url;
+        const initial = document.getElementById('avatar-initial');
+        if (initial) {
+          initial.outerHTML = `<img id="avatar-initial" src="${full}" alt="Avatar">`;
+        } else {
+          const img = wrap.querySelector('img#avatar-initial');
+          if (img) img.src = full;
+        }
+      }
+
+      function getToken() {
+        return (typeof CONFIG !== 'undefined' && CONFIG.STORAGE && localStorage.getItem(CONFIG.STORAGE.TOKEN))
+          || localStorage.getItem('auth_token')
+          || localStorage.getItem('token')
+          || localStorage.getItem('authToken')
+          || localStorage.getItem('eventhub_token');
+      }
+
+      // Pre-fill avatar from cached user (so it shows even before profile.js's fetch finishes)
+      try {
+        const cached = JSON.parse(localStorage.getItem('auth_user') || localStorage.getItem('user') || '{}');
+        if (cached && cached.profile_image) setAvatarImage(cached.profile_image);
+      } catch (_) {}
+
+      // Fetch current profile so we get the freshest profile_image, in case it
+      // was updated elsewhere. profile.js does its own fetch but uses different
+      // selectors — this is the avatar-only sync.
+      const token = getToken();
+      if (token) {
+        fetch(`${API_BASE}/auth/profile`, { headers: { 'Authorization': `Bearer ${token}` } })
+          .then(r => r.ok ? r.json() : null)
+          .then(u => { if (u && u.profile_image) setAvatarImage(u.profile_image); })
+          .catch(() => {});
+      }
+
+      // Avatar upload
+      const avatarInput = document.getElementById('avatar-input');
+      if (avatarInput) {
+        avatarInput.addEventListener('change', async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5 MB'); avatarInput.value = ''; return; }
+
+          // Optimistic preview
+          const reader = new FileReader();
+          reader.onload = ev => setAvatarImage(ev.target.result);
+          reader.readAsDataURL(file);
+
+          const t = getToken();
+          if (!t) return;
+          const fd = new FormData();
+          fd.append('avatar', file);
+          try {
+            const r = await fetch(`${API_BASE}/auth/upload-avatar`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${t}` },
+              body: fd
+            });
+            const data = await r.json().catch(() => ({}));
+            if (r.ok && data.profile_image) {
+              setAvatarImage(data.profile_image);
+              // Sync to localStorage for the rest of the app.
+              try {
+                const cached = JSON.parse(localStorage.getItem('auth_user') || localStorage.getItem('user') || '{}');
+                cached.profile_image = data.profile_image;
+                localStorage.setItem('auth_user', JSON.stringify(cached));
+              } catch (_) {}
+            } else {
+              alert(data.message || 'Avatar upload failed');
+            }
+          } catch (_) {
+            alert('Network error while uploading avatar');
+          } finally {
+            avatarInput.value = '';
+          }
+        });
+      }
+
+      // Lucide is loaded because profile.js calls lucide.createIcons() — ensure it doesn't error if used.
+      if (window.lucide && window.lucide.createIcons) lucide.createIcons();
+    })();
+  </script>
+
+  <!-- Existing profile.js: fetches user, fills user-* IDs, wires update-form, shows modal. -->
+  <script src="../js/pages/profile.js"></script>
+  <script src="/Public/js/chat-widget.js"></script>
+</body>
+</html>

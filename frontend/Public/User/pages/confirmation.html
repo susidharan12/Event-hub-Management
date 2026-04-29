@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Your Tickets — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --teal: #06b6d4;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --gray-100: #f3f4f6;
+      --success: #10b981;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    h1, h2, h3 { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* Floating glass navbar (matches the rest of the site) */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1280px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.4rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4); }
+      50%     { box-shadow: 0 8px 28px rgba(236, 72, 153, 0.55); }
+    }
+    .logo .grad { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .btn {
+      padding: 0.7rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      border: none;
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+
+    /* Page wrapper + ambient orbs */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: ''; position: absolute;
+      border-radius: 50%; filter: blur(90px);
+      opacity: 0.45; pointer-events: none; z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem; position: relative; z-index: 1; }
+
+    /* Page heading */
+    .page-head { text-align: center; margin-bottom: 2rem; animation: fadeUp 0.8s ease-out both; }
+    .page-head .check-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.12));
+      color: var(--success);
+      border: 1px solid rgba(16,185,129,0.24);
+      border-radius: 999px;
+      font-size: 0.78rem; font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .page-head h1 {
+      font-size: clamp(1.9rem, 4vw, 2.6rem);
+      font-weight: 800; margin-bottom: 0.5rem;
+    }
+    .page-head h1 .grad {
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .page-head p { color: var(--muted); }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Tickets grid */
+    .tickets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .ticket-card {
+      position: relative;
+      background: white;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      overflow: hidden;
+      transition: transform 0.4s cubic-bezier(.2,.9,.3,1.2), box-shadow 0.4s;
+      opacity: 0; transform: translateY(20px);
+      animation: tIn 0.55s ease-out forwards;
+    }
+    .ticket-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-card-hover); }
+    .ticket-card:nth-child(1) { animation-delay: 0.05s; }
+    .ticket-card:nth-child(2) { animation-delay: 0.1s; }
+    .ticket-card:nth-child(3) { animation-delay: 0.15s; }
+    .ticket-card:nth-child(4) { animation-delay: 0.2s; }
+    .ticket-card:nth-child(5) { animation-delay: 0.25s; }
+    .ticket-card:nth-child(6) { animation-delay: 0.3s; }
+    .ticket-card:nth-child(7) { animation-delay: 0.35s; }
+    .ticket-card:nth-child(8) { animation-delay: 0.4s; }
+    .ticket-card:nth-child(9) { animation-delay: 0.45s; }
+    .ticket-card:nth-child(10) { animation-delay: 0.5s; }
+    @keyframes tIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* Header band of each ticket card */
+    .tc-head {
+      position: relative;
+      background: var(--gradient-hero);
+      color: white;
+      padding: 1rem 1.2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      overflow: hidden;
+    }
+    .tc-head::after {
+      content: ''; position: absolute;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      top: -60px; right: -40px;
+      pointer-events: none;
+    }
+    .tc-head .seat {
+      position: relative; z-index: 1;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800; font-size: 0.95rem;
+      letter-spacing: 0.04em;
+    }
+    .tc-head .badge {
+      position: relative; z-index: 1;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.22);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 999px;
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* Perforated divider between header and body (ticket-stub feel) */
+    .tc-perf {
+      position: relative; height: 18px;
+      background: white;
+      display: flex; align-items: center;
+    }
+    .tc-perf::before, .tc-perf::after {
+      content: ''; position: absolute;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--gradient-soft);
+      top: -14px;
+    }
+    .tc-perf::before { left: -14px; }
+    .tc-perf::after  { right: -14px; }
+    .tc-perf .dashes {
+      flex: 1; margin: 0 20px;
+      border-top: 2px dashed #e5e7eb;
+    }
+
+    /* QR area */
+    .tc-qr {
+      padding: 1.2rem 1.2rem 0.4rem;
+      display: grid; place-items: center;
+    }
+    .tc-qr-frame {
+      position: relative;
+      padding: 12px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.08));
+      border: 1px solid rgba(99,102,241,0.15);
+    }
+    .tc-qr-frame img {
+      display: block;
+      width: 180px; height: 180px;
+      border-radius: 8px;
+    }
+    .tc-qr-frame::before, .tc-qr-frame::after,
+    .tc-qr-corner-tl, .tc-qr-corner-tr {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      border-color: var(--primary);
+      border-style: solid;
+    }
+    .tc-qr-frame::before { top: -2px; left: -2px;   border-width: 2px 0 0 2px; border-top-left-radius: 4px; }
+    .tc-qr-frame::after  { bottom: -2px; right: -2px; border-width: 0 2px 2px 0; border-bottom-right-radius: 4px; }
+
+    /* Body details */
+    .tc-body {
+      padding: 0.6rem 1.2rem 1.4rem;
+      text-align: center;
+    }
+    .tc-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.15rem; font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 6px;
+    }
+    .tc-event {
+      font-size: 0.95rem;
+      color: var(--ink);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .tc-when {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.18);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .tc-code {
+      margin-top: 0.8rem;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      word-break: break-all;
+    }
+
+    /* Action bar */
+    .actions-bar {
+      display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+      margin-bottom: 3rem;
+    }
+
+    /* Empty / error states */
+    .state-card {
+      padding: 3rem 1.5rem;
+      background: white;
+      border-radius: 22px;
+      border: 1px solid rgba(99,102,241,0.08);
+      box-shadow: var(--shadow-card);
+      text-align: center;
+    }
+    .state-card .ic {
+      width: 64px; height: 64px;
+      margin: 0 auto 1rem;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      display: grid; place-items: center;
+      font-size: 1.6rem;
+    }
+    .state-card h3 { margin-bottom: 0.4rem; }
+    .state-card p  { color: var(--muted); margin-bottom: 1rem; }
+
+    @media (max-width: 540px) {
+      .tc-qr-frame img { width: 150px; height: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating glass navbar -->
+  <nav class="navbar">
+    <a href="dashboard.html" class="logo">
+      <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+      Event<span class="grad">Hub</span>
+    </a>
+    <a href="booking-history.html" class="btn btn-primary"><i class="fas fa-ticket"></i> My Bookings</a>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+      <div class="page-head">
+        <span class="check-pill"><i class="fas fa-circle-check"></i> Booking confirmed</span>
+        <h1>Your <span class="grad">tickets</span> are ready</h1>
+        <p id="conf-summary">Show any ticket's QR code at the entrance.</p>
+      </div>
+
+      <!-- One card per individual ticket — populated by confirmation.js -->
+      <div id="tickets-grid" class="tickets-grid"></div>
+
+      <div class="actions-bar">
+        <button id="download-ticket" class="btn btn-primary"><i class="fas fa-download"></i> Download tickets</button>
+        <a href="dashboard.html" class="btn btn-ghost"><i class="fas fa-house"></i> Back to home</a>
+      </div>
+
+      <!-- Hidden legacy nodes kept so the existing confirmation.js doesn't crash
+           if it queries them. The new render path doesn't depend on these. -->
+      <div style="display:none;">
+        <span id="ticket-id"></span>
+        <span id="event-name"></span>
+        <span id="ticket-holder"></span>
+        <span id="num-tickets"></span>
+        <span id="event-date"></span>
+        <span id="event-location"></span>
+        <span id="total-amount"></span>
+        <span id="payment-method"></span>
+        <div id="qr-code"></div>
+        <div class="details-table"><table><tbody></tbody></table></div>
+        <button id="back-home" type="button"></button>
+      </div>
+    </div>
+  </main>
+
+  <script src="/Public/js/popup.js"></script>
+  <!-- qrcode@1.5.3 removed the prebuilt browser bundle from npm; load the
+       last published browser bundle (1.5.0) with a cdnjs fallback. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <script>
+    if (typeof QRCode === 'undefined' || !QRCode.toCanvas) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.0/qrcode.min.js"><\/script>');
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../js/components/toast.js"></script>
+  <script src="../js/pages/confirmation.js"></script>
+</body>
+</html>

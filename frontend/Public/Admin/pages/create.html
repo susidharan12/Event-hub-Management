@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Event - EventHub Admin</title>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header-inner container">
+      <div class="admin-logo">EventHub</div>
+      <nav class="admin-nav">
+        <button id="back-btn" class="btn btn-secondary">Back</button>
+        <button id="logout-btn" class="btn btn-primary">Logout</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="admin-center-layout container">
+    <section class="panel">
+      <h2>Create Event</h2>
+      <form id="event-form">
+        <input type="hidden" id="event-id" />
+
+        <label for="event-name">Event name</label>
+        <input type="text" id="event-name" required />
+
+        <label for="event-category">Category</label>
+        <input type="text" id="event-category" placeholder="e.g. Tech, Cultural, Workshop" required />
+
+        <label for="event-date">Date &amp; Time</label>
+        <input type="datetime-local" id="event-date" required />
+
+        <label for="event-location">Location</label>
+        <input type="text" id="event-location" required />
+
+        <label for="event-price">Ticket price (₹)</label>
+        <input type="number" id="event-price" min="0" required />
+
+        <label for="event-capacity">Seating capacity</label>
+        <input type="number" id="event-capacity" min="1" required />
+
+        <label for="event-description">Description</label>
+        <textarea id="event-description" rows="4" placeholder="Brief details about the event"></textarea>
+
+        <label for="event-cover">Cover image</label>
+        <input type="file" id="event-cover" accept="image/*" />
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Event</button>
+          <button type="button" class="btn btn-secondary" id="reset-btn">Reset</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <!-- Load services and utilities first -->
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/api.js"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <script src="../../js/components/modal.js"></script>
+
+  <!-- Load admin script -->
+  <script src="../js/admin.js"></script>
+  <script>
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.history.back();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

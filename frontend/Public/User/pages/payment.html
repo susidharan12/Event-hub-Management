@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Payment - EventHub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+    }
+
+    .payment-card {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.05);
+    }
+
+    .method-btn.active {
+      border-color: #4f46e5;
+      background-color: #f5f3ff;
+      color: #4f46e5;
+    }
+
+    .method-btn.active i {
+      color: #4f46e5;
+    }
+
+    .qr-container canvas, .qr-container img {
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header / Logo Corner -->
+  <header class="w-full p-6 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+    <div class="flex items-center gap-2 group cursor-pointer">
+      <div class="bg-indigo-600 p-2 rounded-xl transition-transform group-hover:rotate-12">
+        <i data-lucide="calendar" class="text-white w-6 h-6"></i>
+      </div>
+      <span class="text-2xl font-extrabold tracking-tight text-slate-900">Event<span class="text-indigo-600">Hub</span></span>
+    </div>
+    <div class="flex items-center gap-2 text-slate-500 text-sm font-semibold">
+      <i data-lucide="lock" class="w-4 h-4"></i>
+      Secure Checkout
+    </div>
+  </header>
+
+  <main class="flex-grow container mx-auto max-w-5xl px-4 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- Left Section: Payment Form -->
+      <div class="lg:col-span-7 space-y-6">
+        <div class="payment-card p-8">
+          <div class="mb-8">
+            <h1 class="text-2xl font-extrabold text-slate-900">Payment Method</h1>
+            <p class="text-slate-500 text-sm">Choose how you'd like to pay for your tickets</p>
+          </div>
+
+          <form id="payment-form" onsubmit="handlePayment(event)">
+            <!-- Method Selector -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+              <button type="button" class="method-btn active flex flex-col items-center gap-2 p-4 border-2 border-slate-100 rounded-2xl transition-all hover:bg-slate-50" onclick="selectPaymentMethod('card')">
+                <i data-lucide="credit-card" class="w-6 h-6 text-slate-400"></i>
+                <span class="text-xs font-bold">Card</span>
+              </button>
+              <button type="button" class="method-btn flex flex-col items-center gap-2 p-4 border-2 border-slate-100 rounded-2xl transition-all hover:bg-slate-50" onclick="selectPaymentMethod('upi')">
+                <i data-lucide="smartphone" class="w-6 h-6 text-slate-400"></i>
+                <span class="text-xs font-bold">UPI</span>
+              </button>
+              <button type="button" class="method-btn flex flex-col items-center gap-2 p-4 border-2 border-slate-100 rounded-2xl transition-all hover:bg-slate-50" onclick="selectPaymentMethod('netbanking')">
+                <i data-lucide="landmark" class="w-6 h-6 text-slate-400"></i>
+                <span class="text-xs font-bold">Bank</span>
+              </button>
+              <button type="button" class="method-btn flex flex-col items-center gap-2 p-4 border-2 border-slate-100 rounded-2xl transition-all hover:bg-slate-50" onclick="selectPaymentMethod('wallet')">
+                <i data-lucide="wallet" class="w-6 h-6 text-slate-400"></i>
+                <span class="text-xs font-bold">Wallet</span>
+              </button>
+            </div>
+
+            <input type="hidden" id="payment-method" value="card">
+
+            <!-- Form Sections -->
+            <div class="space-y-4">
+              <!-- Card Section -->
+              <div id="card-section" class="form-section space-y-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Card Number</label>
+                  <div class="relative">
+                    <input type="text" id="card-number" placeholder="0000 0000 0000 0000" maxlength="19" required
+                      class="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    <i data-lucide="credit-card" class="absolute left-4 top-3.5 text-slate-400 w-5 h-5"></i>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Expiry Date</label>
+                    <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5" required
+                      class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                  </div>
+                  <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">CVV</label>
+                    <input type="password" id="card-cvv" placeholder="***" maxlength="3" required
+                      class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                  </div>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Cardholder Name</label>
+                  <input type="text" id="card-name" placeholder="John Doe" required
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                </div>
+              </div>
+
+              <!-- UPI Section -->
+              <div id="upi-section" class="form-section hidden space-y-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">UPI ID</label>
+                  <input type="text" id="upi-id" placeholder="username@upi"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                </div>
+              </div>
+
+              <!-- Net Banking Section -->
+              <div id="netbanking-section" class="form-section hidden space-y-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Bank</label>
+                  <select id="bank-name" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white">
+                    <option value="">Choose your bank</option>
+                    <option value="hdfc">HDFC Bank</option>
+                    <option value="icici">ICICI Bank</option>
+                    <option value="sbi">State Bank of India</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Wallet Section -->
+              <div id="wallet-section" class="form-section hidden space-y-4">
+                <div class="space-y-1.5">
+                  <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Select Wallet</label>
+                  <select id="wallet-type" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all bg-white">
+                    <option value="">Choose your wallet</option>
+                    <option value="paytm">Paytm</option>
+                    <option value="phonepe">PhonePe</option>
+                    <option value="gpay">Google Pay</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="pay-btn" class="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-indigo-200 flex items-center justify-center gap-3">
+              <i data-lucide="shield-check" class="w-5 h-5"></i>
+              Pay Securely
+            </button>
+          </form>
+
+          <div class="mt-6 flex items-center justify-center gap-6 opacity-40 grayscale">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" class="h-4">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" class="h-6">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="Paypal" class="h-5">
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Section: Summary & QR -->
+      <div class="lg:col-span-5 space-y-6">
+        <!-- Success Message (Hidden by default) -->
+        <div id="success-message" class="hidden animate-in fade-in slide-in-from-top-4 duration-500">
+          <div class="bg-emerald-50 border border-emerald-100 p-6 rounded-3xl flex items-center gap-4">
+            <div class="bg-emerald-500 p-2 rounded-full">
+              <i data-lucide="check" class="text-white w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-emerald-900">Payment Successful!</h3>
+              <p class="text-emerald-700 text-sm">Your booking is confirmed.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Summary Card -->
+        <div class="payment-card p-8">
+          <h3 class="text-lg font-bold text-slate-900 mb-6">Order Summary</h3>
+          <div class="space-y-4">
+            <div class="flex justify-between">
+              <span class="text-slate-500 text-sm">Event</span>
+              <span id="event-name" class="text-slate-900 font-bold text-sm text-right">Tech Conference 2026</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500 text-sm">Date</span>
+              <span id="event-date" class="text-slate-900 font-bold text-sm">15 Feb, 2026</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500 text-sm">Tickets</span>
+              <span id="ticket-count" class="text-slate-900 font-bold text-sm">2</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500 text-sm">Price per Ticket</span>
+              <span id="ticket-price" class="text-slate-900 font-bold text-sm">₹500</span>
+            </div>
+            <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
+              <span class="text-slate-900 font-bold">Total Amount</span>
+              <span id="total-amount" class="text-2xl font-black text-indigo-600">₹1,000</span>
+            </div>
+          </div>
+
+          <!-- QR Section (Hidden by default) -->
+          <div id="qr-section" class="hidden mt-8 pt-8 border-t border-slate-100 text-center animate-in zoom-in duration-500">
+            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Payment Verification QR</p>
+            <div id="qr-code" class="qr-container bg-slate-50 p-4 rounded-2xl inline-block border border-slate-100"></div>
+            <p id="reference-id" class="mt-4 text-xs font-mono font-bold text-indigo-600 bg-indigo-50 py-2 px-4 rounded-full inline-block">REF: ---</p>
+          </div>
+        </div>
+
+        <!-- Security Badge -->
+        <div class="flex items-center justify-center gap-2 text-slate-400">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span class="text-xs font-medium">Verified by EventHub Security</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    let selectedMethod = 'card';
+
+    function selectPaymentMethod(method) {
+      selectedMethod = method;
+      document.getElementById('payment-method').value = method;
+
+      // Update UI buttons
+      document.querySelectorAll('.method-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+
+      // Toggle form sections
+      document.querySelectorAll('.form-section').forEach(section => {
+        section.classList.add('hidden');
+      });
+      document.getElementById(method + '-section').classList.remove('hidden');
+    }
+
+    function generateQRCode(referenceId) {
+      const qrContainer = document.getElementById('qr-code');
+      qrContainer.innerHTML = '';
+      
+      const paymentData = {
+        ref: referenceId,
+        amount: document.getElementById('total-amount').innerText,
+        method: selectedMethod,
+        timestamp: new Date().toISOString()
+      };
+
+      new QRCode(qrContainer, {
+        text: JSON.stringify(paymentData),
+        width: 160,
+        height: 160,
+        colorDark: '#1e1b4b',
+        colorLight: '#f8fafc',
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      document.getElementById('reference-id').innerText = `REF: ${referenceId}`;
+    }
+
+    function handlePayment(e) {
+      e.preventDefault();
+
+      // Basic validation for card
+      if (selectedMethod === 'card') {
+        const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
+        if (cardNumber.length < 16) {
+          alert('Please enter a valid card number');
+          return;
+        }
+      }
+
+      const referenceId = 'EH' + Math.random().toString(36).substr(2, 9).toUpperCase();
+      
+      // Show Success UI
+      document.getElementById('success-message').classList.remove('hidden');
+      document.getElementById('qr-section').classList.remove('hidden');
+      
+      // Disable Form
+      document.getElementById('payment-form').style.opacity = '0.5';
+      document.getElementById('payment-form').style.pointerEvents = 'none';
+      document.getElementById('pay-btn').innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Payment Completed';
+      document.getElementById('pay-btn').classList.replace('bg-indigo-600', 'bg-slate-800');
+      
+      generateQRCode(referenceId);
+      lucide.createIcons();
+
+      // Store data
+      localStorage.setItem('lastPayment', JSON.stringify({
+        referenceId,
+        method: selectedMethod,
+        amount: document.getElementById('total-amount').innerText,
+        date: new Date().toLocaleString()
+      }));
+    }
+
+    // Input Formatting
+    document.getElementById('card-number').addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+      let formatted = value.match(/.{1,4}/g)?.join(' ') || '';
+      e.target.value = formatted;
+    });
+
+    document.getElementById('card-expiry').addEventListener('input', (e) => {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length >= 2) {
+        e.target.value = value.substring(0, 2) + '/' + value.substring(2, 4);
+      } else {
+        e.target.value = value;
+      }
+    });
+  </script>
+</body>
+</html>

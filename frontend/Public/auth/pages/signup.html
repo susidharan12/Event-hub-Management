@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Create your account — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --dark: #0b1020;
+      --darker: #07091a;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --light: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      display: grid; place-items: center;
+      padding: 2rem 1rem;
+      position: relative;
+    }
+    h1, h2, h3 { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* Animated background */
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(90px); opacity: 0.5; pointer-events: none; z-index: 0;
+    }
+    .orb-1 { width: 420px; height: 420px; background: #8b5cf6; top: -100px; left: -100px; animation: float 14s ease-in-out infinite; }
+    .orb-2 { width: 360px; height: 360px; background: #ec4899; bottom: -80px; right: -100px; animation: float 18s ease-in-out infinite -3s; }
+    .orb-3 { width: 280px; height: 280px; background: #06b6d4; top: 40%; left: 60%; animation: float 16s ease-in-out infinite -6s; }
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33%      { transform: translate(40px, -30px) scale(1.08); }
+      66%      { transform: translate(-30px, 20px) scale(0.94); }
+    }
+    .grid-bg {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-image:
+        linear-gradient(rgba(99,102,241,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.06) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    }
+
+    .home-link {
+      position: fixed;
+      top: 24px; left: 24px;
+      z-index: 10;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.7);
+      backdrop-filter: blur(10px);
+      color: var(--ink);
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-decoration: none;
+      border: 1px solid rgba(99,102,241,0.18);
+      transition: all 0.25s ease;
+    }
+    .home-link:hover { background: white; color: var(--primary); transform: translateX(-2px); }
+
+    .signup-shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      width: 100%;
+      background: white;
+      border-radius: 28px;
+      box-shadow: 0 40px 80px rgba(15, 23, 42, 0.18);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 5fr 7fr;
+      animation: cardIn 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(24px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .signup-side {
+      position: relative;
+      background: var(--gradient-hero);
+      padding: 3rem 2.4rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 2rem;
+      color: white;
+      overflow: hidden;
+      min-height: 600px;
+    }
+    .signup-side::before, .signup-side::after {
+      content: ''; position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.16);
+    }
+    .signup-side::before { width: 320px; height: 320px; top: -120px; right: -120px; animation: floatSlow 9s ease-in-out infinite; }
+    .signup-side::after  { width: 220px; height: 220px; bottom: -100px; left: -80px; animation: floatSlow 9s ease-in-out infinite -3s; }
+    @keyframes floatSlow {
+      0%, 100% { transform: translate(0, 0); }
+      50%      { transform: translate(-12px, -16px); }
+    }
+
+    .brand {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; gap: 12px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem; font-weight: 800;
+    }
+    .brand .logo-mark {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(8px);
+      display: grid; place-items: center;
+      font-size: 1.1rem;
+    }
+
+    .signup-side .pitch { position: relative; z-index: 1; }
+    .signup-side .pitch h1 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); line-height: 1.15; margin-bottom: 0.8rem; }
+    .signup-side .pitch p { opacity: 0.92; line-height: 1.55; max-width: 320px; }
+
+    .perks { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 0.8rem; }
+    .perk {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.14);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 14px;
+    }
+    .perk i {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.2);
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .perk b { font-weight: 700; font-size: 0.95rem; }
+    .perk p { font-size: 0.83rem; opacity: 0.9; margin-top: 1px; }
+
+    /* Right side: form */
+    .signup-form-wrap {
+      padding: 2.6rem 2.6rem;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    /* Pretty scrollbar inside form pane */
+    .signup-form-wrap::-webkit-scrollbar { width: 6px; }
+    .signup-form-wrap::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.25); border-radius: 999px; }
+
+    .form-head { margin-bottom: 1.5rem; }
+    .form-head .eyebrow {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.72rem; font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+    .form-head h2 { font-size: 1.7rem; margin-bottom: 4px; }
+    .form-head p { color: var(--muted); font-size: 0.95rem; }
+
+    .form-row { margin-bottom: 1rem; }
+    .form-row .label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+    .req::after { content: ' *'; color: var(--danger); }
+    .input-wrap { position: relative; }
+    .input-wrap .input-icon {
+      position: absolute;
+      left: 16px; top: 18px;
+      color: var(--muted);
+      pointer-events: none;
+      transition: color 0.2s ease;
+    }
+    .form-row input, .form-row select, .form-row textarea {
+      width: 100%;
+      padding: 0.95rem 1rem 0.95rem 3rem;
+      border: 2px solid #eef2ff;
+      border-radius: 14px;
+      background: #fafbff;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: var(--ink);
+      transition: all 0.25s ease;
+    }
+    .form-row textarea { min-height: 80px; resize: vertical; padding-top: 0.85rem; }
+    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.12);
+    }
+    .input-wrap:focus-within .input-icon { color: var(--primary); }
+
+    /* Native select arrow handling */
+    .form-row select { appearance: none; -webkit-appearance: none; padding-right: 3rem; cursor: pointer; }
+    .select-wrap::after {
+      content: '\f078';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      right: 18px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    /* Organization-only fields are revealed when role=organizer */
+    #org-fields { display: none; padding: 1.2rem; background: rgba(99,102,241,0.04); border: 1px dashed rgba(99,102,241,0.25); border-radius: 16px; margin-bottom: 1rem; }
+    #org-fields.show { display: block; animation: orgIn 0.35s ease-out; }
+    @keyframes orgIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    #org-fields h3 {
+      font-size: 0.88rem;
+      color: var(--primary);
+      margin-bottom: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: flex; align-items: center; gap: 8px;
+    }
+    #org-fields h3 i {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      border-radius: 8px;
+      display: grid; place-items: center;
+      font-size: 0.85rem;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 1rem;
+      border-radius: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 10px 24px rgba(99,102,241,0.35);
+      margin-bottom: 0.8rem;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(236,72,153,0.45); }
+    .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-secondary:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+
+    .login-link { margin-top: 1rem; text-align: center; font-size: 0.92rem; color: var(--muted); }
+    .login-link a {
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+      position: relative;
+    }
+    .login-link a::after {
+      content: ''; position: absolute;
+      left: 0; right: 0; bottom: -2px;
+      height: 2px; background: var(--gradient-hero);
+      transform: scaleX(0); transform-origin: left;
+      transition: transform 0.25s ease;
+    }
+    .login-link a:hover::after { transform: scaleX(1); }
+
+    /* Inline status messages used by signup.js */
+    #error-msg, #success-msg {
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      display: none;
+    }
+    #error-msg { background: #fef2f2; color: #dc2626; border-left: 4px solid #dc2626; }
+    #success-msg { background: #ecfdf5; color: #047857; border-left: 4px solid #10b981; }
+    #error-msg:not(:empty), #success-msg:not(:empty) { display: block; }
+
+    /* Toast container that auth services use */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; }
+    .toast {
+      min-width: 250px;
+      padding: 14px 20px;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+      display: flex; align-items: center; justify-content: space-between;
+      animation: slideIn 0.3s ease-out forwards;
+    }
+    .toast.error   { background: linear-gradient(135deg, #ef4444, #ec4899); }
+    .toast.success { background: linear-gradient(135deg, #10b981, #06b6d4); }
+    @keyframes slideIn {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+
+    @media (max-width: 900px) {
+      .signup-shell { grid-template-columns: 1fr; }
+      .signup-side { min-height: auto; padding: 2rem 1.6rem; gap: 1.5rem; }
+      .signup-form-wrap { padding: 2rem 1.6rem; max-height: none; }
+      .home-link { top: 16px; left: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="grid-bg"></div>
+
+  <a href="/index.html" class="home-link"><i class="fas fa-arrow-left"></i> Home</a>
+
+  <div id="toast-container"></div>
+
+  <div class="signup-shell">
+    <!-- Pitch side -->
+    <aside class="signup-side">
+      <div class="brand">
+        <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+        EventHub
+      </div>
+      <div class="pitch">
+        <h1>Join thousands hosting and discovering events.</h1>
+        <p>Create an account in seconds — explore live experiences, or set up your organization to start selling tickets.</p>
+      </div>
+      <div class="perks">
+        <div class="perk">
+          <i class="fas fa-bolt"></i>
+          <div><b>Instant onboarding</b><p>Be ready to publish in minutes, not days.</p></div>
+        </div>
+        <div class="perk">
+          <i class="fas fa-qrcode"></i>
+          <div><b>Secure QR tickets</b><p>Every ticket gets its own scannable code.</p></div>
+        </div>
+        <div class="perk">
+          <i class="fas fa-shield-halved"></i>
+          <div><b>Privacy-first</b><p>Your details stay yours. We never sell data.</p></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Form side -->
+    <section class="signup-form-wrap">
+      <div class="form-head">
+        <span class="eyebrow">Sign up</span>
+        <h2>Create your account</h2>
+        <p>Sign up as an organizer or event explorer and start your journey.</p>
+      </div>
+
+      <div id="error-msg"></div>
+      <div id="success-msg"></div>
+
+      <form id="signup-form" novalidate>
+        <div class="form-row">
+          <label class="label" for="name">Full name</label>
+          <div class="input-wrap">
+            <input type="text" id="name" placeholder="Enter your name" autocomplete="name" />
+            <i class="fas fa-user input-icon"></i>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="label" for="role">I am an</label>
+          <div class="input-wrap select-wrap">
+            <select id="role">
+              <option value="">Select type</option>
+              <option value="organizer">Organizer</option>
+              <option value="explorer">Event explorer</option>
+            </select>
+            <i class="fas fa-user-tag input-icon"></i>
+          </div>
+        </div>
+
+        <!-- Organizer-only fields (revealed when role=organizer) -->
+        <div id="org-fields">
+          <h3><i class="fas fa-building"></i> Organization details</h3>
+          <div class="form-row">
+            <label class="label req" for="organization_name">Organization name</label>
+            <div class="input-wrap">
+              <input type="text" id="organization_name" placeholder="e.g. Rathinam Events" />
+              <i class="fas fa-sitemap input-icon"></i>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="label req" for="organization_address">Organization address</label>
+            <div class="input-wrap">
+              <textarea id="organization_address" placeholder="Street, City, State, PIN"></textarea>
+              <i class="fas fa-map-marker-alt input-icon"></i>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="label" for="organization_phone">Organization phone</label>
+            <div class="input-wrap">
+              <input type="tel" id="organization_phone" placeholder="Public contact number" />
+              <i class="fas fa-phone input-icon"></i>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="label" for="organization_website">Website</label>
+            <div class="input-wrap">
+              <input type="url" id="organization_website" placeholder="https://example.com" />
+              <i class="fas fa-globe input-icon"></i>
+            </div>
+          </div>
+          <div class="form-row">
+            <label class="label" for="organization_description">About the organization</label>
+            <div class="input-wrap">
+              <textarea id="organization_description" placeholder="A short description that attendees will see on your event pages"></textarea>
+              <i class="fas fa-align-left input-icon"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="label" for="mobile">Mobile number</label>
+          <div class="input-wrap">
+            <input type="tel" id="mobile" maxlength="10" placeholder="10-digit mobile" autocomplete="tel" />
+            <i class="fas fa-mobile-screen input-icon"></i>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="label" for="email">Email address</label>
+          <div class="input-wrap">
+            <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+            <i class="fas fa-envelope input-icon"></i>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="label" for="password">Set password</label>
+          <div class="input-wrap">
+            <input type="password" id="password" placeholder="Minimum 6 characters" autocomplete="new-password" />
+            <i class="fas fa-lock input-icon"></i>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="label" for="confirm-password">Repeat password</label>
+          <div class="input-wrap">
+            <input type="password" id="confirm-password" placeholder="Re-enter password" autocomplete="new-password" />
+            <i class="fas fa-shield-halved input-icon"></i>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-user-plus"></i> Create account
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="window.location.href='login.html'">
+          <i class="fas fa-arrow-left"></i> Return to login
+        </button>
+
+        <div class="login-link">
+          Already have an account? <a href="login.html">Log in</a>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <!-- Scripts for backend logic -->
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/api.js"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <script src="../../js/components/modal.js"></script>
+  <script src="../js/signup.js"></script>
+</body>
+</html>

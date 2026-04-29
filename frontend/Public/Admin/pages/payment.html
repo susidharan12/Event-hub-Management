@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Setup - EventHub Admin</title>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <link rel="stylesheet" href="../css/payment.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header-inner container">
+      <div class="admin-logo">EventHub</div>
+      <nav class="admin-nav">
+        <button id="back-btn" class="btn btn-secondary">Back</button>
+        <button id="logout-btn" class="btn btn-primary">Logout</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="admin-layout container">
+    <!-- Payment Setup Form Panel -->
+    <section class="panel">
+      <h2>Payment Setup</h2>
+
+      <form id="payment-form">
+        <label for="acc-name">Account holder name</label>
+        <input type="text" id="acc-name" required />
+
+        <label for="bank-name">Bank name</label>
+        <input type="text" id="bank-name" required />
+
+        <label for="acc-number">Account number</label>
+        <input type="text" id="acc-number" required />
+
+        <label for="ifsc">IFSC code</label>
+        <input type="text" id="ifsc" required />
+
+        <label for="branch-id">Branch ID</label>
+        <input type="text" id="branch-id" />
+
+        <label for="upi-id">UPI ID</label>
+        <input type="text" id="upi-id" placeholder="name@bank" required />
+
+        <p class="payment-msg" id="payment-msg"></p>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Payment Details</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Payment Records Table Panel -->
+    <section class="panel">
+      <h2>Payment Records</h2>
+      <table class="events-table">
+        <thead>
+          <tr>
+            <th>Account Holder</th>
+            <th>Bank Name</th>
+            <th>Account Number</th>
+            <th>IFSC Code</th>
+            <th>UPI ID</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="payments-tbody">
+          <!-- Filled by payment.js -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Load services and utilities first -->
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/api.js"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <script src="../../js/components/modal.js"></script>
+  
+  <script src="../js/payment.js"></script>
+  <script>
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.history.back();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

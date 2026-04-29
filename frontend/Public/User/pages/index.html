@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventHub - Discover Events</title>
+
+  <!-- Global + components + page styles -->
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/pages.css">
+</head>
+<body>
+  <nav id="navbar"></nav>
+
+  <header class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content container">
+      <h1>Discover & Book Amazing Events</h1>
+      <p>All tech, cultural and workshop events in one simple dashboard.</p>
+      <div class="hero-actions">
+        <a href="#events" class="btn btn-primary">Browse Events</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="events" class="events-section container">
+      <header class="events-header">
+        <div class="events-title">
+          <h2>Discover & Book Amazing Events</h2>
+          <p>Find events that match your interests</p>
+        </div>
+      </header>
+
+      <div class="filter-section">
+        <div class="search-wrapper">
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="🔍 Search events by name, location, or category..."
+            class="search-input"
+          >
+        </div>
+
+        <div class="filter-controls">
+          <div class="filter-group">
+            <label for="category-filter">Category</label>
+            <select id="category-filter" class="filter-select">
+              <option value="all">All Categories</option>
+              <option value="concert">🎵 Concert</option>
+              <option value="tech">💻 Tech Talk</option>
+              <option value="workshop">🛠️ Workshop</option>
+              <option value="cultural">🎭 Cultural</option>
+              <option value="sports">⚽ Sports</option>
+              <option value="other">📌 Other</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="price-range">Max Price</label>
+            <input 
+              type="range" 
+              id="price-range" 
+              min="0" 
+              max="10000" 
+              value="10000"
+              class="filter-range"
+            >
+            <span id="price-display">₹10,000</span>
+          </div>
+
+          <div class="filter-group">
+            <label for="sort-by">Sort By</label>
+            <select id="sort-by" class="filter-select">
+              <option value="upcoming">Upcoming</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="popular">Most Popular</option>
+            </select>
+          </div>
+
+          <button id="reset-filters" class="btn btn-secondary">Reset Filters</button>
+        </div>
+      </div>
+
+      <div class="events-count">
+        <p id="events-count-display">Loading events...</p>
+      </div>
+
+      <section class="events-grid grid grid-3" id="events-container">
+        <!-- Events loaded by JS -->
+      </section>
+
+      <div class="pagination-container" style="text-align: center; margin-top: 2rem;">
+        <button id="load-more-btn" class="btn btn-secondary">Load More</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h2 id="modal-title"></h2>
+      <p id="modal-message"></p>
+      <div class="modal-actions">
+        <button id="modal-confirm" class="btn btn-primary">OK</button>
+        <button id="modal-cancel" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load services and utilities -->
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/api.js" type="module"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <script src="../../js/components/modal.js"></script>
+  <script src="../js/components/Navbar.js" type="module"></script>
+  
+  <!-- Page specific scripts -->
+  <script type="module" src="../js/pages/Home.js"></script>
+</body>
+</html>

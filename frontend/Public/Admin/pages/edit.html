@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edit Events - EventHub Admin</title>
+
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+</head>
+<body>
+  <header class="admin-header">
+    <div class="admin-header-inner container">
+      <div class="admin-logo">EventHub</div>
+      <nav class="admin-nav">
+        <button id="back-btn" class="btn btn-secondary">Back</button>
+        <button id="logout-btn" class="btn btn-primary">Logout</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="admin-center-layout container">
+    <section class="panel">
+      <h2>Events (Data)</h2>
+      <table class="events-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Location</th>
+            <th>Price</th>
+            <th>Capacity</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="events-tbody">
+          <!-- Filled by admin.js -->
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- Load services and utilities first -->
+  <script src="../../js/config.js"></script>
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/services/api.js"></script>
+  <script src="../../js/services/auth.js"></script>
+  <script src="../../js/components/toast.js"></script>
+  <script src="../../js/components/modal.js"></script>
+
+  <!-- Load admin script -->
+  <script src="../js/admin.js"></script>
+  <script>
+    document.getElementById('back-btn').addEventListener('click', () => {
+      window.history.back();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>

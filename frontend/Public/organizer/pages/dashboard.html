@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Organizer Dashboard — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --dark: #0b1020;
+      --darker: #07091a;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --gray: #6b7280;
+      --light: #f8fafc;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    h1, h2, h3, .display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* ───────── Floating glass navbar (matches user pages) ───────── */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1380px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .navbar.scrolled {
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+
+    .logo-wrap {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.4rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-icon-box {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4); }
+      50%     { box-shadow: 0 8px 28px rgba(236, 72, 153, 0.55); }
+    }
+    .logo-text span { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .header-nav { display: flex; align-items: center; gap: 1.6rem; }
+    .header-nav > a {
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+      position: relative;
+      padding: 6px 2px;
+      transition: color 0.25s;
+    }
+    .header-nav > a::after {
+      content: ''; position: absolute;
+      left: 0; bottom: 0;
+      width: 0; height: 2px;
+      background: var(--gradient-hero);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    .header-nav > a:hover { color: var(--primary); }
+    .header-nav > a:hover::after { width: 100%; }
+
+    .user-menu {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 12px;
+      transition: background 0.2s;
+    }
+    .user-menu:hover { background: rgba(99,102,241,0.06); }
+    .user-info-top { text-align: right; line-height: 1.2; }
+    .user-info-top .name { display: block; font-weight: 700; font-size: 0.9rem; color: var(--ink); }
+    .user-info-top .role { display: block; font-size: 0.75rem; color: var(--muted); }
+    .user-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.05rem;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+      overflow: hidden;
+    }
+    .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .profile-dropdown {
+      position: absolute;
+      top: 56px; right: 0;
+      background: white;
+      width: 240px;
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+      border: 1px solid #e5e7eb;
+      display: none;
+      flex-direction: column;
+      padding: 0.5rem;
+      z-index: 1000;
+      animation: dropDown 0.2s ease;
+    }
+    @keyframes dropDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .profile-dropdown.active { display: flex; }
+    .dropdown-header { padding: 0.9rem 1rem; border-bottom: 1px solid #f3f4f6; margin-bottom: 0.4rem; }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0.7rem 1rem; text-decoration: none;
+      color: var(--ink); font-size: 0.9rem;
+      border-radius: 10px;
+      border: none; background: none;
+      width: 100%; text-align: left;
+      cursor: pointer; transition: background 0.15s;
+      font-family: inherit;
+    }
+    .dropdown-item:hover { background: #f3f4f6; }
+
+    /* ───────── Page background flair ───────── */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ───────── Layout (sidebar + content) ───────── */
+    .main-content { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; }
+
+    /* Sidebar */
+    .sidebar {
+      background: white;
+      border-radius: 20px;
+      padding: 1.25rem;
+      height: fit-content;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: sticky;
+      top: calc(var(--nav-height) + 32px);
+    }
+    .sidebar-menu { list-style: none; }
+    .sidebar-menu li { margin-bottom: 0.35rem; }
+    .sidebar-menu a {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      color: var(--ink);
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.93rem;
+      transition: all 0.25s ease;
+    }
+    .sidebar-menu a i { width: 18px; }
+    .sidebar-menu a:hover {
+      background: #f3f4f6;
+      color: var(--primary);
+      transform: translateX(2px);
+    }
+    .sidebar-menu a.active {
+      background: var(--gradient-hero);
+      color: white;
+      font-weight: 600;
+      box-shadow: 0 6px 16px rgba(99,102,241,0.35);
+      transform: translateX(0);
+    }
+    .sidebar-menu a.active:hover { color: white; transform: translateX(0); }
+
+    /* Sections */
+    .section {
+      background: white;
+      padding: 2rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      display: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .section::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .section h2 { font-size: 1.6rem; font-weight: 800; }
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.74rem; font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, white 0%, #fafbff 100%);
+      padding: 1.5rem;
+      border-radius: 16px;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(99,102,241,0.12); }
+    .stat-icon {
+      width: 56px; height: 56px;
+      border-radius: 14px;
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 6px 14px rgba(99,102,241,0.25);
+    }
+    .stat-card p { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
+    .stat-card h3 { font-size: 1.7rem; font-weight: 800; }
+
+    /* Buttons */
+    .btn {
+      padding: 0.75rem 1.4rem;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      font-family: inherit;
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+
+    /* Form fields */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--ink);
+      letter-spacing: 0.02em;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border: 2px solid #eef2ff;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      background: #fafbff;
+      color: var(--ink);
+      transition: all 0.25s ease;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+    }
+    .form-group input[readonly] { background: #f3f4f6; cursor: not-allowed; }
+    .form-group textarea { min-height: 90px; resize: vertical; font-family: inherit; }
+
+    /* My Events table */
+    .events-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #f1f5f9;
+    }
+    .events-table thead {
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+    }
+    .events-table th {
+      padding: 14px 16px; text-align: left;
+      font-weight: 700; font-size: 0.78rem;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--ink);
+    }
+    .events-table td {
+      padding: 14px 16px;
+      border-top: 1px solid #f1f5f9;
+      font-size: 0.92rem;
+    }
+    .events-table tbody tr:hover { background: #fafbff; }
+
+    .empty-state {
+      text-align: center; padding: 3rem 1.5rem;
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      border-radius: 16px;
+      border: 1px dashed rgba(99,102,241,0.3);
+    }
+    .empty-state h3 { margin-bottom: 0.5rem; font-size: 1.2rem; }
+    .empty-state p { color: var(--muted); margin-bottom: 1.2rem; }
+
+    /* Create-Event form pieces */
+    .profile-upload-section { margin-bottom: 2rem; }
+    .profile-label {
+      display: block;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: var(--ink);
+    }
+    .profile-upload-container {
+      display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      border: 2px dashed rgba(99,102,241,0.3);
+      border-radius: 16px;
+      transition: all 0.2s ease;
+    }
+    .profile-upload-container:hover { border-color: var(--primary); }
+    .profile-preview {
+      width: 220px; height: 130px;
+      border-radius: 12px; overflow: hidden;
+      background: white; border: 2px solid #e5e7eb;
+      display: grid; place-items: center;
+    }
+    .profile-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 8px;
+      color: var(--muted); text-align: center;
+    }
+    .profile-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-upload-info h4 { margin-bottom: 0.5rem; font-size: 1rem; }
+    .profile-upload-info p { color: var(--muted); margin-bottom: 1rem; line-height: 1.5; font-size: 0.9rem; }
+    .upload-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--gradient-hero); color: white; border: none;
+      padding: 0.75rem 1.4rem; border-radius: 12px;
+      font-weight: 600; cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+      font-family: inherit;
+    }
+    .upload-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.4); }
+
+    .file-upload-label {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 600; margin-bottom: 0.5rem; color: var(--ink);
+    }
+    .file-upload-area {
+      border: 2px dashed rgba(99,102,241,0.3); border-radius: 14px;
+      padding: 2rem; background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      cursor: pointer; transition: all 0.3s ease;
+      text-align: center;
+    }
+    .file-upload-area:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .file-upload-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+    .file-upload-content h4 { margin: 0; }
+    .file-upload-content p { margin: 0; color: var(--muted); }
+    .file-types { font-size: 0.85rem; color: var(--muted); }
+
+    .images-row {
+      display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;
+      max-height: 220px; overflow-y: auto;
+    }
+    .image-item {
+      position: relative; width: 120px; height: 80px;
+      border-radius: 10px; overflow: hidden;
+      border: 2px solid #e5e7eb; background: white;
+      transition: transform 0.2s;
+    }
+    .image-item:hover { transform: scale(1.04); }
+    .image-item img { width: 100%; height: 100%; object-fit: cover; }
+
+    .action-buttons-container {
+      display: flex; justify-content: center; gap: 1rem; margin-top: 2rem;
+    }
+    .action-btn {
+      padding: 0.85rem 1.8rem; border: none; border-radius: 12px;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+    .btn-save {
+      background: var(--gradient-hero); color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-preview { background: var(--accent); color: white; }
+    .btn-preview:hover { background: #d97706; transform: translateY(-1px); }
+    .btn-create { background: var(--success); color: white; }
+    .btn-create:hover { background: #059669; transform: translateY(-1px); }
+    .btn-create:disabled, .btn-preview:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .event-preview-card {
+      background: white; border-radius: 16px; padding: 1.5rem;
+      box-shadow: var(--shadow-card); margin-top: 2rem;
+      border: 1px solid #f1f5f9;
+    }
+    .preview-image { width: 100%; height: 220px; border-radius: 12px; object-fit: cover; margin-bottom: 1rem; }
+    .preview-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; }
+    .preview-details { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .preview-detail { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+    .preview-description { color: var(--ink); line-height: 1.6; }
+
+    /* ───────── Profile section ───────── */
+    .profile-head {
+      display: flex; align-items: center; gap: 1.25rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      border-radius: 18px;
+      border: 1px solid rgba(99,102,241,0.1);
+    }
+    .avatar-big {
+      width: 96px; height: 96px;
+      border-radius: 24px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      box-shadow: 0 12px 28px rgba(139, 92, 246, 0.4);
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-edit-btn {
+      position: absolute;
+      bottom: -6px; right: -6px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      cursor: pointer;
+      display: grid; place-items: center;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .avatar-edit-btn:hover { background: var(--primary); color: white; transform: scale(1.08); }
+
+    .profile-head .who { flex: 1; min-width: 200px; }
+    .profile-head .who h3 { font-size: 1.5rem; margin-bottom: 4px; }
+    .profile-head .who .role-pill {
+      display: inline-block;
+      padding: 4px 12px;
+      background: white;
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 6px;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .profile-head .who .who-email {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 6px;
+    }
+
+    .profile-card-section {
+      margin-bottom: 1.5rem;
+    }
+    .profile-card-section h3 {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: var(--ink);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .profile-card-section h3 i {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 0.92rem;
+    }
+
+    /* ───────── Messages section (inline thread list) ───────── */
+    .msg-thread-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .msg-thread-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 0.95rem 1rem;
+      background: linear-gradient(135deg, white, #fafbff);
+      border: 1px solid #f1f5f9;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .msg-thread-row:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
+      border-color: rgba(99,102,241,0.2);
+    }
+    .msg-thread-row .ava {
+      position: relative;
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white; font-weight: 800; font-size: 1rem;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .msg-thread-row .ava img { width: 100%; height: 100%; object-fit: cover; }
+    .msg-thread-row .pdot {
+      position: absolute;
+      bottom: -1px; right: -1px;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      border: 2px solid white;
+      background: #94a3b8;
+    }
+    .msg-thread-row .pdot.online {
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16,185,129,0.55);
+      animation: msgDot 1.6s ease-out infinite;
+    }
+    @keyframes msgDot {
+      0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.55); }
+      80%  { box-shadow: 0 0 0 7px rgba(16,185,129,0); }
+      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+    }
+    .msg-thread-row .meta { flex: 1; min-width: 0; line-height: 1.3; }
+    .msg-thread-row .meta .top { display: flex; justify-content: space-between; gap: 12px; }
+    .msg-thread-row .meta .name {
+      font-weight: 700; color: var(--ink); font-size: 0.98rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .msg-thread-row .meta .when { font-size: 0.74rem; color: var(--muted); flex-shrink: 0; }
+    .msg-thread-row .meta .preview {
+      color: var(--gray); font-size: 0.88rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .msg-thread-row .meta .preview b { color: var(--primary); font-weight: 700; }
+    .msg-thread-row .meta .below {
+      display: flex; gap: 12px; align-items: center;
+      margin-top: 4px;
+      font-size: 0.74rem; color: var(--muted);
+    }
+    .msg-thread-row .meta .below .ev { display: inline-flex; align-items: center; gap: 5px; }
+    .msg-thread-row .meta .below .pres { font-weight: 700; }
+    .msg-thread-row .meta .below .pres.online { color: var(--success); }
+    .msg-thread-row .pill {
+      background: #ef4444; color: white;
+      font-size: 0.72rem; font-weight: 800;
+      padding: 3px 10px; border-radius: 999px;
+      align-self: flex-start;
+    }
+    .msg-empty {
+      padding: 3rem 1.5rem;
+      text-align: center;
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      border: 1px dashed rgba(99,102,241,0.3);
+      border-radius: 16px;
+    }
+    .msg-empty i {
+      font-size: 2rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.7rem;
+      display: block;
+    }
+    .msg-empty h3 { font-size: 1.1rem; margin-bottom: 0.3rem; }
+    .msg-empty p  { color: var(--muted); }
+
+    /* Sidebar unread badge */
+    .sidebar-menu a { position: relative; }
+    .sidebar-menu a .nav-badge {
+      display: none;
+      margin-left: auto;
+      background: #ef4444;
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 999px;
+      box-shadow: 0 4px 10px rgba(239,68,68,0.35);
+    }
+    .sidebar-menu a .nav-badge.show { display: inline-flex; }
+    .sidebar-menu a.active .nav-badge {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(11, 16, 32, 0.6);
+      backdrop-filter: blur(6px);
+      z-index: 2000;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-content {
+      background: white; border-radius: 22px; padding: 2.2rem;
+      width: 90%; max-width: 460px;
+      box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
+      text-align: center; animation: slideUp 0.3s ease;
+      position: relative;
+    }
+    .modal-content::before {
+      content: ''; position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: var(--gradient-hero);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    .modal-icon { font-size: 3rem; margin-bottom: 1rem; color: var(--success); }
+    .modal-title { font-size: 1.35rem; font-weight: 700; margin: 0.6rem 0; }
+    .modal-message { font-size: 1rem; color: var(--muted); margin: 0.6rem 0 1.4rem; }
+    .modal-actions { display: flex; gap: 1rem; justify-content: center; }
+    .modal-btn { padding: 0.75rem 1.4rem; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .modal-btn-primary { background: var(--gradient-hero); color: white; }
+    .modal-btn-primary:hover { transform: translateY(-1px); }
+    .modal-btn-secondary { background: #e5e7eb; color: var(--ink); }
+    .modal-btn-secondary:hover { background: #d1d5db; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .main-content { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .profile-upload-container { grid-template-columns: 1fr; }
+      .preview-details { grid-template-columns: 1fr; }
+      .header-nav > a { display: none; }
+      .sidebar { position: static; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating glass navbar -->
+  <nav class="navbar" id="navbar-shell">
+    <a href="dashboard.html" class="logo-wrap">
+      <span class="logo-icon-box"><i class="fas fa-bolt"></i></span>
+      <span class="logo-text">Event<span>Hub</span></span>
+    </a>
+    <div class="header-nav">
+      <a onclick="showSection('events')">My Events</a>
+      <a onclick="showSection('create')">Create Event</a>
+      <div class="user-menu" onclick="toggleDropdown()">
+        <div class="user-info-top">
+          <span class="name" id="top-username">Loading…</span>
+          <span class="role" id="top-email">…</span>
+        </div>
+        <div class="user-avatar" id="user-initials">U</div>
+        <div class="profile-dropdown" id="profile-dropdown">
+          <div class="dropdown-header">
+            <span class="u-name" id="drop-username">User Name</span><br>
+            <span class="u-email" id="drop-email" style="font-size:0.8rem;color:var(--muted);">user@example.com</span>
+          </div>
+          <button class="dropdown-item" onclick="showSection('profile')"><i class="fas fa-user"></i> Profile</button>
+          <button class="dropdown-item" onclick="logout()" style="color:var(--danger)"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+      <div class="main-content">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <ul class="sidebar-menu">
+            <li><a onclick="showSection('dashboard')" id="nav-dashboard" class="active"><i class="fas fa-table-cells-large"></i> Dashboard</a></li>
+            <li><a onclick="showSection('events')" id="nav-events"><i class="fas fa-calendar"></i> My Events</a></li>
+            <li><a onclick="showSection('create')" id="nav-create"><i class="fas fa-plus-circle"></i> Create Event</a></li>
+            <li><a onclick="showSection('bookings')" id="nav-bookings"><i class="fas fa-ticket"></i> Bookings</a></li>
+            <li><a onclick="showSection('earnings')" id="nav-earnings"><i class="fas fa-indian-rupee-sign"></i> Earnings</a></li>
+            <li><a onclick="showSection('messages')" id="nav-messages"><i class="fas fa-comment"></i> Messages <span class="nav-badge" id="nav-messages-badge">0</span></a></li>
+            <li><a onclick="showSection('profile')" id="nav-profile"><i class="fas fa-user"></i> Profile</a></li>
+          </ul>
+        </aside>
+
+        <!-- Sections -->
+        <div class="dashboard-content">
+
+          <!-- Dashboard -->
+          <section id="dashboard-section" class="section active">
+            <span class="eyebrow">Overview</span>
+            <h2>Dashboard</h2>
+            <p style="color:var(--muted); margin-bottom: 1.5rem;">Welcome back. Here's a quick snapshot of your account.</p>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon" style="background:var(--gradient-hero)"><i class="fas fa-calendar"></i></div>
+                <div><p>Total Events</p><h3 id="stat-events">0</h3></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon" style="background:linear-gradient(135deg,#10b981,#06b6d4)"><i class="fas fa-indian-rupee-sign"></i></div>
+                <div><p>Revenue</p><h3>₹0</h3></div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#ec4899)"><i class="fas fa-users"></i></div>
+                <div><p>Attendees</p><h3>0</h3></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- My Events -->
+          <section id="events-section" class="section">
+            <div class="section-header">
+              <div>
+                <span class="eyebrow">Your catalogue</span>
+                <h2>My Events</h2>
+              </div>
+              <button class="btn btn-primary" onclick="showSection('create')"><i class="fas fa-plus"></i> Create New</button>
+            </div>
+            <div id="events-list-container">
+              <p>Loading your events…</p>
+            </div>
+          </section>
+
+          <!-- Create / Edit Event -->
+          <section id="create-section" class="section">
+            <span class="eyebrow">Publishing</span>
+            <h2 id="form-title">Create New Event</h2>
+            <form id="event-form" style="margin-top:1.5rem">
+              <input type="hidden" id="edit-event-id">
+
+              <!-- Profile (cover) image -->
+              <div class="profile-upload-section">
+                <label class="profile-label">Event Profile Image</label>
+                <div class="profile-upload-container">
+                  <div class="profile-preview" id="profile-preview">
+                    <div class="profile-placeholder">
+                      <i class="fas fa-image" style="font-size:2rem"></i>
+                      <span>Event Cover</span>
+                    </div>
+                  </div>
+                  <div class="profile-upload-info">
+                    <h4>Upload Event Cover Image</h4>
+                    <p>Choose a high-quality image that represents your event. This is the main card image attendees see.</p>
+                    <button type="button" class="upload-btn" onclick="document.getElementById('profile-image').click()">
+                      <i class="fas fa-upload"></i> Choose Profile Image
+                    </button>
+                    <input type="file" id="profile-image" accept="image/*" style="display:none">
+                    <div><small style="color:var(--muted)">Recommended: 800x400px, Max 5MB</small></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-group"><label>Event Title</label><input type="text" id="ev-title" required></div>
+                <div class="form-group"><label>Category</label><input type="text" id="ev-cat" placeholder="e.g. Concert, Tech, Workshop" required></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label>Date</label><input type="datetime-local" id="ev-date" required></div>
+                <div class="form-group"><label>Venue / Location</label><input type="text" id="ev-loc" placeholder="Hall, street, landmark…" required></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label>City / Place</label><input type="text" id="ev-place" placeholder="e.g. Chennai, Coimbatore"></div>
+                <div class="form-group"><label>Map URL <span style="font-weight:400;color:var(--muted);font-size:0.75rem;">(Google Maps share link)</span></label><input type="url" id="ev-map" placeholder="https://maps.app.goo.gl/…"></div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group"><label>Price (₹)</label><input type="number" id="ev-price" required></div>
+                <div class="form-group"><label>Seats</label><input type="number" id="ev-seats" required></div>
+              </div>
+              <div class="form-group"><label>Description</label><textarea id="ev-desc" rows="3"></textarea></div>
+
+              <!-- Additional images -->
+              <div class="form-group">
+                <label class="file-upload-label">
+                  <i class="fas fa-images"></i> Additional Event Images (Max 10)
+                </label>
+                <div class="file-upload-area" onclick="document.getElementById('ev-files').click()">
+                  <div class="file-upload-content">
+                    <i class="fas fa-cloud-arrow-up" style="font-size:1.6rem"></i>
+                    <h4>Upload Additional Images</h4>
+                    <p>Drag &amp; drop images here or click to browse</p>
+                    <span class="file-types">PNG, JPG, JPEG up to 5MB each</span>
+                  </div>
+                </div>
+                <input type="file" id="ev-files" multiple accept="image/*" style="display:none">
+                <div id="images-row" class="images-row"></div>
+              </div>
+
+              <div class="action-buttons-container">
+                <button type="submit" class="action-btn btn-save" id="save-btn">
+                  <i class="fas fa-floppy-disk"></i> Save Event
+                </button>
+                <button type="button" class="action-btn btn-preview" id="preview-btn" onclick="previewEvent()" disabled>
+                  <i class="fas fa-eye"></i> Preview
+                </button>
+                <button type="button" class="action-btn btn-create" id="create-btn" onclick="createEvent()" disabled>
+                  <i class="fas fa-plus-circle"></i> Create Event
+                </button>
+              </div>
+
+              <div id="event-preview" class="event-preview-card" style="display:none;">
+                <img id="preview-image" class="preview-image" src="" alt="Event Preview">
+                <h3 id="preview-title" class="preview-title"></h3>
+                <div class="preview-details">
+                  <div class="preview-detail"><i class="fas fa-calendar"></i> <span id="preview-date"></span></div>
+                  <div class="preview-detail"><i class="fas fa-map-marker-alt"></i> <span id="preview-location"></span></div>
+                  <div class="preview-detail"><i class="fas fa-indian-rupee-sign"></i> <span id="preview-price"></span></div>
+                  <div class="preview-detail"><i class="fas fa-users"></i> <span id="preview-seats"></span> seats</div>
+                </div>
+                <p id="preview-description" class="preview-description"></p>
+              </div>
+            </form>
+          </section>
+
+          <!-- Profile -->
+          <section id="profile-section" class="section">
+            <span class="eyebrow">Account</span>
+            <h2>My Profile</h2>
+            <p style="color:var(--muted); margin-bottom: 1.5rem;">Manage your account, organization details, and contact information.</p>
+
+            <div class="profile-head">
+              <div class="avatar-big" id="prof-avatar">
+                <span id="prof-avatar-initial">U</span>
+                <button type="button" class="avatar-edit-btn" id="prof-avatar-btn" onclick="document.getElementById('prof-avatar-input').click()" title="Change profile photo">
+                  <i class="fas fa-camera"></i>
+                </button>
+                <input type="file" id="prof-avatar-input" accept="image/*" style="display:none">
+              </div>
+              <div class="who">
+                <h3 id="prof-display-name">Loading…</h3>
+                <div class="who-email" id="prof-display-email">…</div>
+                <span class="role-pill" id="prof-display-role">USER</span>
+              </div>
+            </div>
+
+            <form id="profile-form">
+              <div class="profile-card-section">
+                <h3><i class="fas fa-id-card"></i> Personal information</h3>
+                <div class="form-grid">
+                  <div class="form-group"><label>Name</label><input type="text" id="prof-name" required></div>
+                  <div class="form-group"><label>Email</label><input type="email" id="prof-email" required></div>
+                </div>
+                <div class="form-grid">
+                  <div class="form-group"><label>Mobile</label><input type="text" id="prof-mobile" required></div>
+                  <div class="form-group"><label>Role</label><input type="text" id="prof-role" readonly></div>
+                </div>
+                <div class="form-group"><label>Address</label><textarea id="prof-address" placeholder="Your residential address (optional)"></textarea></div>
+              </div>
+
+              <!-- Organization-only fields (revealed only for organizers) -->
+              <div class="profile-card-section" id="prof-org-block" style="display:none;">
+                <h3><i class="fas fa-building"></i> Organization details</h3>
+                <div class="form-grid">
+                  <div class="form-group"><label>Organization Name</label><input type="text" id="prof-org-name" placeholder="Acme Events"></div>
+                  <div class="form-group"><label>Organization Phone</label><input type="text" id="prof-org-phone" placeholder="Public contact number"></div>
+                </div>
+                <div class="form-group"><label>Organization Address</label><textarea id="prof-org-address" placeholder="Street, City, State, PIN"></textarea></div>
+                <div class="form-group"><label>Website</label><input type="url" id="prof-org-website" placeholder="https://example.com"></div>
+                <div class="form-group"><label>About the Organization</label><textarea id="prof-org-description" placeholder="What attendees should know about you"></textarea></div>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; margin-top:1rem;">
+                <button type="submit" class="btn btn-primary" id="prof-save-btn">
+                  <i class="fas fa-floppy-disk"></i> Save Changes
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Other -->
+          <section id="bookings-section" class="section">
+            <span class="eyebrow">Sales</span>
+            <h2>Bookings</h2>
+            <p style="color:var(--muted); margin-top:0.6rem;">Manage your ticket sales here. Booking analytics coming soon.</p>
+          </section>
+          <section id="earnings-section" class="section">
+            <span class="eyebrow">Finance</span>
+            <h2>Earnings</h2>
+            <p style="color:var(--muted); margin-top:0.6rem;">Your total revenue: <b>₹0</b>.</p>
+          </section>
+          <section id="messages-section" class="section">
+            <div class="section-header">
+              <div>
+                <span class="eyebrow">Inbox</span>
+                <h2>Messages</h2>
+              </div>
+              <button class="btn btn-ghost" id="msg-refresh-btn"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+            <p id="msg-summary" style="color:var(--muted); margin-bottom: 1.2rem;">Loading conversations…</p>
+            <div id="msg-thread-list" class="msg-thread-list"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div id="event-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-icon" id="modal-icon"><i class="fas fa-circle-check"></i></div>
+      <h3 class="modal-title" id="modal-title">Event Created!</h3>
+      <div class="modal-message" id="modal-message">Your event has been successfully created.</div>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-primary" id="modal-btn-primary" onclick="handleModalPrimary()">See My Events</button>
+        <button class="modal-btn modal-btn-secondary" id="modal-btn-secondary" onclick="handleModalSecondary()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Event details modal (opened by clicking a row in My Events) -->
+  <style>
+    .ev-modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(7, 9, 26, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 3000;
+      align-items: center; justify-content: center;
+      padding: 1.5rem;
+      animation: ehFade 0.25s ease-out;
+    }
+    .ev-modal-overlay.show { display: flex; }
+    @keyframes ehFade { from { opacity: 0; } to { opacity: 1; } }
+    .ev-modal-card {
+      background: white; border-radius: 22px;
+      width: 100%; max-width: 640px; max-height: 92vh;
+      overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 30px 80px rgba(15, 23, 42, 0.4);
+      animation: ehZoom 0.32s cubic-bezier(.2,.9,.3,1.2);
+      position: relative;
+    }
+    @keyframes ehZoom {
+      from { opacity: 0; transform: scale(0.94); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .ev-modal-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--gradient-hero);
+    }
+    .ev-modal-cover {
+      width: 100%; height: 200px; object-fit: cover;
+      background: var(--gradient-hero);
+    }
+    .ev-modal-body {
+      padding: 1.5rem; overflow-y: auto;
+    }
+    .ev-modal-body h3 {
+      font-size: 1.5rem; margin-bottom: 0.4rem;
+    }
+    .ev-modal-body .ev-cat {
+      display: inline-block;
+      padding: 4px 12px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+    .ev-meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1.2rem;
+    }
+    .ev-meta-cell {
+      padding: 0.85rem;
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      border: 1px solid rgba(99,102,241,0.1);
+      border-radius: 12px;
+    }
+    .ev-meta-cell .l {
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .ev-meta-cell .v {
+      margin-top: 4px;
+      font-weight: 600; color: var(--ink);
+      word-break: break-word;
+    }
+    .ev-meta-cell a { color: var(--primary); text-decoration: none; word-break: break-all; }
+    .ev-meta-cell a:hover { text-decoration: underline; }
+    .ev-modal-desc {
+      padding: 1rem;
+      background: #fafbff;
+      border: 1px solid #f1f5f9;
+      border-radius: 12px;
+      color: #475569;
+      line-height: 1.55;
+      font-size: 0.93rem;
+      margin-bottom: 1rem;
+    }
+    .ev-modal-actions {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      padding: 1rem 1.5rem 1.5rem;
+      border-top: 1px solid #f1f5f9;
+    }
+    .ev-modal-actions button, .ev-modal-actions a {
+      flex: 1; min-width: 130px;
+      padding: 0.8rem 1rem; border-radius: 12px;
+      font-weight: 700; font-size: 0.9rem;
+      cursor: pointer; border: none;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      font-family: inherit;
+    }
+    .ev-btn-edit {
+      background: var(--gradient-hero); color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .ev-btn-edit:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(236,72,153,0.45); }
+    .ev-btn-map {
+      background: rgba(16,185,129,0.1); color: var(--success);
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .ev-btn-map:hover { background: rgba(16,185,129,0.2); transform: translateY(-1px); }
+    .ev-btn-delete {
+      background: rgba(239,68,68,0.08); color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+    .ev-btn-delete:hover { background: rgba(239,68,68,0.15); transform: translateY(-1px); }
+    .ev-btn-close {
+      background: rgba(99,102,241,0.08); color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .ev-btn-close:hover { background: rgba(99,102,241,0.15); }
+
+    /* Make My Events rows feel clickable */
+    #events-list-container .events-table tbody tr { cursor: pointer; }
+    #events-list-container .events-table tbody tr:hover { background: #fafbff; }
+  </style>
+  <div id="ev-detail-modal" class="ev-modal-overlay" role="dialog" aria-modal="true">
+    <div class="ev-modal-card">
+      <img id="evd-cover" class="ev-modal-cover" alt="Event cover">
+      <div class="ev-modal-body">
+        <span class="ev-cat" id="evd-category">Event</span>
+        <h3 id="evd-title">Event title</h3>
+        <div class="ev-meta-grid">
+          <div class="ev-meta-cell"><div class="l"><i class="fas fa-calendar-days"></i> Date &amp; time</div><div class="v" id="evd-date">—</div></div>
+          <div class="ev-meta-cell"><div class="l"><i class="fas fa-map-marker-alt"></i> Venue</div><div class="v" id="evd-loc">—</div></div>
+          <div class="ev-meta-cell"><div class="l"><i class="fas fa-city"></i> City / Place</div><div class="v" id="evd-place">—</div></div>
+          <div class="ev-meta-cell"><div class="l"><i class="fas fa-tag"></i> Price</div><div class="v" id="evd-price">—</div></div>
+          <div class="ev-meta-cell"><div class="l"><i class="fas fa-chair"></i> Seats</div><div class="v" id="evd-seats">—</div></div>
+          <div class="ev-meta-cell"><div class="l"><i class="fas fa-link"></i> Map</div><div class="v"><a id="evd-map" href="#" target="_blank" rel="noopener">—</a></div></div>
+        </div>
+        <div class="ev-modal-desc" id="evd-desc">No description provided.</div>
+      </div>
+      <div class="ev-modal-actions">
+        <button type="button" class="ev-btn-edit"   id="evd-edit-btn"><i class="fas fa-pen"></i> Edit</button>
+        <a              class="ev-btn-map"    id="evd-map-btn"   href="#" target="_blank" rel="noopener"><i class="fas fa-map-location-dot"></i> Open map</a>
+        <button type="button" class="ev-btn-delete" id="evd-delete-btn"><i class="fas fa-trash"></i> Delete</button>
+        <button type="button" class="ev-btn-close"  id="evd-close-btn"><i class="fas fa-xmark"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Navbar shadow on scroll
+    const navbarShell = document.getElementById('navbar-shell');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 30) navbarShell.classList.add('scrolled');
+      else navbarShell.classList.remove('scrolled');
+    });
+  </script>
+  <script src="/Public/js/popup.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="/Public/js/chat-widget.js"></script>
+</body>
+</html>

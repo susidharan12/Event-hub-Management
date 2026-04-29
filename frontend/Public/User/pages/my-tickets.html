@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>My Tickets - EventHub</title>
+  <link rel="stylesheet" href="../css/pages.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background:#f8fafc; }
+    .container { max-width:1000px; margin:2rem auto; padding:1rem; }
+    .ticket { background:white; border-radius:12px; padding:1rem; margin-bottom:1rem; box-shadow:0 4px 16px rgba(2,6,23,0.06); display:flex; align-items:center; gap:1rem; }
+    .ticket .meta { flex:1 }
+    .ticket .actions { text-align:right }
+    .logo { font-weight:800; font-size:1.25rem }
+    .qr-box { width:96px; height:96px; background:#f3f4f6; display:flex; align-items:center; justify-content:center; border-radius:8px }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div class="logo">Event<span style="color:#6366f1">Hub</span></div>
+      <div><button onclick="history.back()" class="btn">Back</button></div>
+    </div>
+
+    <h2>My Tickets</h2>
+    <p id="sub">Your tickets are listed below. Click "View" to see full ticket details.</p>
+
+    <div id="tickets-list">
+      <p>Loading tickets...</p>
+    </div>
+  </div>
+
+  <script src="/Public/js/chat-widget.js"></script>
+  <!-- qrcode@1.5.3 dropped the prebuilt browser bundle from npm; load 1.5.0 with a cdnjs fallback. -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+  <script>
+    if (typeof QRCode === 'undefined' || !QRCode.toCanvas) {
+      document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.0/qrcode.min.js"><\/script>');
+    }
+  </script>
+  <script src="../js/pages/my-tickets.js"></script>
+</body>
+</html>
