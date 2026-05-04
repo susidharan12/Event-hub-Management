@@ -66,37 +66,37 @@ class PaymentService {
       {
         id: 'upi',
         name: 'UPI (Google Pay, PhonePe, Paytm)',
-        icon: '📱',
+        icon: 'fa-solid fa-mobile-screen-button',
         description: 'Fast and secure UPI payment'
       },
       {
         id: 'card',
         name: 'Credit/Debit Card',
-        icon: '💳',
+        icon: 'fa-solid fa-credit-card',
         description: 'Visa, Mastercard, RuPay'
       },
       {
         id: 'netbanking',
         name: 'Net Banking',
-        icon: '🏦',
+        icon: 'fa-solid fa-building-columns',
         description: 'Direct bank transfer'
       },
       {
         id: 'googlepay',
         name: 'Google Pay',
-        icon: '🔵',
+        icon: 'fa-brands fa-google-pay',
         description: 'Quick payment with Google Pay'
       },
       {
         id: 'phonepe',
         name: 'PhonePe',
-        icon: '📱',
+        icon: 'fa-solid fa-mobile-screen',
         description: 'Fast and easy PhonePe payment'
       },
       {
         id: 'paytm',
         name: 'Paytm',
-        icon: '💰',
+        icon: 'fa-solid fa-wallet',
         description: 'Paytm wallet or UPI'
       }
     ];

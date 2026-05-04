@@ -90,7 +90,7 @@ router.get('/thread/:eventId/:otherId', authenticateToken, async (req, res) => {
 
   try {
     const messages = await pool.query(`
-      SELECT id, event_id, sender_id, recipient_id, body, created_at, read_at
+      SELECT id, event_id, sender_id, recipient_id, body, created_at, read_at, edited_at
         FROM messages
        WHERE event_id = $1
          AND ((sender_id = $2 AND recipient_id = $3)
@@ -244,6 +244,64 @@ router.get('/unread-count', authenticateToken, async (req, res) => {
     res.json({ unread: result.rows[0].cnt || 0 });
   } catch (err) {
     res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────
+// PUT /api/messages/:id
+// Edit a message — only the original sender can update the body.
+// Sets `edited_at` so the UI can show an "edited" label.
+// ──────────────────────────────────────────────────────────────────
+router.put('/:id', authenticateToken, async (req, res) => {
+  const userId = req.user.userId || req.user.id;
+  const id     = parseInt(req.params.id, 10);
+  const body   = (req.body && typeof req.body.body === 'string') ? req.body.body.trim() : '';
+
+  if (!Number.isFinite(id))   return res.status(400).json({ error: 'Invalid message id' });
+  if (!body)                  return res.status(400).json({ error: 'Body cannot be empty' });
+  if (body.length > 4000)     return res.status(400).json({ error: 'Message too long' });
+
+  try {
+    const r = await pool.query(
+      `UPDATE messages
+          SET body = $1,
+              edited_at = NOW()
+        WHERE id = $2
+          AND sender_id = $3
+        RETURNING id, event_id, sender_id, recipient_id, body, created_at, read_at, edited_at`,
+      [body, id, userId]
+    );
+    if (r.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found or not yours' });
+    }
+    res.json(r.rows[0]);
+  } catch (err) {
+    console.error('Edit message error:', err);
+    res.status(500).json({ error: 'Failed to edit message' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────
+// DELETE /api/messages/:id
+// Hard-delete a message — only the original sender can delete.
+// ──────────────────────────────────────────────────────────────────
+router.delete('/:id', authenticateToken, async (req, res) => {
+  const userId = req.user.userId || req.user.id;
+  const id     = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid message id' });
+
+  try {
+    const r = await pool.query(
+      'DELETE FROM messages WHERE id = $1 AND sender_id = $2 RETURNING id',
+      [id, userId]
+    );
+    if (r.rows.length === 0) {
+      return res.status(404).json({ error: 'Message not found or not yours' });
+    }
+    res.json({ success: true, id: r.rows[0].id });
+  } catch (err) {
+    console.error('Delete message error:', err);
+    res.status(500).json({ error: 'Failed to delete message' });
   }
 });
 

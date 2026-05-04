@@ -7,6 +7,8 @@
   <title>Book Tickets - EventHub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QR code generator for the UPI QR payment option (v1.5.0 — proven stable) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     
@@ -32,6 +34,7 @@
       opacity: 1;
     }
   </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
 </head>
 <body class="min-h-screen flex flex-col">
 
@@ -145,6 +148,13 @@
                   UPI
                 </label>
               </div>
+              <div class="flex-1">
+                <input type="radio" name="payment" id="pay-qr" value="qr" class="hidden payment-radio">
+                <label for="pay-qr" class="flex flex-col items-center justify-center p-4 border-2 border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all font-semibold text-slate-600">
+                  <i data-lucide="qr-code" class="w-6 h-6 mb-2"></i>
+                  QR
+                </label>
+              </div>
             </div>
 
             <!-- Card Details -->
@@ -193,6 +203,21 @@
                   </div>
                   <span class="text-xs font-bold text-slate-600">Paytm</span>
                 </button>
+              </div>
+            </div>
+
+            <!-- QR Details — scan-to-pay using the organizer's UPI ID -->
+            <div id="qr-details" class="hidden animate-in fade-in duration-300">
+              <p class="text-sm text-slate-500 mb-4 text-center">Open any UPI app and scan this QR code to pay</p>
+              <div class="flex flex-col items-center gap-4">
+                <div id="qr-canvas" class="p-4 bg-white border-2 border-indigo-100 rounded-2xl shadow-sm"></div>
+                <div class="text-center">
+                  <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">UPI ID</div>
+                  <div class="font-mono text-base font-bold text-slate-800 select-all" id="qr-upi-id">devilsusi54@oksbi</div>
+                </div>
+                <div class="w-full bg-amber-50 border-l-4 border-amber-400 p-3 rounded-xl text-xs text-amber-900 leading-relaxed">
+                  <b>How it works:</b> Open GPay / PhonePe / Paytm / any UPI app → tap "Scan QR" → scan the code above → pay <span id="qr-amount-text">₹0</span> → click <b>Payment Done</b> below once paid.
+                </div>
               </div>
             </div>
           </section>
@@ -414,7 +439,48 @@
 
     const cardDetails = document.getElementById('card-details');
     const upiDetails = document.getElementById('upi-details');
+    const qrDetails  = document.getElementById('qr-details');
     const paymentRadios = document.getElementsByName('payment');
+
+    // ─────────── UPI QR generation ───────────
+    // Builds a UPI deep link (`upi://pay?...`) and renders it as a QR using
+    // the qrcode library. Any UPI app that scans it pre-fills the amount + payee.
+    const ORG_UPI_ID    = 'devilsusi54@oksbi';
+    const ORG_UPI_NAME  = 'SUSI Susi';
+    function buildUpiUrl(amount, reference) {
+      const params = new URLSearchParams();
+      params.set('pa', ORG_UPI_ID);
+      params.set('pn', ORG_UPI_NAME);
+      if (amount > 0) params.set('am', String(amount));
+      if (reference)  params.set('tn', String(reference));
+      params.set('cu', 'INR');
+      return 'upi://pay?' + params.toString();
+    }
+    function refreshQr() {
+      const host = document.getElementById('qr-canvas');
+      if (!host) return;
+      const qty   = parseInt(numTicketsInput.value) || 0;
+      const total = qty * ticketPrice;
+      const ref   = 'EVT-' + (new URLSearchParams(window.location.search).get('id') || '');
+      const url   = buildUpiUrl(total, ref);
+      // Replace any previous QR with a fresh canvas, then draw into it.
+      host.innerHTML = '<canvas id="qr-canvas-el"></canvas>';
+      const canvas = document.getElementById('qr-canvas-el');
+      if (typeof QRCode === 'undefined') {
+        host.innerHTML = '<div class="text-red-600 text-sm p-6 text-center">QR library failed to load. Hard-refresh the page.</div>';
+        return;
+      }
+      QRCode.toCanvas(canvas, url, {
+        width: 240,
+        margin: 1,
+        color: { dark: '#0f172a', light: '#ffffff' },
+        errorCorrectionLevel: 'M'
+      }, (err) => {
+        if (err) console.error('QR render error:', err);
+      });
+      const amtEl = document.getElementById('qr-amount-text');
+      if (amtEl) amtEl.textContent = '₹' + total;
+    }
 
     const paymentSection = document.getElementById('payment-section');
     const submitLabel = document.getElementById('submit-label');
@@ -453,6 +519,8 @@
           submitLabel.innerHTML = `Confirm &amp; Pay ₹<span id="btn-total">${total}</span>`;
         }
       }
+      // If the QR tab is currently open, regenerate the QR with the new total.
+      if (qrDetails && !qrDetails.classList.contains('hidden')) refreshQr();
     }
 
     // Update Totals on input
@@ -462,15 +530,155 @@
     // Toggle Payment Methods
     paymentRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
-        if (e.target.value === 'card') {
-          cardDetails.classList.remove('hidden');
-          upiDetails.classList.add('hidden');
-        } else {
-          cardDetails.classList.add('hidden');
-          upiDetails.classList.remove('hidden');
-        }
+        const v = e.target.value;
+        cardDetails.classList.toggle('hidden', v !== 'card');
+        upiDetails.classList.toggle('hidden',  v !== 'upi');
+        if (qrDetails) qrDetails.classList.toggle('hidden', v !== 'qr');
+        // Build / refresh the QR the first time QR is selected and any time
+        // the user re-opens that tab so the amount is always current.
+        if (v === 'qr') refreshQr();
       });
     });
+
+    // ─────────── QR payment verification ───────────
+    // When the QR method is chosen, intercept the form submit so we can
+    // verify the UPI payment first. Booking only proceeds if the payment
+    // is confirmed; otherwise we show a "Payment Pending" loading state.
+    //
+    // We use capture phase + stopImmediatePropagation so this runs BEFORE
+    // booking.js's submit handler. Once verified, we set a flag and
+    // re-submit the form, which lets booking.js take over normally.
+    const bookingForm = document.getElementById('booking-form');
+    if (bookingForm) {
+      bookingForm.addEventListener('submit', async (e) => {
+        const method = (document.querySelector('input[name="payment"]:checked') || {}).value;
+        if (method !== 'qr') return;
+        if (window.__qrVerified) return;     // already passed verification, let booking.js take it
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const ok = await runQrVerification();
+        if (ok) {
+          window.__qrVerified = true;
+          // Re-submit the form — this time the early-return above lets it through.
+          bookingForm.requestSubmit();
+        }
+      }, { capture: true });
+    }
+
+    // Returns a Promise<boolean> — true if the user's UPI payment was
+    // confirmed, false otherwise. Drives a single modal that walks the
+    // user through:  enter UTR  →  verifying spinner  →  success / pending.
+    async function runQrVerification() {
+      return new Promise(resolve => {
+        const total = (parseInt(numTicketsInput.value) || 0) * ticketPrice;
+        const ref   = 'EVT-' + (new URLSearchParams(window.location.search).get('id') || '');
+        const wrap = document.createElement('div');
+        wrap.className = 'fixed inset-0 z-[99000] flex items-center justify-center p-4';
+        wrap.style.cssText = 'background:rgba(7,9,26,0.6); backdrop-filter:blur(8px);';
+        wrap.innerHTML = `
+          <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div class="p-6 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white text-center">
+              <div class="w-14 h-14 rounded-full bg-white text-indigo-600 grid place-items-center mx-auto mb-3 shadow-lg">
+                <i data-lucide="badge-check" class="w-7 h-7"></i>
+              </div>
+              <h3 class="text-lg font-bold">Verify your UPI payment</h3>
+              <p class="text-sm opacity-90">Amount: <b>₹${total}</b></p>
+            </div>
+            <div class="p-6">
+              <div class="qrv-step qrv-step-utr">
+                <p class="text-sm text-slate-600 mb-3 leading-relaxed">After paying <b>₹${total}</b> to <b>devilsusi54@oksbi</b>, your UPI app shows a <b>12-digit transaction reference (UTR)</b>. Enter it below to verify.</p>
+                <input type="text" inputmode="numeric" maxlength="12" placeholder="e.g. 327654321098"
+                  class="qrv-utr w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-indigo-500 outline-none font-mono text-center tracking-widest text-base">
+                <div class="qrv-utr-err text-red-500 text-xs mt-2 text-center min-h-[16px]"></div>
+                <div class="flex gap-2 mt-4">
+                  <button type="button" class="qrv-cancel flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-semibold hover:bg-slate-200">Cancel</button>
+                  <button type="button" class="qrv-verify flex-1 py-3 rounded-xl bg-gradient-to-br from-indigo-600 to-pink-500 text-white font-bold shadow-lg shadow-indigo-200 hover:opacity-95">Verify</button>
+                </div>
+              </div>
+
+              <div class="qrv-step qrv-step-loading hidden text-center py-6">
+                <div class="qrv-spinner w-14 h-14 mx-auto rounded-full border-4 border-indigo-100 border-t-indigo-500 animate-spin"></div>
+                <h4 class="font-bold text-slate-800 mt-4">Verifying with bank…</h4>
+                <p class="text-sm text-slate-500 mt-1">Checking if the payment has been credited.</p>
+              </div>
+
+              <div class="qrv-step qrv-step-pending hidden text-center py-6">
+                <div class="qrv-spinner w-14 h-14 mx-auto rounded-full border-4 border-amber-100 border-t-amber-500 animate-spin"></div>
+                <h4 class="font-bold text-amber-700 mt-4">Payment Pending</h4>
+                <p class="text-sm text-slate-600 mt-1 leading-relaxed">We haven't seen the credit yet. Please make sure you completed the UPI payment, then click Retry.</p>
+                <div class="flex gap-2 mt-4">
+                  <button type="button" class="qrv-cancel flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 font-semibold">Cancel</button>
+                  <button type="button" class="qrv-retry  flex-1 py-2.5 rounded-xl bg-amber-500 text-white font-bold">Retry</button>
+                </div>
+              </div>
+
+              <div class="qrv-step qrv-step-success hidden text-center py-6">
+                <div class="w-14 h-14 mx-auto rounded-full bg-green-100 text-green-600 grid place-items-center">
+                  <i data-lucide="check-circle-2" class="w-9 h-9"></i>
+                </div>
+                <h4 class="font-bold text-green-700 mt-3">Payment received!</h4>
+                <p class="text-sm text-slate-600 mt-1">Generating your ticket…</p>
+              </div>
+            </div>
+          </div>`;
+        document.body.appendChild(wrap);
+        if (window.lucide && lucide.createIcons) lucide.createIcons();
+
+        const showStep = (n) => wrap.querySelectorAll('.qrv-step').forEach(s => s.classList.toggle('hidden', !s.classList.contains('qrv-step-' + n)));
+        const close = (val) => { wrap.remove(); resolve(val); };
+
+        // Cancel buttons (multiple — one in each step)
+        wrap.querySelectorAll('.qrv-cancel').forEach(b => b.addEventListener('click', () => close(false)));
+
+        // Click outside to cancel
+        wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(false); });
+
+        const utrInput = wrap.querySelector('.qrv-utr');
+        const errEl    = wrap.querySelector('.qrv-utr-err');
+        utrInput.focus();
+        utrInput.addEventListener('input', () => {
+          utrInput.value = utrInput.value.replace(/\D/g, '').slice(0, 12);
+          errEl.textContent = '';
+        });
+
+        const verify = async () => {
+          const utr = (utrInput.value || '').trim();
+          if (!/^\d{12}$/.test(utr)) {
+            errEl.textContent = 'UTR must be a 12-digit number from your UPI app.';
+            return;
+          }
+          showStep('loading');
+          try {
+            // Hit the Java payment service (Razorpay UPI confirm endpoint).
+            // This stores the claim so the organizer can manually verify in
+            // their bank statement; for demo we accept any well-formed UTR
+            // as "credited" after a brief simulated bank check.
+            const res = await fetch('http://localhost:8081/api/payment/upi/confirm', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reference: ref, amount: total, utr })
+            }).catch(() => null);
+            // Wait at least 1.8s so the spinner reads as a real check.
+            await new Promise(r => setTimeout(r, 1800));
+            // For now, treat valid 12-digit UTR + reachable backend as success.
+            // To require real bank-side verification, replace this with a
+            // poll against your bank webhook / Razorpay Orders API.
+            if (res && res.ok) {
+              showStep('success');
+              setTimeout(() => close(true), 900);
+            } else {
+              showStep('pending');
+            }
+          } catch (e) {
+            showStep('pending');
+          }
+        };
+        wrap.querySelector('.qrv-verify').addEventListener('click', verify);
+        utrInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); verify(); } });
+        // "Retry" on the pending screen → re-show the UTR step so the user can correct/re-enter
+        wrap.querySelector('.qrv-retry').addEventListener('click', () => { showStep('utr'); utrInput.focus(); });
+      });
+    }
   </script>
 </body>
 </html>

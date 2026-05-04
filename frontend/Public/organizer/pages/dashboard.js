@@ -36,10 +36,13 @@ function validateForm() {
     const price = document.getElementById('ev-price').value;
     const seats = document.getElementById('ev-seats').value;
     const description = document.getElementById('ev-desc').value.trim();
-    const hasImage = document.getElementById('profile-image').files.length > 0;
-    
+    // In edit mode the existing cover image is already on the server; the
+    // file input is necessarily empty because browsers can't pre-fill it.
+    // Only REQUIRE a fresh image when creating a new event.
+    const hasImage = !!editingEventId || document.getElementById('profile-image').files.length > 0;
+
     const isValid = title && category && date && location && price && seats && description && hasImage;
-    
+
     document.getElementById('preview-btn').disabled = !isValid;
     document.getElementById('create-btn').disabled = !isValid;
 }
@@ -83,6 +86,14 @@ function showSection(sectionId) {
     if (sectionId === 'dashboard') loadDashboardStats();
     if (sectionId === 'profile') loadProfile().catch(() => {});
     if (sectionId === 'messages') loadMessageThreads();
+    if (sectionId === 'bookings') loadOrganizerBookings();
+    if (sectionId === 'earnings') loadEarnings();
+    if (sectionId === 'scanner')  loadScanner();
+    // Stop the camera if the organizer navigates AWAY from the scanner.
+    if (sectionId !== 'scanner' && window.__scnHandle) {
+        try { window.__scnHandle.stop().catch(() => {}); } catch (_) {}
+        window.__scnHandle = null;
+    }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -92,25 +103,556 @@ function toggleDropdown() {
 }
 
 function logout() {
-    localStorage.clear();
-    window.location.href = '/index.html';
+    showLogoutConfirm(() => {
+        localStorage.clear();
+        window.location.href = '/index.html';
+    });
+}
+
+function showLogoutConfirm(onConfirm) {
+    if (document.getElementById('logout-confirm-wrap')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'logout-confirm-wrap';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:99000;display:flex;align-items:center;justify-content:center;background:rgba(7,9,26,0.6);backdrop-filter:blur(8px);padding:1.5rem;font-family:Inter,Segoe UI,sans-serif;animation:lcFade 0.2s ease;';
+    wrap.innerHTML = `
+      <style>
+        @keyframes lcFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes lcZoom { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+      </style>
+      <div style="background:white;border-radius:22px;width:100%;max-width:400px;overflow:hidden;box-shadow:0 30px 60px rgba(15,23,42,0.4);animation:lcZoom 0.25s cubic-bezier(.2,.9,.3,1.2);">
+        <div style="padding:1.6rem 1.5rem 1.2rem;background:linear-gradient(135deg,#ef4444 0%,#ec4899 100%);color:white;text-align:center;">
+          <div style="width:54px;height:54px;border-radius:50%;background:white;color:#ef4444;display:grid;place-items:center;font-size:1.4rem;margin:0 auto 0.7rem;box-shadow:0 8px 22px rgba(0,0,0,0.18);">
+            <i class="fas fa-right-from-bracket"></i>
+          </div>
+          <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.2rem;font-weight:800;margin:0 0 4px;">Log out of EventHub?</h3>
+          <p style="opacity:0.95;font-size:0.86rem;margin:0;">You'll need to sign in again to access your dashboard.</p>
+        </div>
+        <div style="display:flex;gap:10px;padding:1.2rem 1.5rem 1.5rem;">
+          <button class="lc-cancel" style="flex:1;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(99,102,241,0.2);background:rgba(99,102,241,0.08);color:#6366f1;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.92rem;">Stay signed in</button>
+          <button class="lc-confirm" style="flex:1;padding:0.85rem 1rem;border-radius:12px;border:none;background:linear-gradient(135deg,#ef4444,#ec4899);color:white;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.92rem;box-shadow:0 8px 20px rgba(239,68,68,0.35);">
+            <i class="fas fa-right-from-bracket"></i> Log out
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    document.body.style.overflow = 'hidden';
+    const close = () => { wrap.remove(); document.body.style.overflow = ''; };
+    wrap.querySelector('.lc-cancel').addEventListener('click', close);
+    wrap.querySelector('.lc-confirm').addEventListener('click', () => { close(); try { onConfirm(); } catch (_) {} });
+    wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+    document.addEventListener('keydown', function esc(ev) {
+        if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
 }
 
 async function loadDashboardStats() {
     const token = getToken();
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+
     try {
-        const response = await fetch(`${API_BASE}/events/my-events`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (response.ok) {
-            const events = await response.json();
-            document.getElementById('stat-events').textContent = Array.isArray(events) ? events.length : 0;
+        // Fetch organizer events + their bookings in parallel.
+        const [eventsRes, bookingsRes] = await Promise.all([
+            fetch(`${API_BASE}/events/my-events`,         { headers: { 'Authorization': `Bearer ${token}` } }),
+            fetch(`${API_BASE}/bookings/organizer/all`,   { headers: { 'Authorization': `Bearer ${token}` } }),
+        ]);
+
+        // ── Events ──────────────────────────────────────────
+        let events = [];
+        if (eventsRes.ok) events = await eventsRes.json();
+        if (!Array.isArray(events)) events = [];
+        const now = Date.now();
+        const upcoming = events.filter(ev => ev.event_date && new Date(ev.event_date).getTime() > now).length;
+        setText('stat-events',     events.length);
+        setText('stat-events-sub', events.length === 0
+            ? 'No events yet'
+            : `${upcoming} upcoming · ${events.length - upcoming} past`);
+
+        // ── Bookings → Revenue + Attendees ─────────────────
+        let bookings = [];
+        if (bookingsRes.ok) {
+            const data = await bookingsRes.json();
+            bookings = Array.isArray(data) ? data : (data.bookings || []);
         }
+        // A booking is "confirmed" if it isn't cancelled.
+        const confirmed = bookings.filter(b => !b.cancelled_at);
+        const cancelled = bookings.filter(b =>  b.cancelled_at);
+
+        const revenue   = confirmed.reduce((sum, b) => sum + (Number(b.total_price)   || 0), 0);
+        const refunded  = cancelled.reduce((sum, b) => sum + (Number(b.refund_amount) || 0), 0);
+        const attendees = confirmed.reduce((sum, b) => sum + (Number(b.seats_booked)  || 0), 0);
+
+        setText('stat-revenue',     '₹' + revenue.toLocaleString('en-IN'));
+        setText('stat-revenue-sub', `from ${confirmed.length} booking${confirmed.length === 1 ? '' : 's'}`
+            + (refunded > 0 ? ` · ₹${refunded.toLocaleString('en-IN')} refunded` : ''));
+
+        setText('stat-attendees',     attendees);
+        setText('stat-attendees-sub', `${confirmed.length} confirmed · ${cancelled.length} cancelled`);
+
+        // ── Per-event performance — donut chart for each event ─────────
+        renderEventPerformance(events, confirmed);
     } catch (error) {
         console.error('Error loading stats:', error);
-        document.getElementById('stat-events').textContent = '0';
+        setText('stat-events',    '0');
+        setText('stat-revenue',   '₹0');
+        setText('stat-attendees', '0');
+        renderEventPerformance([], []);
     }
 }
+
+/**
+ * Renders a grid of per-event donut cards under the dashboard stats.
+ * Each card shows: event title · date · animated SVG donut · booked/total numbers.
+ *
+ * Booked seats per event are computed from the bookings list (sum of seats_booked
+ * for confirmed bookings on that event), so it stays accurate even if the
+ * `available_seats` column gets out of sync with reality.
+ */
+function renderEventPerformance(events, confirmedBookings) {
+    const grid = document.getElementById('events-perf-grid');
+    const meta = document.getElementById('events-perf-meta');
+    if (!grid) return;
+
+    if (!events || events.length === 0) {
+        grid.innerHTML = `
+          <div class="perf-empty">
+            <div class="ic"><i class="fas fa-calendar-plus"></i></div>
+            <div style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.05rem;font-weight:800;color:var(--ink);">No events yet</div>
+            <div style="font-size:0.88rem;margin-top:6px;">Create your first event to see seat-fill stats here.</div>
+          </div>`;
+        if (meta) meta.textContent = '';
+        return;
+    }
+
+    // Group bookings by event_id so we can compute seats sold per event.
+    const seatsByEvent = {};
+    confirmedBookings.forEach(b => {
+        const k = b.event_id;
+        seatsByEvent[k] = (seatsByEvent[k] || 0) + (Number(b.seats_booked) || 0);
+    });
+
+    // Inject the SVG gradient definitions once (referenced by every donut).
+    // Four palettes — default indigo→pink, plus green/amber/red for fill states.
+    const gradDef = `
+      <svg width="0" height="0" style="position:absolute;">
+        <defs>
+          <linearGradient id="perf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"  stop-color="#6366f1"/>
+            <stop offset="50%" stop-color="#8b5cf6"/>
+            <stop offset="100%" stop-color="#ec4899"/>
+          </linearGradient>
+          <linearGradient id="perf-grad-green" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"  stop-color="#10b981"/>
+            <stop offset="100%" stop-color="#06b6d4"/>
+          </linearGradient>
+          <linearGradient id="perf-grad-amber" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"  stop-color="#f59e0b"/>
+            <stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+          <linearGradient id="perf-grad-red" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"  stop-color="#ef4444"/>
+            <stop offset="100%" stop-color="#ec4899"/>
+          </linearGradient>
+        </defs>
+      </svg>`;
+
+    const fmtDate = iso => {
+        if (!iso) return 'TBA';
+        try {
+            const d = new Date(iso);
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch (_) { return 'TBA'; }
+    };
+
+    // Status pill based on % filled — drives card color theme too.
+    function statusFor(pct, total) {
+        if (total <= 0)              return { cls: 'empty',   label: '<i class="fas fa-circle-pause"></i> Not set' };
+        if (pct >= 100)              return { cls: 'soldout', label: '<i class="fas fa-fire"></i> Sold out' };
+        if (pct >= 80)               return { cls: 'almost',  label: '<i class="fas fa-bolt"></i> Almost full' };
+        if (pct >= 30)               return { cls: 'filling', label: '<i class="fas fa-arrow-trend-up"></i> Filling fast' };
+        return                              { cls: 'low',     label: '<i class="fas fa-seedling"></i> Just started' };
+    }
+
+    const cards = events.map(ev => {
+        const total  = Math.max(0, Number(ev.total_seats) || 0);
+        const booked = Math.min(total, Number(seatsByEvent[ev.id]) || 0);
+        const free   = Math.max(0, total - booked);
+        const pct    = total > 0 ? Math.round((booked / total) * 100) : 0;
+        const C = 2 * Math.PI * 40;
+        const dash = (pct / 100) * C;
+        const status = statusFor(pct, total);
+
+        return `
+          <div class="perf-card ${status.cls}" title="${escapeOrg(ev.title || '')}">
+            <div class="perf-head">
+              <div style="min-width:0;flex:1;">
+                <div class="perf-title">${escapeOrg(ev.title || 'Untitled')}</div>
+                <div class="perf-date"><i class="fas fa-calendar-day"></i> ${fmtDate(ev.event_date)}</div>
+              </div>
+              <span class="perf-pill ${status.cls}">${status.label}</span>
+            </div>
+            <div class="perf-body">
+              <div class="perf-donut">
+                <svg viewBox="0 0 100 100">
+                  <circle class="perf-donut-track"    cx="50" cy="50" r="40"></circle>
+                  <circle class="perf-donut-progress" cx="50" cy="50" r="40"
+                          stroke-dasharray="${dash.toFixed(1)} ${(C - dash).toFixed(1)}"></circle>
+                </svg>
+                <div class="perf-donut-label">
+                  <span class="perf-donut-pct">${pct}%</span>
+                  <span class="perf-donut-sub">filled</span>
+                </div>
+              </div>
+              <div class="perf-bar-wrap"><div class="perf-bar-fill" style="width:${pct}%"></div></div>
+              <div class="perf-mini-row">
+                <div class="perf-mini booked">
+                  <div class="perf-mini-num">${booked}</div>
+                  <div class="perf-mini-lbl">Booked</div>
+                </div>
+                <div class="perf-mini free">
+                  <div class="perf-mini-num">${free}</div>
+                  <div class="perf-mini-lbl">Available</div>
+                </div>
+                <div class="perf-mini cap">
+                  <div class="perf-mini-num">${total}</div>
+                  <div class="perf-mini-lbl">Capacity</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+    }).join('');
+
+    grid.innerHTML = gradDef + cards;
+    if (meta) {
+        const totalSeats  = events.reduce((s, e) => s + (Number(e.total_seats) || 0), 0);
+        const totalBooked = Object.values(seatsByEvent).reduce((s, n) => s + n, 0);
+        const overallPct  = totalSeats > 0 ? Math.round((totalBooked / totalSeats) * 100) : 0;
+        meta.textContent = `${totalBooked} of ${totalSeats} seats booked · ${overallPct}% overall`;
+    }
+}
+
+/**
+ * Earnings page — KPI cards (Gross / Refund / Net / Avg), top earning events,
+ * and a recent transactions table. Pulls from the same /bookings/organizer/all
+ * endpoint that the dashboard uses, so numbers stay consistent.
+ */
+async function loadEarnings() {
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const fmtINR  = n => '₹' + (Number(n) || 0).toLocaleString('en-IN');
+    const fmtDate = iso => {
+        if (!iso) return '—';
+        try {
+            const d = new Date(iso);
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        } catch (_) { return '—'; }
+    };
+    const token = getToken();
+
+    try {
+        const r = await fetch(`${API_BASE}/bookings/organizer/all`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = r.ok ? await r.json() : { bookings: [] };
+        const bookings = Array.isArray(data) ? data : (data.bookings || []);
+
+        const confirmed = bookings.filter(b => !b.cancelled_at);
+        const cancelled = bookings.filter(b =>  b.cancelled_at);
+
+        const gross   = confirmed.reduce((s, b) => s + (Number(b.total_price)   || 0), 0);
+        const refund  = cancelled.reduce((s, b) => s + (Number(b.refund_amount) || 0), 0);
+        const net     = gross - refund;
+        const avg     = confirmed.length > 0 ? Math.round(gross / confirmed.length) : 0;
+
+        // KPI cards
+        setText('earn-gross',     fmtINR(gross));
+        setText('earn-gross-sub', confirmed.length > 0
+            ? `from ${confirmed.length} booking${confirmed.length === 1 ? '' : 's'}`
+            : 'No bookings yet');
+        setText('earn-refund',     fmtINR(refund));
+        setText('earn-refund-sub', `${cancelled.length} cancellation${cancelled.length === 1 ? '' : 's'}`);
+        setText('earn-net',        fmtINR(net));
+        setText('earn-net-sub',    'Gross − Refunds');
+        setText('earn-avg',        fmtINR(avg));
+        setText('earn-avg-sub',    confirmed.length > 0 ? 'across all sales' : '—');
+
+        // Top earning events — group confirmed by event_id, sum total_price.
+        const byEvent = {};
+        confirmed.forEach(b => {
+            const id = b.event_id;
+            if (!byEvent[id]) {
+                byEvent[id] = { id, title: b.event_title || 'Untitled', revenue: 0, count: 0 };
+            }
+            byEvent[id].revenue += Number(b.total_price) || 0;
+            byEvent[id].count   += 1;
+        });
+        const top = Object.values(byEvent).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+        const maxRev = top[0] ? top[0].revenue : 0;
+
+        const topListEl = document.getElementById('earn-top-list');
+        const topMetaEl = document.getElementById('earn-top-meta');
+        if (topListEl) {
+            if (top.length === 0) {
+                topListEl.innerHTML = `<div class="earn-empty"><i class="fas fa-trophy"></i><br><b>No revenue yet</b><div style="font-size:0.85rem;margin-top:4px;">Once bookings roll in, your top events will appear here.</div></div>`;
+            } else {
+                const rankCls = ['gold','silver','bronze','',''];
+                topListEl.innerHTML = top.map((ev, i) => {
+                    const pct = maxRev > 0 ? Math.round((ev.revenue / maxRev) * 100) : 0;
+                    return `
+                      <div class="earn-top-row ${rankCls[i] || ''}">
+                        <div class="earn-top-rank">${i+1}</div>
+                        <div class="earn-top-info">
+                          <div class="name">${escapeOrg(ev.title)}</div>
+                          <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+                          <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">${ev.count} booking${ev.count === 1 ? '' : 's'}</div>
+                        </div>
+                        <div class="earn-top-amt">${fmtINR(ev.revenue)}</div>
+                      </div>`;
+                }).join('');
+            }
+        }
+        if (topMetaEl) topMetaEl.textContent = top.length > 0 ? `Top ${top.length} of ${Object.keys(byEvent).length}` : '';
+
+        // Recent transactions — last 10 (any status)
+        const recent = bookings.slice(0, 10);
+        const txBody = document.getElementById('earn-tx-body');
+        const txMeta = document.getElementById('earn-tx-meta');
+        if (txBody) {
+            if (recent.length === 0) {
+                txBody.innerHTML = `<tr><td colspan="6"><div class="earn-empty"><i class="fas fa-receipt"></i><br><b>No transactions yet</b></div></td></tr>`;
+            } else {
+                txBody.innerHTML = recent.map(b => {
+                    const isCancelled = !!b.cancelled_at;
+                    return `
+                      <tr>
+                        <td>${escapeOrg(fmtDate(b.booked_at))}</td>
+                        <td class="ev-name">${escapeOrg(b.event_title || '—')}</td>
+                        <td class="at-name">${escapeOrg(b.attendee_name || b.ticket_holder_name || '—')}</td>
+                        <td>${Number(b.seats_booked) || 0}</td>
+                        <td class="amt">${fmtINR(b.total_price)}</td>
+                        <td><span class="earn-tx-pill ${isCancelled ? 'cancelled' : 'confirmed'}">${isCancelled ? 'Cancelled' : 'Confirmed'}</span></td>
+                      </tr>`;
+                }).join('');
+            }
+        }
+        if (txMeta) txMeta.textContent = `Last ${Math.min(10, bookings.length)} of ${bookings.length} bookings`;
+    } catch (err) {
+        console.error('Failed to load earnings:', err);
+        setText('earn-gross', '₹0');
+        setText('earn-net',   '₹0');
+        setText('earn-avg',   '₹0');
+    }
+}
+
+/* ─────────────────────────── Ticket Scanner ───────────────────────────
+ * In-app QR scanner for the organizer at the venue gate.
+ *  - Picks an event → loads live counters
+ *  - Camera reads the QR via html5-qrcode → POSTs to /scanner/scan
+ *  - Backend rejects duplicates (one scan per seat) and wrong-event scans
+ *  - Stats refresh after every successful scan
+ * ─────────────────────────────────────────────────────────────────────── */
+let scannerStatsTimer = null;
+let scannerSelectedEventId = null;
+
+async function loadScanner() {
+    const sel = document.getElementById('scn-event-select');
+    if (!sel) return;
+    const token = getToken();
+
+    // Populate the event dropdown if not already done.
+    if (!sel.dataset.loaded) {
+        sel.innerHTML = '<option value="">Loading…</option>';
+        try {
+            const r = await fetch(`${API_BASE}/bookings/scanner/events`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = r.ok ? await r.json() : { events: [] };
+            const events = data.events || [];
+            if (events.length === 0) {
+                sel.innerHTML = '<option value="">No events to scan — create one first.</option>';
+                return;
+            }
+            sel.innerHTML = '<option value="">— Choose one of your events —</option>'
+                + events.map(e => {
+                    const date = e.event_date ? new Date(e.event_date).toLocaleDateString() : '';
+                    return `<option value="${e.id}">${escapeOrg(e.title || 'Untitled')}${date ? ' · ' + date : ''} (${e.scanned_count || 0}/${e.booked_seats || 0} scanned)</option>`;
+                }).join('');
+            sel.dataset.loaded = '1';
+        } catch (err) {
+            console.error('Scanner events load:', err);
+            sel.innerHTML = '<option value="">Failed to load events.</option>';
+            return;
+        }
+
+        // Bind the change handler once.
+        sel.addEventListener('change', () => {
+            const id = parseInt(sel.value, 10);
+            if (!Number.isFinite(id)) {
+                document.getElementById('scn-stats').style.display       = 'none';
+                document.getElementById('scn-camera-wrap').style.display = 'none';
+                document.getElementById('scn-recent-wrap').style.display = 'none';
+                stopScannerStatsPolling();
+                stopScannerCamera();
+                scannerSelectedEventId = null;
+                return;
+            }
+            scannerSelectedEventId = id;
+            document.getElementById('scn-stats').style.display       = '';
+            document.getElementById('scn-camera-wrap').style.display = '';
+            document.getElementById('scn-recent-wrap').style.display = '';
+            refreshScannerStats();
+            startScannerStatsPolling();
+        });
+
+        document.getElementById('scn-start-btn').addEventListener('click', startScannerCamera);
+        document.getElementById('scn-stop-btn').addEventListener('click',  stopScannerCamera);
+    }
+}
+
+async function refreshScannerStats() {
+    if (!scannerSelectedEventId) return;
+    const token = getToken();
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    try {
+        const r = await fetch(`${API_BASE}/bookings/scanner/event/${scannerSelectedEventId}/stats`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!r.ok) return;
+        const s = await r.json();
+        setText('scn-total',     s.total_seats || 0);
+        setText('scn-booked',    s.booked_seats || 0);
+        setText('scn-scanned',   s.scanned_count || 0);
+        setText('scn-remaining', s.remaining_to_scan || 0);
+
+        const list = document.getElementById('scn-recent-list');
+        const meta = document.getElementById('scn-recent-meta');
+        if (list) {
+            const items = s.recent_scans || [];
+            if (items.length === 0) {
+                list.innerHTML = `<div class="earn-empty"><i class="fas fa-circle-info"></i><br>No check-ins yet for this event.</div>`;
+            } else {
+                list.innerHTML = items.map(c => `
+                  <div class="scn-recent-row">
+                    <div class="ic"><i class="fas fa-check"></i></div>
+                    <div class="info">
+                      <div class="nm">${escapeOrg(c.attendee_name || 'Guest')}</div>
+                      <div class="code">${escapeOrg(c.seat_code || '')}</div>
+                    </div>
+                    <div class="when">${formatScanTime(c.checked_in_at)}</div>
+                  </div>`).join('');
+            }
+        }
+        if (meta) meta.textContent = `${s.scanned_count || 0} of ${s.booked_seats || 0} checked in`;
+    } catch (e) { /* swallow — polling is best-effort */ }
+}
+
+function startScannerStatsPolling() {
+    stopScannerStatsPolling();
+    scannerStatsTimer = setInterval(refreshScannerStats, 5000);
+}
+function stopScannerStatsPolling() {
+    if (scannerStatsTimer) { clearInterval(scannerStatsTimer); scannerStatsTimer = null; }
+}
+
+function formatScanTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)    return 'just now';
+    if (diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    return d.toLocaleDateString();
+}
+
+async function startScannerCamera() {
+    if (!scannerSelectedEventId) {
+        alert('Please pick an event first.');
+        return;
+    }
+    if (typeof Html5Qrcode === 'undefined') {
+        alert('Camera library failed to load. Hard-refresh the page.');
+        return;
+    }
+    document.getElementById('scn-start-btn').style.display = 'none';
+    document.getElementById('scn-stop-btn').style.display  = '';
+
+    const handle = new Html5Qrcode('scn-camera');
+    window.__scnHandle = handle;
+    try {
+        await handle.start(
+            { facingMode: 'environment' },                 // back camera on mobile
+            { fps: 10, qrbox: { width: 240, height: 240 } },
+            onScanSuccess,
+            () => { /* per-frame failures are normal — silence them */ }
+        );
+    } catch (e) {
+        console.error('Camera start failed:', e);
+        showScanResult('error', 'Camera blocked', 'Allow camera access in your browser settings and try again.');
+        document.getElementById('scn-start-btn').style.display = '';
+        document.getElementById('scn-stop-btn').style.display  = 'none';
+        window.__scnHandle = null;
+    }
+}
+
+async function stopScannerCamera() {
+    document.getElementById('scn-start-btn').style.display = '';
+    document.getElementById('scn-stop-btn').style.display  = 'none';
+    const h = window.__scnHandle;
+    if (h) { try { await h.stop(); } catch (_) {} window.__scnHandle = null; }
+}
+
+// Throttle: avoid firing the same QR repeatedly while it's still in frame.
+let lastScannedText = '';
+let lastScannedAt   = 0;
+async function onScanSuccess(text) {
+    const now = Date.now();
+    if (text === lastScannedText && (now - lastScannedAt) < 2500) return;
+    lastScannedText = text;
+    lastScannedAt   = now;
+
+    // Quick haptic feedback on supported devices.
+    if (navigator.vibrate) navigator.vibrate(60);
+
+    const token = getToken();
+    try {
+        const r = await fetch(`${API_BASE}/bookings/scanner/scan`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event_id: scannerSelectedEventId, qr_text: text })
+        });
+        const data = await r.json();
+        if (r.ok && data.ok) {
+            showScanResult('success', 'Welcome in!',
+                `${data.attendee || 'Guest'} · ${data.seat_code || ''}`);
+        } else {
+            const reason = (data && data.reason) || 'invalid';
+            const msgs = {
+                'already-scanned': ['Already used',     'This ticket was already scanned.'],
+                'cancelled':       ['Cancelled ticket', 'This booking was cancelled.'],
+                'wrong-event':     ['Wrong event',      'This ticket is for a different event.'],
+                'ticket-not-found':['Invalid ticket',   'No matching booking found.'],
+                'not-your-event':  ['Permission denied','You don\'t organize this event.'],
+                'event-not-found': ['Event not found',  'Pick an event again.'],
+                'empty-qr':        ['Empty QR',         'Scan a valid ticket.'],
+                'missing-event-id':['No event picked',  'Pick an event first.']
+            };
+            const [t, m] = msgs[reason] || ['Scan failed', reason];
+            showScanResult(reason === 'already-scanned' ? 'warning' : 'error', t, m);
+        }
+        refreshScannerStats();
+    } catch (e) {
+        showScanResult('error', 'Network error', 'Could not reach the server.');
+    }
+}
+
+function showScanResult(kind, title, body) {
+    const el = document.getElementById('scn-result');
+    if (!el) return;
+    el.className = 'scn-result show ' + (kind || '');
+    el.innerHTML = `<b>${escapeOrg(title)}</b>${escapeOrg(body)}`;
+    clearTimeout(window.__scnResultTimer);
+    window.__scnResultTimer = setTimeout(() => { el.classList.remove('show'); }, 3500);
+}
+
+window.loadScanner = loadScanner;
 
 // Cache the latest list of organizer events so the details modal doesn't need
 // a second fetch when the user clicks a row.
@@ -170,6 +712,9 @@ async function loadMyEvents() {
                                 <td>${escapeOrg(ev.place || '—')}</td>
                                 <td>${price > 0 ? '₹' + price : 'Free'}</td>
                                 <td style="text-align:center; white-space: nowrap;">
+                                    <button class="org-row-share"  data-event-id="${ev.id}" style="background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(236,72,153,0.12)); color:#ec4899; border:1px solid rgba(236,72,153,0.3); padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer; margin-right:6px;">
+                                        <i class="fas fa-share-nodes"></i> Invite
+                                    </button>
                                     <button class="org-row-edit"   data-event-id="${ev.id}" style="background:rgba(99,102,241,0.1); color:#6366f1; border:1px solid rgba(99,102,241,0.25); padding:6px 12px; border-radius:8px; font-weight:600; cursor:pointer; margin-right:6px;">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
@@ -206,6 +751,14 @@ async function loadMyEvents() {
                 e.stopPropagation();
                 const id = parseInt(btn.dataset.eventId, 10);
                 deleteEvent(id);
+            });
+        });
+        container.querySelectorAll('.org-row-share').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = parseInt(btn.dataset.eventId, 10);
+                const ev = myEventsCache.find(x => x.id === id);
+                if (ev) showInvitationModal({ id: ev.id, title: ev.title });
             });
         });
     } catch (error) {
@@ -283,10 +836,14 @@ function handleEventSave(e) {
     const price = document.getElementById('ev-price').value;
     const seats = document.getElementById('ev-seats').value;
     const description = document.getElementById('ev-desc').value.trim();
-    const hasImage = document.getElementById('profile-image').files.length > 0;
+    // Edit mode keeps the existing cover image; a new file is optional.
+    const hasImage = !!editingEventId || document.getElementById('profile-image').files.length > 0;
 
     if (!title || !category || !date || !location || !price || !seats || !description || !hasImage) {
-        alert('Please fill all required fields including profile image');
+        const msg = editingEventId
+            ? 'Please fill all required fields'
+            : 'Please fill all required fields including profile image';
+        (window.Popup && window.Popup.error) ? window.Popup.error(msg) : alert(msg);
         return;
     }
 
@@ -457,6 +1014,7 @@ async function createEvent() {
 
         if (response.ok) {
             const title = (result.event && result.event.title) || result.title || 'Event';
+            const newId = (result.event && result.event.id) || result.id;
             (window.Popup && window.Popup.success)
                 ? window.Popup.success(isEdit ? `“${title}” updated successfully` : `Event “${title}” created successfully`)
                 : alert(isEdit ? 'Event updated' : `Event "${title}" created successfully!`);
@@ -468,7 +1026,12 @@ async function createEvent() {
             clearEditMode();
             validateForm();
             loadDashboardStats();
-            showSection('events');
+            // Surface the auto-generated invitation card so the organizer can share it right away.
+            if (!isEdit && newId) {
+                showInvitationModal({ id: newId, title });
+            } else {
+                showSection('events');
+            }
         } else {
             (window.Popup && window.Popup.error)
                 ? window.Popup.error(result.error || (isEdit ? 'Failed to update event' : 'Failed to create event'))
@@ -529,6 +1092,110 @@ window.logout = logout;
 window.previewEvent = previewEvent;
 window.createEvent = createEvent;
 window.deleteEvent = deleteEvent;
+window.showInvitationModal = showInvitationModal;
+
+// ───────── Invitation share modal ─────────
+// Generates a shareable invitation link (/Public/invite/?id=<eventId>) and
+// presents the organizer with copy + WhatsApp + Twitter + Telegram + email
+// share options. Called automatically right after a successful event creation.
+function showInvitationModal(ev) {
+    if (!ev || !ev.id) return;
+    if (document.getElementById('invite-share-wrap')) return;
+
+    const inviteUrl = `${window.location.origin}/Public/invite/?id=${encodeURIComponent(ev.id)}`;
+    const shareText = `You're invited to ${ev.title || 'an event'} on EventHub!`;
+    const enc = encodeURIComponent;
+
+    const wrap = document.createElement('div');
+    wrap.id = 'invite-share-wrap';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:99000;display:flex;align-items:center;justify-content:center;background:rgba(7,9,26,0.65);backdrop-filter:blur(10px);padding:1.5rem;font-family:Inter,Segoe UI,sans-serif;animation:isFade 0.25s ease;';
+    wrap.innerHTML = `
+      <style>
+        @keyframes isFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes isPop  { from { opacity: 0; transform: scale(0.92) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes isSpin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+        @keyframes isFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .is-share-btn { display:flex;align-items:center;justify-content:center;gap:8px;padding:0.85rem 0.5rem;border-radius:14px;border:none;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.9rem;color:white;transition:transform 0.2s ease, box-shadow 0.2s ease; }
+        .is-share-btn:hover { transform: translateY(-2px); }
+        .is-wa  { background:linear-gradient(135deg,#25d366,#128c7e); box-shadow:0 8px 18px rgba(37,211,102,0.35); }
+        .is-tw  { background:linear-gradient(135deg,#0f172a,#334155); box-shadow:0 8px 18px rgba(15,23,42,0.4); }
+        .is-tg  { background:linear-gradient(135deg,#2aabee,#0088cc); box-shadow:0 8px 18px rgba(42,171,238,0.35); }
+        .is-em  { background:linear-gradient(135deg,#f59e0b,#ec4899); box-shadow:0 8px 18px rgba(245,158,11,0.35); }
+        .is-link-input { width:100%;padding:0.85rem 1rem;padding-right:110px;border:2px solid #eef2ff;border-radius:12px;background:#fafbff;font-size:0.86rem;font-family:'JetBrains Mono','Fira Code',monospace;color:#1f2937;outline:none; }
+        .is-copy-btn { position:absolute;top:50%;right:6px;transform:translateY(-50%);padding:0.55rem 0.9rem;border-radius:9px;border:none;background:linear-gradient(135deg,#6366f1,#ec4899);color:white;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.78rem;box-shadow:0 4px 10px rgba(99,102,241,0.35); }
+      </style>
+      <div style="background:white;border-radius:24px;width:100%;max-width:480px;overflow:hidden;box-shadow:0 40px 80px rgba(15,23,42,0.5);animation:isPop 0.4s cubic-bezier(.2,.9,.3,1.2);">
+        <div style="position:relative;padding:1.8rem 1.6rem 1.4rem;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 35%,#ec4899 100%);color:white;text-align:center;overflow:hidden;">
+          <div style="position:absolute;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,0.12);top:-100px;right:-80px;"></div>
+          <div style="position:absolute;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,0.1);bottom:-80px;left:-60px;"></div>
+          <div style="position:relative;z-index:1;">
+            <div style="width:64px;height:64px;border-radius:50%;background:white;color:#ec4899;display:grid;place-items:center;font-size:1.6rem;margin:0 auto 0.9rem;box-shadow:0 10px 26px rgba(0,0,0,0.2);animation:isFloat 2.4s ease-in-out infinite;">
+              <i class="fas fa-envelope-open-text"></i>
+            </div>
+            <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.3rem;font-weight:800;margin:0 0 6px;">Invitation card is ready! </h3>
+            <p style="opacity:0.95;font-size:0.88rem;margin:0;">Share this link to invite people to <b>${escIs(ev.title || 'your event')}</b>.</p>
+          </div>
+        </div>
+        <div style="padding:1.5rem 1.6rem 1.6rem;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:0.7rem;font-weight:700;color:#94a3b8;letter-spacing:0.12em;text-transform:uppercase;">
+            <i class="fas fa-link" style="color:#6366f1;"></i> Invitation link
+          </div>
+          <div style="position:relative;margin-bottom:16px;">
+            <input class="is-link-input" id="is-link" value="${escIs(inviteUrl)}" readonly>
+            <button class="is-copy-btn" id="is-copy"><i class="fas fa-copy"></i> Copy</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+            <a class="is-share-btn is-wa" target="_blank" rel="noopener" href="https://wa.me/?text=${enc(shareText)}%20${enc(inviteUrl)}">
+              <i class="fab fa-whatsapp"></i> WhatsApp
+            </a>
+            <a class="is-share-btn is-tw" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${enc(shareText)}&url=${enc(inviteUrl)}">
+              <i class="fab fa-x-twitter"></i> X / Twitter
+            </a>
+            <a class="is-share-btn is-tg" target="_blank" rel="noopener" href="https://t.me/share/url?url=${enc(inviteUrl)}&text=${enc(shareText)}">
+              <i class="fab fa-telegram"></i> Telegram
+            </a>
+            <a class="is-share-btn is-em" href="mailto:?subject=${enc('You’re invited!')}&body=${enc(shareText + '\n\n' + inviteUrl)}">
+              <i class="fas fa-envelope"></i> Email
+            </a>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button id="is-preview" style="flex:1;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);color:#6366f1;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.92rem;">
+              <i class="fas fa-eye"></i> Preview card
+            </button>
+            <button id="is-done" style="flex:1;padding:0.85rem 1rem;border-radius:12px;border:none;background:linear-gradient(135deg,#10b981,#06b6d4);color:white;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.92rem;box-shadow:0 8px 20px rgba(16,185,129,0.35);">
+              <i class="fas fa-check"></i> Done
+            </button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+    document.body.style.overflow = 'hidden';
+
+    const close = () => { wrap.remove(); document.body.style.overflow = ''; showSection('events'); };
+    wrap.querySelector('#is-done').addEventListener('click', close);
+    wrap.querySelector('#is-preview').addEventListener('click', () => window.open(inviteUrl, '_blank'));
+    wrap.querySelector('#is-copy').addEventListener('click', async () => {
+        const inp = wrap.querySelector('#is-link');
+        try {
+            await navigator.clipboard.writeText(inviteUrl);
+        } catch (_) {
+            inp.select(); document.execCommand('copy');
+        }
+        const btn = wrap.querySelector('#is-copy');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+        btn.style.background = 'linear-gradient(135deg,#10b981,#06b6d4)';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; }, 1800);
+    });
+    wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+    document.addEventListener('keydown', function esc(ev) {
+        if (ev.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
+}
+
+function escIs(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 // ───────── Profile (fetch / update / avatar upload) ─────────
 const SERVER_URL = 'http://localhost:3000';
@@ -845,6 +1512,155 @@ startMessagesPolling();
 document.addEventListener('DOMContentLoaded', () => {
     const btn = document.getElementById('msg-refresh-btn');
     if (btn) btn.addEventListener('click', loadMessageThreads);
+});
+
+// ───────── Bookings section (organizer view: list of all attendees) ─────────
+let _bkAll = [];        // cache of all bookings for the organizer
+let _bkStatus = 'all';  // active filter pill: all | confirmed | cancelled
+let _bkSearch = '';     // free-text search
+
+async function loadOrganizerBookings() {
+    const list    = document.getElementById('bk-list');
+    const summary = document.getElementById('bk-summary');
+    if (!list) return;
+    const token = getToken();
+    if (!token) return;
+
+    list.innerHTML = '<p style="text-align:center;padding:1.5rem;color:var(--muted);"><i class="fas fa-spinner fa-spin"></i> Loading bookings…</p>';
+    try {
+        const res = await fetch(`${API_BASE}/bookings/organizer/all`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('failed');
+        const data = await res.json();
+        _bkAll = Array.isArray(data.bookings) ? data.bookings : [];
+        renderBookingStats(_bkAll);
+        renderBookingsList();
+    } catch (err) {
+        console.warn('Failed to load organizer bookings', err);
+        if (summary) summary.textContent = 'Couldn\'t load bookings.';
+        list.innerHTML = '';
+    }
+}
+
+function renderBookingStats(rows) {
+    const totalBookings = rows.length;
+    const confirmed     = rows.filter(b => b.status !== 'cancelled');
+    const cancelled     = rows.filter(b => b.status === 'cancelled');
+    const seatsSold     = confirmed.reduce((s, b) => s + (parseInt(b.seats_booked, 10) || 0), 0);
+    const revenue       = confirmed.reduce((s, b) => s + (parseFloat(b.total_price) || 0), 0);
+
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setText('bk-stat-total',   totalBookings);
+    setText('bk-stat-seats',   seatsSold);
+    setText('bk-stat-revenue', '₹' + Math.round(revenue));
+    setText('bk-stat-cancel',  cancelled.length);
+}
+
+function renderBookingsList() {
+    const list    = document.getElementById('bk-list');
+    const summary = document.getElementById('bk-summary');
+    if (!list) return;
+
+    const term = _bkSearch.trim().toLowerCase();
+    const filtered = _bkAll.filter(b => {
+        if (_bkStatus === 'confirmed' && b.status === 'cancelled') return false;
+        if (_bkStatus === 'cancelled' && b.status !== 'cancelled') return false;
+        if (!term) return true;
+        const hay = [
+            b.attendee_name, b.attendee_email, b.attendee_mobile,
+            b.ticket_holder_name, b.ticket_holder_email,
+            b.event_title, b.ticket_id
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(term);
+    });
+
+    if (summary) {
+        summary.innerHTML = `Showing <b>${filtered.length}</b> of <b>${_bkAll.length}</b> ${_bkAll.length === 1 ? 'booking' : 'bookings'}`;
+    }
+
+    if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="bk-empty">
+            <i class="fas fa-ticket"></i>
+            <h3>${_bkAll.length === 0 ? 'No bookings yet' : 'No bookings match these filters'}</h3>
+            <p style="color:var(--muted);">${_bkAll.length === 0
+                ? 'When attendees book your events, they\'ll appear here with their full contact details.'
+                : 'Try clearing the search or switching the status filter.'}</p>
+          </div>`;
+        return;
+    }
+
+    list.innerHTML = filtered.map(b => {
+        const ava = b.attendee_avatar
+            ? `<img src="${escapeOrg(b.attendee_avatar.startsWith('http') ? b.attendee_avatar : SERVER_URL + b.attendee_avatar)}" alt="">`
+            : escapeOrg(initialsOrg(b.ticket_holder_name || b.attendee_name));
+        const eventDate = b.event_date ? new Date(b.event_date) : null;
+        const eventDateStr = eventDate && !isNaN(eventDate)
+            ? eventDate.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+            : '—';
+        const bookedAt = b.booked_at ? relTimeOrg(b.booked_at) : '';
+        const total = parseFloat(b.total_price) || 0;
+        const isFree = total <= 0;
+        const isCancelled = b.status === 'cancelled';
+        const seats = parseInt(b.seats_booked, 10) || 0;
+        const holderName = b.ticket_holder_name || b.attendee_name || '—';
+        const holderEmail = b.ticket_holder_email || b.attendee_email || '';
+        const holderMobile = b.ticket_holder_mobile || b.attendee_mobile || '';
+
+        return `
+            <div class="bk-row ${isCancelled ? 'cancelled-row' : ''}">
+                <div class="bk-ava">${ava}</div>
+                <div class="bk-info">
+                    <div class="name">${escapeOrg(holderName)}</div>
+                    <div class="contact">
+                        ${holderEmail  ? `<span><i class="fas fa-envelope"></i> ${escapeOrg(holderEmail)}</span>` : ''}
+                        ${holderMobile ? `<span><i class="fas fa-phone"></i> ${escapeOrg(holderMobile)}</span>`   : ''}
+                        ${bookedAt     ? `<span><i class="fas fa-clock"></i> Booked ${escapeOrg(bookedAt)}</span>` : ''}
+                    </div>
+                    <div class="event">
+                        <span class="ev-title"><i class="fas fa-calendar-day"></i> ${escapeOrg(b.event_title || 'Event')}</span>
+                        <span class="meta"><i class="fas fa-calendar"></i> ${escapeOrg(eventDateStr)}</span>
+                        ${b.event_location ? `<span class="meta"><i class="fas fa-map-marker-alt"></i> ${escapeOrg(b.event_location)}</span>` : ''}
+                    </div>
+                    ${b.ticket_id ? `<div class="ticket">#${escapeOrg(b.ticket_id)}${b.transaction_id ? ' · TXN ' + escapeOrg(b.transaction_id) : ''}</div>` : ''}
+                    ${isCancelled && b.cancellation_reason ? `
+                        <div style="margin-top:8px;padding:8px 12px;background:rgba(239,68,68,0.06);border-left:3px solid rgba(239,68,68,0.4);border-radius:8px;">
+                            <div style="font-size:0.7rem;font-weight:700;color:#ef4444;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:2px;">
+                                <i class="fas fa-comment-dots"></i> Reason given by attendee
+                            </div>
+                            <div style="font-size:0.86rem;color:#1f2937;font-style:italic;">"${escapeOrg(b.cancellation_reason)}"</div>
+                        </div>
+                    ` : (isCancelled ? `
+                        <div style="margin-top:6px;font-size:0.78rem;color:#94a3b8;font-style:italic;">
+                            <i class="fas fa-comment-slash"></i> No reason provided.
+                        </div>
+                    ` : '')}
+                </div>
+                <div class="bk-right">
+                    <div class="bk-amount ${isFree ? 'free' : ''}">${isFree ? 'Free' : '₹' + total.toFixed(2)}</div>
+                    <div class="bk-seats"><i class="fas fa-chair"></i> ${seats} seat${seats === 1 ? '' : 's'}</div>
+                    <span class="bk-status ${isCancelled ? 'cancelled' : 'confirmed'}">${isCancelled ? 'Cancelled' : 'Confirmed'}</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Filter pills
+    document.querySelectorAll('.bk-pill').forEach(p => {
+        p.addEventListener('click', () => {
+            _bkStatus = p.dataset.bkStatus;
+            document.querySelectorAll('.bk-pill').forEach(x => x.classList.toggle('active', x === p));
+            renderBookingsList();
+        });
+    });
+    // Search
+    const search = document.getElementById('bk-search');
+    if (search) search.addEventListener('input', e => { _bkSearch = e.target.value; renderBookingsList(); });
+    // Refresh button
+    const refresh = document.getElementById('bk-refresh-btn');
+    if (refresh) refresh.addEventListener('click', loadOrganizerBookings);
 });
 
 // Live unread badge on the sidebar Messages link.

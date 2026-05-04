@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>You're Invited — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700;800&family=Playfair+Display:ital,wght@1,700;1,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --gradient-hero: linear-gradient(135deg,#6366f1 0%,#8b5cf6 35%,#ec4899 100%);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      background: #07091a;
+      color: #1f2937;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      position: relative;
+      display: grid; place-items: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ───────── Animated cosmic background ───────── */
+    .stars, .stars2, .stars3 {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background-repeat: repeat;
+    }
+    .stars  { background-image: radial-gradient(2px 2px at 20% 30%, white, transparent), radial-gradient(1px 1px at 70% 80%, white, transparent), radial-gradient(1.5px 1.5px at 40% 60%, white, transparent), radial-gradient(1px 1px at 90% 20%, white, transparent); background-size: 600px 600px; opacity: 0.5; animation: twinkle 4s ease-in-out infinite alternate; }
+    .stars2 { background-image: radial-gradient(1px 1px at 15% 75%, white, transparent), radial-gradient(2px 2px at 55% 25%, white, transparent), radial-gradient(1.5px 1.5px at 85% 55%, white, transparent); background-size: 700px 700px; opacity: 0.35; animation: twinkle 6s ease-in-out infinite alternate -2s; }
+    .stars3 { background-image: radial-gradient(1px 1px at 35% 15%, #c4b5fd, transparent), radial-gradient(1.5px 1.5px at 75% 45%, #f9a8d4, transparent); background-size: 800px 800px; opacity: 0.6; animation: twinkle 5s ease-in-out infinite alternate -1s; }
+    @keyframes twinkle { from { opacity: 0.2; } to { opacity: 0.7; } }
+
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(110px); opacity: 0.55; pointer-events: none; z-index: 0;
+    }
+    .orb-1 { width: 480px; height: 480px; background: #6366f1; top: -120px; left: -120px; animation: float 18s ease-in-out infinite; }
+    .orb-2 { width: 380px; height: 380px; background: #ec4899; bottom: -100px; right: -120px; animation: float 22s ease-in-out infinite -4s; }
+    .orb-3 { width: 320px; height: 320px; background: #06b6d4; top: 50%; left: 60%; animation: float 16s ease-in-out infinite -8s; }
+    @keyframes float { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(60px,-40px) scale(1.1); } 66% { transform: translate(-40px,30px) scale(0.92); } }
+
+    /* ───────── Floating confetti ───────── */
+    .confetti {
+      position: fixed; top: -20px; pointer-events: none; z-index: 1;
+      width: 10px; height: 14px;
+      animation: fall linear infinite;
+    }
+    @keyframes fall {
+      0%   { transform: translateY(-10vh) rotate(0deg);   opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ───────── Card shell ───────── */
+    .invite-shell { position: relative; z-index: 2; width: 100%; max-width: 540px; perspective: 1500px; }
+    .invite {
+      position: relative; background: white; border-radius: 28px; overflow: hidden;
+      box-shadow: 0 50px 120px rgba(99,102,241,0.45), 0 25px 60px rgba(236,72,153,0.30);
+      transform-style: preserve-3d;
+      animation: cardIn 1.1s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(40px) rotateX(-12deg) scale(0.92); } to { opacity: 1; transform: translateY(0) rotateX(0) scale(1); } }
+
+    /* Shimmer border */
+    .invite::before {
+      content: ''; position: absolute; inset: -2px;
+      background: conic-gradient(from var(--ang, 0deg), #6366f1, #ec4899, #f59e0b, #06b6d4, #6366f1);
+      border-radius: 30px; z-index: -1; filter: blur(8px);
+      animation: spin 6s linear infinite;
+    }
+    @property --ang { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+    @keyframes spin { from { --ang: 0deg; } to { --ang: 360deg; } }
+
+    /* Top hero ribbon with image */
+    .hero {
+      position: relative; height: 280px; overflow: hidden;
+      background: var(--gradient-hero);
+    }
+    .hero-img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; opacity: 0; transition: opacity 0.8s ease;
+    }
+    .hero-img.loaded { opacity: 0.55; }
+    .hero::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(99,102,241,0.6) 0%, rgba(236,72,153,0.5) 50%, rgba(15,23,42,0.85) 100%);
+      pointer-events: none;
+    }
+    .hero-content {
+      position: absolute; inset: 0; padding: 1.6rem 1.8rem;
+      display: flex; flex-direction: column; justify-content: space-between;
+      color: white; z-index: 2;
+    }
+    .ribbon {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.4); border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em;
+      text-transform: uppercase; align-self: flex-start;
+      animation: pulseGlow 2.4s ease-in-out infinite;
+    }
+    @keyframes pulseGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.5); } 50% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } }
+    .ribbon i { color: #fde68a; animation: sparkle 1.6s ease-in-out infinite; }
+    @keyframes sparkle { 0%,100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.3) rotate(20deg); } }
+
+    .invite-title {
+      font-family: 'Playfair Display', Georgia, serif; font-style: italic;
+      font-size: clamp(1.7rem, 5vw, 2.6rem); font-weight: 800; line-height: 1.05;
+      text-shadow: 0 6px 30px rgba(0,0,0,0.4);
+      animation: rise 0.9s 0.2s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .invite-title b { color: #fde68a; font-style: normal; font-weight: 800; font-family: 'Space Grotesk', sans-serif; display: inline-block; }
+    @keyframes rise { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Body */
+    .body { padding: 2rem 1.8rem 1.6rem; position: relative; }
+
+    .event-name {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: clamp(1.4rem, 4vw, 1.85rem); font-weight: 800; color: #1f2937;
+      margin-bottom: 8px; letter-spacing: -0.02em;
+      animation: rise 0.9s 0.4s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .category-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 999px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.12));
+      color: #6366f1; font-size: 0.74rem; font-weight: 700;
+      border: 1px solid rgba(99,102,241,0.18);
+      animation: rise 0.9s 0.5s cubic-bezier(.2,.9,.3,1.2) both;
+      margin-bottom: 1.2rem;
+    }
+
+    .desc {
+      color: #475569; line-height: 1.6; font-size: 0.94rem;
+      margin-bottom: 1.4rem; max-height: 4.8em; overflow: hidden;
+      animation: rise 0.9s 0.55s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+
+    /* Detail rows */
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.4rem; }
+    .detail {
+      padding: 14px 14px 12px; background: #fafbff;
+      border: 1px solid #eef2ff; border-radius: 16px;
+      transition: all 0.3s ease;
+      animation: rise 0.9s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .detail:nth-child(1) { animation-delay: 0.6s; }
+    .detail:nth-child(2) { animation-delay: 0.7s; }
+    .detail:nth-child(3) { animation-delay: 0.8s; }
+    .detail:nth-child(4) { animation-delay: 0.9s; }
+    .detail:hover { border-color: #c4b5fd; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(99,102,241,0.15); }
+    .detail .label { display: flex; align-items: center; gap: 6px; font-size: 0.68rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+    .detail .label i { color: #6366f1; font-size: 0.78rem; }
+    .detail .value { font-family: 'Space Grotesk', Inter, sans-serif; font-size: 0.98rem; font-weight: 700; color: #1f2937; word-break: break-word; }
+
+    /* CTA */
+    .cta {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 1.05rem 1.4rem; border: none; border-radius: 16px;
+      background: var(--gradient-hero); color: white;
+      font-size: 1.02rem; font-weight: 800; font-family: inherit; cursor: pointer;
+      box-shadow: 0 14px 32px rgba(99,102,241,0.45), 0 6px 14px rgba(236,72,153,0.35);
+      text-decoration: none; position: relative; overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      animation: rise 0.9s 1s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .cta::before {
+      content: ''; position: absolute; top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+      animation: shine 3s ease-in-out infinite;
+    }
+    @keyframes shine { 0% { left: -100%; } 50%, 100% { left: 100%; } }
+    .cta:hover { transform: translateY(-3px); box-shadow: 0 20px 40px rgba(99,102,241,0.55), 0 10px 20px rgba(236,72,153,0.45); }
+    .cta i { font-size: 1.05rem; }
+
+    .cta-sub {
+      text-align: center; margin-top: 12px; font-size: 0.82rem; color: #94a3b8;
+      animation: rise 0.9s 1.1s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+
+    /* Share row */
+    .share-row {
+      display: flex; gap: 10px; justify-content: center; padding: 0 1.8rem 1.6rem;
+      animation: rise 0.9s 1.2s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .share-btn {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 1px solid #eef2ff; background: white; color: #475569;
+      display: grid; place-items: center; cursor: pointer;
+      transition: all 0.25s ease; font-size: 1rem;
+    }
+    .share-btn:hover { transform: translateY(-3px) scale(1.08); border-color: #c4b5fd; color: #6366f1; box-shadow: 0 10px 24px rgba(99,102,241,0.25); }
+    .share-btn.wa:hover { color: #25d366; border-color: #25d366; }
+    .share-btn.tw:hover { color: #1da1f2; border-color: #1da1f2; }
+    .share-btn.tg:hover { color: #2aabee; border-color: #2aabee; }
+    .share-btn.copy:hover { color: #f59e0b; border-color: #f59e0b; }
+
+    /* Footer */
+    .invite-footer {
+      padding: 1rem 1.8rem 1.4rem; text-align: center;
+      border-top: 1px solid #eef2ff;
+      font-size: 0.78rem; color: #94a3b8;
+    }
+    .invite-footer .brand {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #6366f1; font-weight: 700;
+    }
+
+    /* Loading state */
+    .loading-card {
+      background: white; border-radius: 28px; padding: 3rem 2rem; text-align: center;
+      box-shadow: 0 30px 80px rgba(15,23,42,0.4);
+      animation: cardIn 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    .loading-card .spinner {
+      width: 60px; height: 60px; margin: 0 auto 1.2rem;
+      border: 4px solid #eef2ff; border-top-color: #6366f1;
+      border-radius: 50%; animation: spinLoader 0.9s linear infinite;
+    }
+    @keyframes spinLoader { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      padding: 12px 22px; background: rgba(15,23,42,0.92);
+      color: white; border-radius: 999px; font-size: 0.88rem; font-weight: 600;
+      backdrop-filter: blur(10px); z-index: 1000;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+      animation: toastIn 0.25s cubic-bezier(.2,.9,.3,1.2);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast i { color: #34d399; }
+    @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+    @media (max-width: 540px) {
+      .hero { height: 220px; }
+      .body { padding: 1.6rem 1.4rem 1.2rem; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .share-row { padding: 0 1.4rem 1.4rem; }
+    }
+  </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="stars"></div>
+  <div class="stars2"></div>
+  <div class="stars3"></div>
+
+  <div class="invite-shell">
+    <div id="invite-root">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.2rem;font-weight:800;color:#1f2937;margin-bottom:0.4rem;">Loading your invitation…</h3>
+        <p style="color:#94a3b8;font-size:0.9rem;">Just a moment.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = (typeof CONFIG !== 'undefined' && CONFIG.API && CONFIG.API.BASE_URL) || 'http://localhost:3000/api';
+
+    function escHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+    function fmtDate(iso) {
+      if (!iso) return 'TBA';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      } catch (_) { return 'TBA'; }
+    }
+    function fmtTime(iso) {
+      if (!iso) return '';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      } catch (_) { return ''; }
+    }
+    function fmtPrice(p) {
+      const n = Number(p || 0);
+      if (!n) return 'Free';
+      return '₹' + n.toLocaleString('en-IN');
+    }
+
+    function spawnConfetti() {
+      const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#06b6d4', '#fde68a'];
+      for (let i = 0; i < 40; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = (Math.random() * 100) + 'vw';
+        c.style.background = colors[Math.floor(Math.random() * colors.length)];
+        c.style.animationDuration = (5 + Math.random() * 6) + 's';
+        c.style.animationDelay = (Math.random() * 4) + 's';
+        c.style.transform = `rotate(${Math.random() * 360}deg)`;
+        if (Math.random() > 0.5) c.style.borderRadius = '50%';
+        document.body.appendChild(c);
+      }
+    }
+
+    function showToast(msg, ok = true) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.innerHTML = `<i class="fas ${ok ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> ${escHtml(msg)}`;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2200);
+    }
+
+    async function loadEvent() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id') || params.get('event');
+      const root = document.getElementById('invite-root');
+
+      if (!id) {
+        root.innerHTML = `<div class="loading-card">
+          <div style="font-size:3rem;color:#ef4444;margin-bottom:1rem;"><i class="fas fa-circle-exclamation"></i></div>
+          <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.2rem;font-weight:800;color:#1f2937;margin-bottom:0.4rem;">Invalid invitation link</h3>
+          <p style="color:#94a3b8;font-size:0.9rem;">This invitation doesn't include an event ID.</p>
+        </div>`;
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/events/${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        const ev = data.event || data;          // controllers may wrap in {event}
+        if (!ev || !ev.id) throw new Error('Not found');
+
+        renderInvite(ev);
+        spawnConfetti();
+      } catch (err) {
+        root.innerHTML = `<div class="loading-card">
+          <div style="font-size:3rem;color:#ef4444;margin-bottom:1rem;"><i class="fas fa-circle-exclamation"></i></div>
+          <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.2rem;font-weight:800;color:#1f2937;margin-bottom:0.4rem;">Event not found</h3>
+          <p style="color:#94a3b8;font-size:0.9rem;">This invitation may have expired or the event was removed.</p>
+        </div>`;
+      }
+    }
+
+    function renderInvite(ev) {
+      const root = document.getElementById('invite-root');
+      const eventUrl = `${window.location.origin}/Public/User/pages/event-detail.html?id=${encodeURIComponent(ev.id)}`;
+      const inviteUrl = window.location.href;
+      const heroImg = ev.image_url ? (ev.image_url.startsWith('http') ? ev.image_url : `${window.location.origin}${ev.image_url}`) : '';
+      const place = ev.place || ev.location || 'TBA';
+      const time = fmtTime(ev.event_date);
+
+      root.innerHTML = `
+        <div class="invite">
+          <div class="hero">
+            ${heroImg ? `<img class="hero-img" src="${escHtml(heroImg)}" alt="" onload="this.classList.add('loaded')">` : ''}
+            <div class="hero-content">
+              <span class="ribbon"><i class="fas fa-sparkles"></i> You're Invited</span>
+              <h1 class="invite-title">Join us<br>for an <b>unforgettable</b><br>experience.</h1>
+            </div>
+          </div>
+          <div class="body">
+            <h2 class="event-name">${escHtml(ev.title || 'Special Event')}</h2>
+            ${ev.category ? `<span class="category-pill"><i class="fas fa-tag"></i> ${escHtml(ev.category)}</span>` : ''}
+            ${ev.description ? `<p class="desc">${escHtml(ev.description)}</p>` : ''}
+            <div class="detail-grid">
+              <div class="detail">
+                <div class="label"><i class="fas fa-calendar-day"></i> Date</div>
+                <div class="value">${escHtml(fmtDate(ev.event_date))}</div>
+              </div>
+              <div class="detail">
+                <div class="label"><i class="fas fa-clock"></i> Time</div>
+                <div class="value">${escHtml(time || 'TBA')}</div>
+              </div>
+              <div class="detail">
+                <div class="label"><i class="fas fa-location-dot"></i> Venue</div>
+                <div class="value">${escHtml(ev.location || place)}</div>
+              </div>
+              <div class="detail">
+                <div class="label"><i class="fas fa-ticket"></i> Ticket</div>
+                <div class="value">${escHtml(fmtPrice(ev.ticket_price))}</div>
+              </div>
+            </div>
+            <a class="cta" href="${escHtml(eventUrl)}">
+              <i class="fas fa-arrow-right"></i> View Event &amp; Book Tickets
+            </a>
+            <div class="cta-sub">Tap to see full details and reserve your seat.</div>
+          </div>
+          <div class="share-row">
+            <button class="share-btn wa"   title="Share on WhatsApp" data-share="whatsapp"><i class="fab fa-whatsapp"></i></button>
+            <button class="share-btn tw"   title="Share on X / Twitter" data-share="twitter"><i class="fab fa-x-twitter"></i></button>
+            <button class="share-btn tg"   title="Share on Telegram" data-share="telegram"><i class="fab fa-telegram"></i></button>
+            <button class="share-btn copy" title="Copy link" data-share="copy"><i class="fas fa-link"></i></button>
+          </div>
+          <div class="invite-footer">
+            Powered by <span class="brand"><i class="fas fa-bolt"></i> EventHub</span>
+          </div>
+        </div>`;
+
+      const shareText = `You're invited to ${ev.title || 'an event'} on EventHub!`;
+      root.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const k = btn.dataset.share;
+          const u = encodeURIComponent(inviteUrl);
+          const t = encodeURIComponent(shareText);
+          if (k === 'whatsapp') window.open(`https://wa.me/?text=${t}%20${u}`, '_blank');
+          else if (k === 'twitter') window.open(`https://twitter.com/intent/tweet?text=${t}&url=${u}`, '_blank');
+          else if (k === 'telegram') window.open(`https://t.me/share/url?url=${u}&text=${t}`, '_blank');
+          else if (k === 'copy') {
+            navigator.clipboard.writeText(inviteUrl).then(
+              () => showToast('Invitation link copied!'),
+              () => showToast('Copy failed', false)
+            );
+          }
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadEvent);
+  </script>
+</body>
+</html>

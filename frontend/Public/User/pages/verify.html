@@ -267,6 +267,7 @@
     .invalid h3 { margin-bottom: 6px; font-size: 1.2rem; }
     .invalid p { color: var(--muted); margin-bottom: 1rem; }
   </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
 </head>
 <body>
   <div class="orb orb-1"></div>
@@ -396,6 +397,77 @@
 
       // Update the page title with the event name so it's nicer in tabs.
       if (data.event) document.title = `${data.event} — Ticket`;
+
+      // ───────── Live validity check ─────────
+      // The ticket data above is whatever was encoded into the QR. If the
+      // attendee cancelled the booking after downloading their ticket, that
+      // QR is supposed to stop working at the entrance. Hit the public
+      // /ticket-status endpoint and overlay a big CANCELLED banner if the
+      // server says this booking has been cancelled.
+      if (data.bookingId) {
+        const apiBase = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+          ? 'http://localhost:3000/api'
+          : (location.protocol + '//' + location.hostname + ':3000/api');
+        fetch(`${apiBase}/bookings/ticket-status/${encodeURIComponent(data.bookingId)}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(s => {
+            if (!s) return;
+            if (s.valid === false) {
+              showInvalidOverlay(s.status, s.cancelled_at);
+            }
+          })
+          .catch(() => { /* network blip — leave ticket as-is, scanner can decide */ });
+      }
+
+      function showInvalidOverlay(status, cancelledAt) {
+        const banner = document.createElement('div');
+        banner.style.cssText = `
+          position: relative; z-index: 2;
+          margin: 0 1.4rem 0; padding: 14px 16px;
+          background: linear-gradient(135deg, #ef4444, #ec4899);
+          color: white; border-radius: 14px;
+          box-shadow: 0 16px 36px rgba(239,68,68,0.35);
+          display: flex; align-items: center; gap: 12px;
+          animation: tIn 0.45s cubic-bezier(.2,.9,.3,1.2);
+        `;
+        const subtitle = status === 'cancelled'
+          ? `This ticket was cancelled${cancelledAt ? ' on ' + new Date(cancelledAt).toLocaleString() : ''}. Entry will not be allowed.`
+          : 'This ticket could not be verified. Entry will not be allowed.';
+        banner.innerHTML = `
+          <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.22);display:grid;place-items:center;font-size:1.1rem;flex-shrink:0;">
+            <i class="fas fa-circle-xmark"></i>
+          </div>
+          <div style="flex:1;min-width:0;line-height:1.3;">
+            <div style="font-family:'Space Grotesk','Inter',sans-serif;font-weight:800;font-size:1rem;">CANCELLED · DO NOT ADMIT</div>
+            <div style="font-size:0.84rem;opacity:0.95;">${escapeHtml(subtitle)}</div>
+          </div>
+        `;
+        // Insert the banner immediately under the green "valid ticket" header
+        const head = card.querySelector('.t-head');
+        if (head && head.parentNode) {
+          head.parentNode.insertBefore(banner, head.nextSibling);
+        } else {
+          card.appendChild(banner);
+        }
+
+        // Visually neutralise the "Valid ticket" status pill + check icon.
+        const pill = card.querySelector('.t-status');
+        if (pill) {
+          pill.innerHTML = '<i class="fas fa-ban"></i> Cancelled';
+          pill.style.background = 'rgba(255,255,255,0.22)';
+          pill.style.borderColor = 'rgba(255,255,255,0.32)';
+        }
+        const check = card.querySelector('.t-check');
+        if (check) {
+          check.style.background = '#fef2f2';
+          check.style.color = '#ef4444';
+          check.innerHTML = '<i class="fas fa-xmark"></i>';
+        }
+        // Strike through the body so the ticket clearly looks dead.
+        const body = card.querySelector('.t-body');
+        if (body) body.style.opacity = '0.55';
+        document.title = 'Cancelled · Ticket';
+      }
     })();
   </script>
 </body>

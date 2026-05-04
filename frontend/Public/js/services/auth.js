@@ -123,29 +123,29 @@ class AuthService {
    * Login user
    */
   async login(email, password) {
-    console.log('🔐 [AuthService] Login initiated for:', email);
+    console.log('[AuthService] Login initiated for:', email);
     
     // Validate input
     if (!Utils.validateEmail(email)) {
-      console.error('❌ [AuthService] Invalid email format');
+      console.error('[AuthService] Invalid email format');
       throw new Error('Invalid email address');
     }
     if (!password || password.length < 6) {
-      console.error('❌ [AuthService] Invalid password length');
+      console.error('[AuthService] Invalid password length');
       throw new Error('Password must be at least 6 characters');
     }
 
     try {
-      console.log('📤 [AuthService] Making API request to backend...');
+      console.log('[AuthService] Making API request to backend...');
       
       const response = await api.login(email, password);
-      console.log('📥 [AuthService] Backend response:', response);
+      console.log('[AuthService] Backend response:', response);
 
       // Update local state and save to localStorage
       this.user = response.user;
       this.token = response.token;
       
-      console.log('💾 [AuthService] Saving to localStorage...');
+      console.log('[AuthService] Saving to localStorage...');
       console.log('   - Token:', this.token?.substring(0, 20) + '...');
       console.log('   - User:', {
         id: this.user.id,
@@ -158,12 +158,12 @@ class AuthService {
       localStorage.setItem(CONFIG.STORAGE.USER, JSON.stringify(this.user));
       localStorage.setItem(CONFIG.STORAGE.TOKEN, this.token);
 
-      console.log('✅ [AuthService] Login successful!');
-      console.log('🎯 User role:', this.user.role);
+      console.log('[AuthService] Login successful!');
+      console.log('User role:', this.user.role);
       
       return response;
     } catch (error) {
-      console.error('❌ [AuthService] Login failed:', error.message);
+      console.error('[AuthService] Login failed:', error.message);
       throw error;
     }
   }

@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
            if (!bookingId) {
              console.warn('Success response but no booking ID:', result);
            } else {
-             console.log('✅ Booking created in DB with ID:', bookingId);
+             console.log('Booking created in DB with ID:', bookingId);
            }
            
            // Update localStorage with the real ID from DB and add to user tickets

@@ -79,6 +79,26 @@
     if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
     return d.toLocaleDateString();
   }
+  // WhatsApp-style timestamp inside a message bubble:
+  //   today      → "10:30 AM"
+  //   yesterday  → "Yesterday"
+  //   < 1 week   → "Mon"
+  //   else       → "21/04/2026"
+  function msgTime(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const now = new Date();
+    const sameDay = d.toDateString() === now.toDateString();
+    if (sameDay) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    const diffDays = (now - d) / 86400000;
+    if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString();
+  }
   function avatarUrl(u) {
     if (!u || !u.avatar && !u.profile_image) return null;
     const v = u.avatar || u.profile_image;
@@ -90,13 +110,17 @@
     const p = name.trim().split(/\s+/);
     return ((p[0] || '?')[0] + (p[1] ? p[1][0] : '')).toUpperCase();
   }
-  // Online status — based on `last_seen` from the API.
+  // Online status — based on `last_seen` from the API. WhatsApp-like:
+  // user is "Online" only if they pinged the server in the last 30s. Once
+  // they close the tab / log out, the polling stops and within 30s the
+  // status flips to "Last seen Xm ago".
   function presence(lastSeenIso) {
-    if (!lastSeenIso) return { online: false, label: '' };
+    if (!lastSeenIso) return { online: false, label: 'Offline' };
     const t = new Date(lastSeenIso).getTime();
-    if (isNaN(t)) return { online: false, label: '' };
+    if (isNaN(t)) return { online: false, label: 'Offline' };
     const diffSec = (Date.now() - t) / 1000;
-    if (diffSec < 60)     return { online: true,  label: 'Online' };
+    if (diffSec < 30)     return { online: true,  label: 'Online' };
+    if (diffSec < 60)     return { online: false, label: 'Last seen just now' };
     if (diffSec < 3600)   return { online: false, label: `Last seen ${Math.floor(diffSec/60)}m ago` };
     if (diffSec < 86400)  return { online: false, label: `Last seen ${Math.floor(diffSec/3600)}h ago` };
     return { online: false, label: `Last seen ${Math.floor(diffSec/86400)}d ago` };
@@ -376,15 +400,101 @@
         margin-left: auto;
       }
       .eh-msg .time {
-        font-size: 0.66rem;
-        opacity: 0.7;
-        margin-top: 4px;
+        font-size: 0.7rem;
+        opacity: 0.9;
+        margin-top: 6px;
         display: block;
+        line-height: 1.2;
+        white-space: nowrap;       /* keep time + tick on one row */
+      }
+      .eh-msg.mine .time { text-align: right; color: rgba(255,255,255,0.9); }
+      /* Three-state read receipt — distinct icon per state so the user can
+         instantly tell which messages are sent / delivered / seen.
+         Backend marks read_at = NOW() on thread fetch, polled every 3s. */
+      .eh-tick {
+        display: inline-block;
+        margin-left: 5px;
+        vertical-align: middle;
+      }
+      .eh-tick i {
+        font-size: 0.7rem;          /* compact, refined */
+        line-height: 1;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .eh-tick.sent i      { color: rgba(255,255,255,0.75); }    /* faded white check — sent only */
+      .eh-tick.delivered i { color: #ffffff; }                   /* solid white circle-check — recipient online */
+      .eh-tick.read i {                                          /* bright green eye — they've seen it */
+        color: #25d366;
+        font-size: 0.78rem;                                      /* tiny bump so the eye stays readable but stays compact */
+        animation: ehEyeReveal 0.4s cubic-bezier(.2,.9,.3,1.2) both;
+      }
+      @keyframes ehEyeReveal {
+        0%   { transform: scale(0.5); opacity: 0; }
+        60%  { transform: scale(1.15); opacity: 1; }
+        100% { transform: scale(1); opacity: 1; }
       }
       @keyframes ehMsgIn {
         from { opacity: 0; transform: translateY(6px); }
         to   { opacity: 1; transform: translateY(0); }
       }
+
+      /* Edit / delete affordances on own messages */
+      .eh-msg[data-mine="1"] { cursor: pointer; position: relative; }
+      .eh-edited { font-style: italic; opacity: 0.75; font-size: 0.62rem; }
+
+      .eh-msg-menu {
+        position: absolute;
+        top: -34px; right: 0;
+        display: flex; gap: 4px;
+        padding: 4px;
+        background: white;
+        border: 1px solid #eef2ff;
+        border-radius: 12px;
+        box-shadow: 0 10px 22px rgba(15,23,42,0.18);
+        z-index: 10;
+        animation: ehMsgIn 0.18s ease both;
+      }
+      .eh-msg-menu-item {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 10px;
+        border: none; border-radius: 8px;
+        background: transparent;
+        font-family: inherit; font-size: 0.78rem; font-weight: 600;
+        cursor: pointer;
+        color: #1f2937;
+      }
+      .eh-msg-menu-item.eh-edit:hover  { background: rgba(99,102,241,0.1); color: #6366f1; }
+      .eh-msg-menu-item.eh-delete:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+      .eh-msg-menu-item i { font-size: 0.78rem; }
+
+      .eh-msg-edit {
+        display: flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,0.18);
+        border-radius: 10px;
+        padding: 4px;
+      }
+      .eh-msg-edit-input {
+        flex: 1; min-width: 0;
+        padding: 5px 8px;
+        border: 1px solid rgba(255,255,255,0.45);
+        border-radius: 8px;
+        background: rgba(255,255,255,0.95);
+        color: #1f2937;
+        font-family: inherit; font-size: 0.92rem;
+        outline: none;
+      }
+      .eh-msg-edit-actions { display: inline-flex; gap: 2px; }
+      .eh-msg-edit-actions button {
+        width: 26px; height: 26px;
+        border: none; border-radius: 7px;
+        background: rgba(255,255,255,0.85);
+        color: #6366f1;
+        font-size: 0.78rem;
+        cursor: pointer;
+      }
+      .eh-msg-edit-actions .eh-msg-edit-cancel { color: #ef4444; }
+      .eh-msg-edit-actions button:hover { background: white; }
 
       .eh-chat-input {
         display: flex; gap: 8px;
@@ -736,7 +846,7 @@
     startThreadPolling();
   }
 
-  let lastRenderedIds = new Set();
+  let lastRenderedHash = '';
   async function refreshThread(initial = false) {
     if (!threadKey) return;
     try {
@@ -749,11 +859,15 @@
         threadKey.otherLastSeen = data.other.last_seen;
         setHeaderForThread(threadKey);
       }
-      // If nothing new, skip re-rendering (avoids scroll jumps).
-      const ids = new Set(messages.map(m => m.id));
-      const sameSet = ids.size === lastRenderedIds.size && [...ids].every(x => lastRenderedIds.has(x));
-      if (!initial && sameSet) return;
-      lastRenderedIds = ids;
+      // Recipient's current online state — used to switch ✓ → ✓✓ "delivered".
+      const otherOnline = presence(data.other && data.other.last_seen).online;
+
+      // Re-render whenever any of these change: message set, read state, or
+      // recipient's online status. (Old check only diffed IDs and missed
+      // tick updates when the recipient came online or read a message.)
+      const stateHash = messages.map(m => `${m.id}:${m.read_at ? 1 : 0}`).join('|') + `|o${otherOnline ? 1 : 0}`;
+      if (!initial && stateHash === lastRenderedHash) return;
+      lastRenderedHash = stateHash;
 
       if (messages.length === 0) {
         body.innerHTML = `
@@ -767,14 +881,127 @@
       const wasNearBottom = (body.scrollHeight - body.clientHeight - body.scrollTop) < 80;
       body.innerHTML = messages.map(m => {
         const mine = m.sender_id === ME.id;
+        // Custom three-state read receipt — visually distinct so users
+        // can tell at a glance what state each message is in:
+        //   ✓                    = sent       (recipient is offline)
+        //   filled circle-check  = delivered  (recipient came online but hasn't opened the thread)
+        //   eye (green, animated) = seen       (recipient opened the thread, backend stamped read_at)
+        let ticks = '';
+        if (mine) {
+          if (m.read_at) {
+            ticks = '<span class="eh-tick read" title="Seen"><i class="fas fa-eye"></i></span>';
+          } else if (otherOnline) {
+            ticks = '<span class="eh-tick delivered" title="Delivered"><i class="fas fa-circle-check"></i></span>';
+          } else {
+            ticks = '<span class="eh-tick sent" title="Sent"><i class="fas fa-check"></i></span>';
+          }
+        }
+        const editedTag = m.edited_at
+          ? `<span class="eh-edited" title="Edited"> (edited)</span>`
+          : '';
         return `
-          <div class="eh-msg ${mine ? 'mine' : 'theirs'}">
-            ${esc(m.body)}
-            <span class="time">${esc(relTime(m.created_at))}</span>
+          <div class="eh-msg ${mine ? 'mine' : 'theirs'}" data-msg-id="${m.id}" data-mine="${mine ? '1' : '0'}">
+            <span class="eh-msg-body">${esc(m.body)}</span>
+            <span class="time">${esc(msgTime(m.created_at))}${editedTag}${ticks}</span>
           </div>`;
       }).join('');
+      // Click own message → small action menu (Edit / Delete).
+      body.querySelectorAll('.eh-msg[data-mine="1"]').forEach(el => {
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          // If user is mid-edit, ignore further clicks until done
+          if (el.querySelector('.eh-msg-edit-input')) return;
+          const id = parseInt(el.dataset.msgId, 10);
+          const m = messages.find(x => x.id === id);
+          if (m) showMsgActionMenu(el, m);
+        });
+      });
       if (initial || wasNearBottom) body.scrollTop = body.scrollHeight;
     } catch (err) { /* polling, ignore transient errors */ }
+  }
+
+  // Pop a small floating menu next to the message with Edit + Delete.
+  function showMsgActionMenu(msgEl, m) {
+    document.querySelectorAll('.eh-msg-menu').forEach(el => el.remove());
+    const menu = document.createElement('div');
+    menu.className = 'eh-msg-menu';
+    menu.innerHTML = `
+      <button class="eh-msg-menu-item eh-edit"  type="button"><i class="fas fa-pen"></i> Edit</button>
+      <button class="eh-msg-menu-item eh-delete" type="button"><i class="fas fa-trash"></i> Delete</button>`;
+    msgEl.appendChild(menu);
+    const close = () => menu.remove();
+    setTimeout(() => document.addEventListener('click', close, { once: true }), 0);
+    menu.querySelector('.eh-edit').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      close();
+      enterEditMode(msgEl, m);
+    });
+    menu.querySelector('.eh-delete').addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      close();
+      if (!confirm('Delete this message? This cannot be undone.')) return;
+      try {
+        const r = await authedFetch(`/messages/${m.id}`, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Delete failed');
+        msgEl.style.transition = 'opacity 0.2s, transform 0.2s';
+        msgEl.style.opacity = '0';
+        msgEl.style.transform = 'translateX(20px)';
+        setTimeout(() => { lastRenderedHash = ''; refreshThread(false); }, 220);
+      } catch (e) {
+        alert('Could not delete the message. Please try again.');
+      }
+    });
+  }
+
+  // Replace the message bubble's text with an inline editable input.
+  function enterEditMode(msgEl, m) {
+    const bodySpan = msgEl.querySelector('.eh-msg-body');
+    if (!bodySpan) return;
+    const original = m.body;
+    const editor = document.createElement('div');
+    editor.className = 'eh-msg-edit';
+    editor.innerHTML = `
+      <input class="eh-msg-edit-input" type="text" value="${esc(original).replace(/"/g, '&quot;')}" />
+      <div class="eh-msg-edit-actions">
+        <button class="eh-msg-edit-cancel" type="button" title="Cancel"><i class="fas fa-xmark"></i></button>
+        <button class="eh-msg-edit-save"   type="button" title="Save"><i class="fas fa-check"></i></button>
+      </div>`;
+    bodySpan.replaceWith(editor);
+    const inp = editor.querySelector('.eh-msg-edit-input');
+    inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+
+    const cancel = () => {
+      const restored = document.createElement('span');
+      restored.className = 'eh-msg-body';
+      restored.textContent = original;
+      editor.replaceWith(restored);
+    };
+    editor.querySelector('.eh-msg-edit-cancel').addEventListener('click', (ev) => {
+      ev.stopPropagation(); cancel();
+    });
+    inp.addEventListener('keydown', (ev) => {
+      ev.stopPropagation();
+      if (ev.key === 'Escape') cancel();
+      if (ev.key === 'Enter')  editor.querySelector('.eh-msg-edit-save').click();
+    });
+    editor.querySelector('.eh-msg-edit-save').addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const next = inp.value.trim();
+      if (!next || next === original) { cancel(); return; }
+      try {
+        const r = await authedFetch(`/messages/${m.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: next })
+        });
+        if (!r.ok) throw new Error('edit-failed');
+        lastRenderedHash = '';
+        refreshThread(false);
+      } catch (e) {
+        alert('Could not edit the message. Please try again.');
+        cancel();
+      }
+    });
   }
 
   function startThreadPolling() {
@@ -783,7 +1010,7 @@
   }
   function stopThreadPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    lastRenderedIds = new Set();
+    lastRenderedHash = '';
   }
 
   async function sendMessage() {

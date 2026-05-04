@@ -350,6 +350,7 @@
       .home-link { top: 16px; left: 16px; }
     }
   </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
 </head>
 <body>
   <div class="orb orb-1"></div>
@@ -415,6 +416,9 @@
           <i class="fas fa-arrow-right-to-bracket"></i>
           <span id="btn-text">Login Now</span>
         </button>
+        <div class="signup-link" style="margin-top:1rem;">
+          <a href="#" id="forgot-link" style="color:var(--primary);font-weight:600;text-decoration:none;font-size:0.88rem;">Forgot password?</a>
+        </div>
         <div class="signup-link">
           Don't have an account? <a href="signup.html">Sign Up</a>
         </div>
@@ -446,7 +450,293 @@
       setTimeout(() => popup.remove(), 4000);
     }
 
+    // ───────── Forgot-password modal ─────────
+    function escForgot(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function openForgotPassword() {
+      const API_BASE = (typeof CONFIG !== 'undefined' && CONFIG.API && CONFIG.API.BASE_URL) || 'http://localhost:3000/api';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;z-index:99000;display:flex;align-items:center;justify-content:center;background:rgba(7,9,26,0.6);backdrop-filter:blur(8px);padding:1.5rem;font-family:Inter,Segoe UI,sans-serif;';
+      wrap.innerHTML = `
+        <style>
+          @keyframes fpFade { from { opacity: 0; } to { opacity: 1; } }
+          @keyframes fpZoom { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+          .fp-input { width:100%;padding:0.95rem 1rem;border:2px solid #eef2ff;border-radius:14px;background:#fafbff;font-size:0.95rem;font-family:inherit;color:#1f2937;transition:all 0.2s ease; }
+          .fp-input:focus { outline:none; border-color:#6366f1; background:white; box-shadow:0 0 0 4px rgba(99,102,241,0.12); }
+          .fp-otp { text-align:center; font-family:'JetBrains Mono','Fira Code',monospace; font-size:1.5rem; letter-spacing:0.5em; font-weight:700; }
+          .fp-step { display:none; }
+          .fp-step.active { display:block; }
+          .fp-btn { width:100%;padding:0.95rem 1rem;border:none;border-radius:14px;background:linear-gradient(135deg,#6366f1,#ec4899);color:white;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.98rem;box-shadow:0 10px 24px rgba(99,102,241,0.35); }
+          .fp-btn:disabled { opacity:0.6; cursor:not-allowed; }
+          .fp-link { color:#6366f1; font-weight:600; text-decoration:none; font-size:0.86rem; }
+        </style>
+        <div style="background:white;border-radius:22px;width:100%;max-width:440px;overflow:hidden;box-shadow:0 30px 60px rgba(15,23,42,0.4);animation:fpZoom 0.3s cubic-bezier(.2,.9,.3,1.2);">
+          <div style="position:relative;padding:1.6rem 1.5rem 1.2rem;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 35%,#ec4899 100%);color:white;text-align:center;">
+            <div style="width:54px;height:54px;border-radius:50%;background:white;color:#6366f1;display:grid;place-items:center;font-size:1.4rem;margin:0 auto 0.7rem;box-shadow:0 8px 22px rgba(0,0,0,0.18);">
+              <i class="fas fa-key"></i>
+            </div>
+            <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.25rem;font-weight:800;margin:0 0 4px;">Reset your password</h3>
+            <p style="opacity:0.95;font-size:0.85rem;margin:0;" id="fp-sub">Enter your registered mobile number — we'll send a code to your email.</p>
+          </div>
+          <div style="padding:1.4rem 1.5rem;">
+            <div class="fp-error" style="margin-bottom:8px;color:#ef4444;font-size:0.86rem;text-align:center;min-height:18px;"></div>
+            <div class="fp-step active" data-step="mobile">
+              <!-- Channel toggle -->
+              <div class="fp-tabs" style="display:flex;gap:6px;background:#f1f5f9;padding:4px;border-radius:12px;margin-bottom:14px;">
+                <button type="button" class="fp-tab active" data-fp-channel="mobile" style="flex:1;padding:0.6rem 0.5rem;border:none;border-radius:9px;background:linear-gradient(135deg,#6366f1,#ec4899);color:white;font-weight:700;font-size:0.86rem;cursor:pointer;font-family:inherit;box-shadow:0 4px 10px rgba(99,102,241,0.35);">
+                  <i class="fas fa-mobile-screen"></i> Mobile
+                </button>
+                <button type="button" class="fp-tab" data-fp-channel="email" style="flex:1;padding:0.6rem 0.5rem;border:none;border-radius:9px;background:transparent;color:#64748b;font-weight:700;font-size:0.86rem;cursor:pointer;font-family:inherit;">
+                  <i class="fas fa-envelope"></i> Email
+                </button>
+              </div>
+
+              <label class="fp-label-mobile" style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Registered mobile</label>
+              <input class="fp-input fp-mobile" inputmode="numeric" maxlength="10" placeholder="10-digit mobile">
+
+              <label class="fp-label-email" style="display:none;font-size:0.72rem;font-weight:700;color:#94a3b8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Registered email</label>
+              <input class="fp-input fp-email" type="email" placeholder="you@example.com" autocomplete="email" style="display:none;">
+
+              <div style="height:12px;"></div>
+              <button class="fp-btn fp-send"><i class="fas fa-paper-plane"></i> Send OTP</button>
+            </div>
+            <div class="fp-step" data-step="otp">
+              <p style="color:#64748b;font-size:0.88rem;margin:0 0 12px;text-align:center;">We sent a 6-digit code to <b class="fp-delivered"></b>.</p>
+              <input class="fp-input fp-otp fp-code" inputmode="numeric" maxlength="6" placeholder="• • • • • •" autocomplete="one-time-code">
+              <div class="fp-dev-banner" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(245,158,11,0.1);border:1px dashed rgba(245,158,11,0.3);border-radius:10px;color:#92400e;font-size:0.78rem;text-align:center;"></div>
+              <div style="height:12px;"></div>
+              <button class="fp-btn fp-verify"><i class="fas fa-check"></i> Verify code</button>
+              <div style="margin-top:10px;text-align:center;font-size:0.82rem;color:#94a3b8;">
+                <a class="fp-resend fp-link" href="#">Resend code</a>
+              </div>
+            </div>
+            <div class="fp-step" data-step="reset">
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">New password</label>
+              <input class="fp-input fp-pass" type="password" minlength="6" placeholder="At least 6 characters">
+              <div style="height:10px;"></div>
+              <label style="display:block;font-size:0.72rem;font-weight:700;color:#94a3b8;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Confirm new password</label>
+              <input class="fp-input fp-pass2" type="password" minlength="6" placeholder="Re-enter new password">
+              <div style="height:12px;"></div>
+              <button class="fp-btn fp-reset"><i class="fas fa-rotate"></i> Reset password</button>
+            </div>
+            <div class="fp-step" data-step="done" style="text-align:center;">
+              <div style="width:60px;height:60px;margin:0.5rem auto 1rem;border-radius:50%;background:linear-gradient(135deg,#10b981,#06b6d4);color:white;display:grid;place-items:center;font-size:1.6rem;">
+                <i class="fas fa-check"></i>
+              </div>
+              <h4 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.05rem;margin:0 0 0.5rem;">Password reset!</h4>
+              <p style="color:#64748b;font-size:0.92rem;margin:0 0 1rem;">You can now sign in with your new password.</p>
+              <button class="fp-btn fp-close-done">Got it</button>
+            </div>
+            <div class="fp-step" data-step="notfound" style="text-align:center;">
+              <div style="width:60px;height:60px;margin:0.5rem auto 1rem;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ec4899);color:white;display:grid;place-items:center;font-size:1.6rem;">
+                <i class="fas fa-user-plus"></i>
+              </div>
+              <h4 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.05rem;margin:0 0 0.5rem;">No account yet</h4>
+              <p style="color:#64748b;font-size:0.92rem;margin:0 0 1rem;" class="fp-nf-msg">We couldn't find an account with that information. Create one to get started.</p>
+              <button class="fp-btn fp-go-signup"><i class="fas fa-user-plus"></i> Create an account</button>
+              <div style="margin-top:10px;">
+                <a href="#" class="fp-back-lookup fp-link">Try a different number / email</a>
+              </div>
+            </div>
+          </div>
+          <div style="padding:0 1.5rem 1.4rem;text-align:center;">
+            <a href="#" class="fp-cancel fp-link">Cancel</a>
+          </div>
+        </div>`;
+      document.body.appendChild(wrap);
+      document.body.style.overflow = 'hidden';
+
+      const close = () => { wrap.remove(); document.body.style.overflow = ''; };
+      const setStep = (name) => wrap.querySelectorAll('.fp-step').forEach(s => s.classList.toggle('active', s.dataset.step === name));
+      const errBox = wrap.querySelector('.fp-error');
+      const setErr = (msg) => { errBox.textContent = msg || ''; };
+
+      let channel = 'mobile';        // 'mobile' | 'email' — set by the toggle
+      let identifier = '';            // the actual mobile or email used
+      let verification_token = '';
+
+      // ── Channel toggle (Mobile / Email) ────────────────────────
+      const tabs       = wrap.querySelectorAll('.fp-tab');
+      const mobileInp  = wrap.querySelector('.fp-mobile');
+      const emailInp   = wrap.querySelector('.fp-email');
+      const lblMobile  = wrap.querySelector('.fp-label-mobile');
+      const lblEmail   = wrap.querySelector('.fp-label-email');
+      const sub        = wrap.querySelector('#fp-sub');
+
+      function applyChannel(name) {
+        channel = name;
+        tabs.forEach(t => {
+          const on = t.dataset.fpChannel === name;
+          t.classList.toggle('active', on);
+          t.style.background = on ? 'linear-gradient(135deg,#6366f1,#ec4899)' : 'transparent';
+          t.style.color      = on ? 'white' : '#64748b';
+          t.style.boxShadow  = on ? '0 4px 10px rgba(99,102,241,0.35)' : 'none';
+        });
+        if (name === 'mobile') {
+          lblMobile.style.display = 'block'; mobileInp.style.display = 'block';
+          lblEmail.style.display  = 'none';  emailInp.style.display  = 'none';
+          sub.textContent = "Enter your registered mobile number — we'll send a code to your email.";
+          setTimeout(() => mobileInp.focus(), 30);
+        } else {
+          lblMobile.style.display = 'none'; mobileInp.style.display = 'none';
+          lblEmail.style.display  = 'block'; emailInp.style.display = 'block';
+          sub.textContent = "Enter your registered email — we'll send a 6-digit code to it.";
+          setTimeout(() => emailInp.focus(), 30);
+        }
+        setErr('');
+      }
+      tabs.forEach(t => t.addEventListener('click', () => applyChannel(t.dataset.fpChannel)));
+
+      // Step 1 — send OTP (branch on channel)
+      wrap.querySelector('.fp-send').addEventListener('click', async () => {
+        setErr('');
+        if (channel === 'mobile') {
+          identifier = mobileInp.value.trim();
+          if (!/^\d{10}$/.test(identifier)) { setErr('Enter a valid 10-digit mobile.'); return; }
+        } else {
+          identifier = emailInp.value.trim();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier)) { setErr('Enter a valid email address.'); return; }
+        }
+        const sendBtn = wrap.querySelector('.fp-send');
+        sendBtn.disabled = true; sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+        try {
+          // 1. Confirm the user exists via the matching channel.
+          const lookupBody = channel === 'mobile' ? { mobile: identifier } : { email: identifier };
+          const lookup = await fetch(`${API_BASE}/auth/forgot-password/request`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(lookupBody)
+          });
+          const ld = await lookup.json();
+          if (!lookup.ok) {
+            // 404 → not a registered user. Route to a friendly "create account" state.
+            const msg = (ld.error || '').toLowerCase();
+            const isMissing = lookup.status === 404 || msg.includes('no account');
+            if (isMissing) {
+              const nf = wrap.querySelector('.fp-nf-msg');
+              if (nf) {
+                nf.textContent = channel === 'email'
+                  ? `We couldn't find an account for ${identifier}. Create one to get started.`
+                  : `We couldn't find an account for the mobile number ${identifier}. Create one to get started.`;
+              }
+              setStep('notfound');
+              return;
+            }
+            setErr(ld.error || 'Lookup failed.');
+            return;
+          }
+          // 2. Request the actual OTP — target_type matches the channel.
+          const r = await fetch(`${API_BASE}/otp/send`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ target: identifier, target_type: channel, purpose: 'password-reset', name: ld.name })
+          });
+          const d = await r.json();
+          if (!r.ok) { setErr(d.error || 'Failed to send OTP.'); return; }
+          wrap.querySelector('.fp-delivered').textContent = d.delivered_to || ld.delivered_to || '';
+          if (d.devMode) {
+            const dev = wrap.querySelector('.fp-dev-banner');
+            dev.style.display = '';
+            dev.innerHTML = `<b>DEV mode:</b> SMTP not configured — your code is <b style="font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;">${escForgot(d.otp)}</b>`;
+          }
+          setStep('otp'); setTimeout(() => wrap.querySelector('.fp-code').focus(), 50);
+        } catch (e) {
+          setErr('Network error.');
+        } finally {
+          sendBtn.disabled = false; sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP';
+        }
+      });
+
+      // Step 2 — verify OTP
+      wrap.querySelector('.fp-verify').addEventListener('click', async () => {
+        setErr('');
+        const code = (wrap.querySelector('.fp-code').value || '').trim();
+        if (!/^\d{6}$/.test(code)) { setErr('Enter the 6-digit code.'); return; }
+        const vBtn = wrap.querySelector('.fp-verify');
+        vBtn.disabled = true; vBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying…';
+        try {
+          const r = await fetch(`${API_BASE}/otp/verify`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ target: identifier, code, purpose: 'password-reset' })
+          });
+          const d = await r.json();
+          if (!r.ok) { setErr(d.error || 'Verification failed.'); return; }
+          verification_token = d.verification_token;
+          setStep('reset'); setTimeout(() => wrap.querySelector('.fp-pass').focus(), 50);
+        } catch (e) {
+          setErr('Network error.');
+        } finally {
+          vBtn.disabled = false; vBtn.innerHTML = '<i class="fas fa-check"></i> Verify code';
+        }
+      });
+
+      // Resend
+      wrap.querySelector('.fp-resend').addEventListener('click', async (e) => {
+        e.preventDefault();
+        const link = e.target;
+        link.textContent = 'Sending…';
+        try {
+          const r = await fetch(`${API_BASE}/otp/send`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ target: identifier, target_type: channel, purpose: 'password-reset' })
+          });
+          const d = await r.json();
+          if (d.devMode && d.otp) {
+            const dev = wrap.querySelector('.fp-dev-banner');
+            dev.style.display = '';
+            dev.innerHTML = `<b>DEV mode:</b> Code: <b style="font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;">${escForgot(d.otp)}</b>`;
+          }
+          link.textContent = 'Code resent';
+        } catch (_) { link.textContent = 'Resend failed'; }
+        setTimeout(() => { link.textContent = 'Resend code'; }, 4000);
+      });
+
+      // Step 3 — reset
+      wrap.querySelector('.fp-reset').addEventListener('click', async () => {
+        setErr('');
+        const p1 = wrap.querySelector('.fp-pass').value;
+        const p2 = wrap.querySelector('.fp-pass2').value;
+        if (p1.length < 6) { setErr('Password must be at least 6 characters.'); return; }
+        if (p1 !== p2)     { setErr('Passwords do not match.'); return; }
+        const rBtn = wrap.querySelector('.fp-reset');
+        rBtn.disabled = true; rBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
+        try {
+          const resetBody = { verification_token, new_password: p1 };
+          if (channel === 'email') resetBody.email = identifier;
+          else                     resetBody.mobile = identifier;
+          const r = await fetch(`${API_BASE}/auth/forgot-password/reset`, {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(resetBody)
+          });
+          const d = await r.json();
+          if (!r.ok) { setErr(d.error || 'Reset failed.'); return; }
+          setStep('done');
+        } catch (e) {
+          setErr('Network error.');
+        } finally {
+          rBtn.disabled = false; rBtn.innerHTML = '<i class="fas fa-rotate"></i> Reset password';
+        }
+      });
+
+      wrap.querySelector('.fp-cancel').addEventListener('click', e => { e.preventDefault(); close(); });
+      wrap.querySelector('.fp-close-done').addEventListener('click', close);
+
+      // "Not registered" state — Create account or go back to lookup.
+      wrap.querySelector('.fp-go-signup').addEventListener('click', () => {
+        close();
+        window.location.href = 'signup.html';
+      });
+      wrap.querySelector('.fp-back-lookup').addEventListener('click', e => {
+        e.preventDefault();
+        setErr('');
+        setStep('mobile');
+        setTimeout(() => (channel === 'mobile' ? mobileInp : emailInp).focus(), 30);
+      });
+
+      wrap.addEventListener('click', e => { if (e.target === wrap) close(); });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      const forgot = document.getElementById('forgot-link');
+      if (forgot) forgot.addEventListener('click', e => { e.preventDefault(); openForgotPassword(); });
+
       const form = document.getElementById('login-form');
       const errorBox = document.getElementById('error-msg');
 

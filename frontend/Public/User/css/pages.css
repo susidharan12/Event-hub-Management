@@ -257,7 +257,7 @@ body.event-detail-background::before {
   inset: 0;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 1;
-  pointer-events: none; /* ✅ FIX */
+  pointer-events: none; /* FIX */
 }
 
 /* BOOKING PAGE */

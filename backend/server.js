@@ -4,8 +4,8 @@ const cors = require('cors');
 const fs = require('fs');
 require('dotenv').config();
 
-// ✅ VERIFY JWT_SECRET is loaded
-console.log('🔐 JWT_SECRET loaded from .env:', process.env.JWT_SECRET ? 'YES ✅' : 'NO ❌ (using fallback)');
+// VERIFY JWT_SECRET is loaded
+console.log('JWT_SECRET loaded from .env:', process.env.JWT_SECRET ? 'YES ' : 'NO (using fallback)');
 
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./Swagger");
@@ -18,15 +18,14 @@ const PORT = process.env.PORT || 3000;
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('✅ Created uploads directory:', uploadsDir);
+  console.log('Created uploads directory:', uploadsDir);
 }
 
 // 2. GLOBAL MIDDLEWARE
-// 2. GLOBAL MIDDLEWARE
 app.use(cors({
     origin: [
-      "http://127.0.0.1:5050", 
-      "http://localhost:5050", 
+      "http://127.0.0.1:5050",
+      "http://localhost:5050",
       "http://127.0.0.1:5500", // Common Live Server port
       "http://localhost:5500"
     ],
@@ -44,14 +43,14 @@ async function initializeDatabase() {
   try {
     client = await pool.connect();
     password = 'postgres';
-    console.log('✅ Connected to PostgreSQL database');
+    console.log('Connected to PostgreSQL database');
   } catch (err) {
-    console.error('❌ Unable to connect to PostgreSQL:', err.message || err);
+    console.error('Unable to connect to PostgreSQL:', err.message || err);
     return false;
   }
 
   try {
-    console.log('📊 Initializing database schema...');
+    console.log('Initializing database schema...');
     
     // Create users table
     await client.query(`
@@ -123,6 +122,10 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS transaction_id VARCHAR(255)`);
     // Add ticket_id column to store unique ticket codes
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS ticket_id VARCHAR(50) UNIQUE`);
+    // Cancellation bookkeeping — refund + when it was cancelled.
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP`);
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount DECIMAL(10,2)`);
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`);
     
     // Create payments table
     await client.query(`
@@ -137,7 +140,10 @@ async function initializeDatabase() {
       )
     `);
     
-    // Create check_ins table
+    // Create check_ins table — used by the organizer's in-app scanner.
+    // Each row is one validated entry. seat_code uniquely identifies which
+    // seat of a multi-seat booking has already been scanned, so the same
+    // QR can't be reused. event_id + scanned_by track who scanned where.
     await client.query(`
       CREATE TABLE IF NOT EXISTS check_ins (
         id SERIAL PRIMARY KEY,
@@ -145,6 +151,13 @@ async function initializeDatabase() {
         checked_in_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Idempotent migration for the scanner additions.
+    await client.query(`ALTER TABLE check_ins ADD COLUMN IF NOT EXISTS seat_code   VARCHAR(120)`);
+    await client.query(`ALTER TABLE check_ins ADD COLUMN IF NOT EXISTS event_id    INTEGER REFERENCES events(id) ON DELETE CASCADE`);
+    await client.query(`ALTER TABLE check_ins ADD COLUMN IF NOT EXISTS scanned_by  INTEGER REFERENCES users(id)  ON DELETE SET NULL`);
+    // Each seat-code can only be scanned once globally.
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_check_ins_seat_unique ON check_ins (seat_code) WHERE seat_code IS NOT NULL`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_check_ins_event ON check_ins (event_id)`);
 
     // Create messages table — chat between attendees and organizers, scoped per event.
     await client.query(`
@@ -160,14 +173,35 @@ async function initializeDatabase() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages (event_id, sender_id, recipient_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_recipient_unread ON messages (recipient_id, read_at)`);
+    // Track edits so the UI can show an "edited" label.
+    await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
+
+    // OTP store — used for signup, profile-update and password-reset.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS otps (
+        id SERIAL PRIMARY KEY,
+        target VARCHAR(255) NOT NULL,                      -- email or mobile
+        target_type VARCHAR(20) NOT NULL,                  -- 'email' | 'mobile'
+        code VARCHAR(10) NOT NULL,                         -- 6-digit numeric
+        purpose VARCHAR(40) NOT NULL,                      -- 'signup' | 'update-email' | 'update-mobile' | 'password-reset'
+        attempts INT DEFAULT 0,
+        verified BOOLEAN DEFAULT FALSE,
+        verification_token VARCHAR(64),                    -- issued on successful verify, single-use
+        token_expires_at TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_otps_target ON otps (target, purpose)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_otps_token ON otps (verification_token)`);
     
-    console.log('✅ Database initialization complete!');
+    console.log('Database initialization complete!');
     return true;
   } catch (error) {
     if (error.code !== '42P07') {
-      console.error('⚠️ Database initialization warning:', error.message || error);
+      console.error('Database initialization warning:', error.message || error);
     } else {
-      console.log('✅ Database tables already exist');
+      console.log('Database tables already exist');
     }
     return true;
   } finally {
@@ -188,6 +222,8 @@ const startServer = async () => {
       const bookingsRouter = require('./routes/bookings');
       const paymentsRouter = require('./routes/payments');
       const messagesRouter = require('./routes/messages');
+      const { router: otpRouter } = require('./routes/otp');
+      const aiRouter = require('./routes/ai');
 
       // Mount routers to specific paths
       // This enables /api/auth/signup, /api/auth/profile, /api/auth/update-profile etc.
@@ -196,18 +232,20 @@ const startServer = async () => {
       app.use('/api/bookings', bookingsRouter);
       app.use('/api/payments', paymentsRouter);
       app.use('/api/messages', messagesRouter);
+      app.use('/api/otp', otpRouter);
+      app.use('/api/ai', aiRouter);
       
-      console.log('✅ Mounted real API routes (PostgreSQL)');
+      console.log('Mounted real API routes (PostgreSQL)');
     } catch (err) {
-      console.error('❌ Failed to mount real routes:', err.message);
+      console.error('Failed to mount real routes:', err.message);
     }
   } else {
     try {
       const devAuth = require('./routes/devAuth');
       app.use('/api/auth', devAuth);
-      console.log('⚠️ PostgreSQL unavailable — mounted development auth routes');
+      console.log('PostgreSQL unavailable — mounted development auth routes');
     } catch (err) {
-      console.error('❌ Failed to mount development auth router:', err.message);
+      console.error('Failed to mount development auth router:', err.message);
     }
   }
 
@@ -216,7 +254,7 @@ const startServer = async () => {
 
   // 5. ERROR HANDLING MIDDLEWARE (Must be after routes)
   app.use((err, req, res, next) => {
-    console.error('🔥 Error:', err.stack || err);
+    console.error('Error:', err.stack || err);
     res.status(500).json({ 
       error: 'Internal server error',
       message: err.message 
@@ -225,22 +263,22 @@ const startServer = async () => {
 
   // Start Listening
   const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
-    console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-    console.log(`👤 Profile Endpoint: http://localhost:${PORT}/api/auth/profile`);
+    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
+    console.log(`Profile Endpoint: http://localhost:${PORT}/api/auth/profile`);
     console.log(`pencil Update Endpoint: http://localhost:${PORT}/api/auth/update-profile`);
-    console.log(`🎟️   Events Endpoint: http://localhost:${PORT}/api/events`);
-    console.log(`📅   Bookings Endpoint: http://localhost:${PORT}/api/bookings`);
-    console.log(`💳   Payments Endpoint: http://localhost:${PORT}/api/payments`);
+    console.log(`  Events Endpoint: http://localhost:${PORT}/api/events`);
+    console.log(`  Bookings Endpoint: http://localhost:${PORT}/api/bookings`);
+    console.log(`  Payments Endpoint: http://localhost:${PORT}/api/payments`);
     console.log(`Frontend port is: ${process.env.FRONTEND_PORT} || 5050`);
 
 
-    console.log("Event Created status: ", app._router.stack.some(layer => layer.route && layer.route.path === '/api/events' && layer.route.methods.post) ? '✅ POST /api/events route exists' : '❌ POST /api/events route missing');
+    console.log("Event Created status: ", app._router.stack.some(layer => layer.route && layer.route.path === '/api/events' && layer.route.methods.post) ? 'POST /api/events route exists' : 'POST /api/events route missing');
   });
 
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`⚠️ Port ${PORT} is already in use.`);
+      console.error(`Port ${PORT} is already in use.`);
       process.exit(1);
     }
     console.error('Server error:', err);

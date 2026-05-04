@@ -26,8 +26,8 @@ const authenticateToken = (req, res, next) => {
   try {
     // 1. Get the Authorization header
     const authHeader = req.headers['authorization'];
-    console.log('🔐 Auth Header:', authHeader ? 'Present' : 'Missing');
-    console.log('🔑 JWT_SECRET being used:', JWT_SECRET);
+    console.log('Auth Header:', authHeader ? 'Present' : 'Missing');
+    console.log('JWT_SECRET being used:', JWT_SECRET);
 
     // 2. Check if header exists and starts with "Bearer "
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -40,7 +40,7 @@ const authenticateToken = (req, res, next) => {
 
     // 3. Extract the token
     const token = authHeader.split(" ")[1];
-    console.log('🎫 Token extracted:', token ? token.substring(0, 20) + '...' : 'None');
+    console.log('Token extracted:', token ? token.substring(0, 20) + '...' : 'None');
 
     if (!token || token === "null" || token === "undefined") {
       console.error("Auth Error: Token is null or undefined");
@@ -71,7 +71,7 @@ const authenticateToken = (req, res, next) => {
         });
       }
 
-      console.log('✅ Token verified successfully. User:', decoded);
+      console.log('Token verified successfully. User:', decoded);
       // 5. Attach user data to the request object
       // This allows routes to access req.user.id, req.user.role, etc.
       req.user = decoded;
@@ -98,8 +98,8 @@ const authorizeRoles = (...allowedRoles) => {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-    console.log(`🔐 Authorizing role: ${req.user.role} against allowed roles: ${allowedRoles.join(', ')}`);
-    console.log('👤 Requesting user role:', req.user.role);
+    console.log(`Authorizing role: ${req.user.role} against allowed roles: ${allowedRoles.join(', ')}`);
+    console.log('Requesting user role:', req.user.role);
     console.log('Requsted user name :', req.user.name);
 
     if (!allowedRoles.includes(req.user.role)) {

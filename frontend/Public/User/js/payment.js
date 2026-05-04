@@ -74,7 +74,7 @@ class PaymentPage {
     container.innerHTML = methods.map((method, index) => `
       <label class="payment-method" onclick="window.payment.selectPaymentMethod('${method.id}')">
         <div class="payment-method-header">
-          <div class="payment-icon">${method.icon}</div>
+          <div class="payment-icon"><i class="${method.icon}"></i></div>
           <div class="payment-info">
             <h4>${method.name}</h4>
             <p>${method.description}</p>

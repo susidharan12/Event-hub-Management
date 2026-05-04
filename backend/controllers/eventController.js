@@ -3,7 +3,7 @@ const pool = require('../db');
 // Create a new event
 const createEvent = async (req, res) => {
   try {
-    console.log('➡️ createEvent invoked');
+    console.log('createEvent invoked');
     console.log('   body:', req.body);
     console.log('   files:', req.files);
     
@@ -86,7 +86,7 @@ const createEvent = async (req, res) => {
       ticket_price: event.ticket_price
     });
   } catch (error) {
-    console.error('❌ Error creating event:', error);
+    console.error('Error creating event:', error);
     res.status(500).json({ error: error.message || 'Failed to create event' });
   }
 };

@@ -177,17 +177,21 @@
     }
     .dropdown-item:hover { background: #f3f4f6; }
 
-    /* ───────── Page background flair ───────── */
+    /* ───────── Page background flair ─────────
+       NOTE: do NOT use `overflow: hidden` here — that makes the page act as
+       a scroll container, which silently breaks `position: sticky` on the
+       sidebar. The orbs are now `position: fixed` so they don't need .page
+       to clip them, and body's `overflow-x: hidden` (above) prevents
+       horizontal scroll. */
     .page {
       position: relative;
       padding-top: calc(var(--nav-height) + 50px);
       padding-bottom: 4rem;
       min-height: 100vh;
-      overflow: hidden;
     }
     .page::before, .page::after {
       content: '';
-      position: absolute;
+      position: fixed;                /* fixed so they don't bind to .page's box */
       border-radius: 50%;
       filter: blur(90px);
       opacity: 0.4;
@@ -331,6 +335,522 @@
     }
     .stat-card p { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
     .stat-card h3 { font-size: 1.7rem; font-weight: 800; }
+    .stat-card .stat-sub {
+      display: inline-block; margin-top: 4px;
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+      letter-spacing: 0.01em;
+    }
+
+    /* ─────────── Event Performance section ─────────── */
+    .events-perf-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 2.2rem 0 1.2rem;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .events-perf-head h3 {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 1.2rem; font-weight: 800; color: var(--ink);
+      display: inline-flex; align-items: center; gap: 10px;
+    }
+    .events-perf-head h3 i {
+      color: var(--primary);
+      background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(236,72,153,0.1));
+      padding: 7px; border-radius: 10px;
+    }
+    .events-perf-meta {
+      font-size: 0.8rem; font-weight: 700; color: var(--primary);
+      background: rgba(99,102,241,0.08);
+      padding: 6px 12px; border-radius: 999px;
+      border: 1px solid rgba(99,102,241,0.18);
+    }
+    .events-perf-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.4rem;
+    }
+
+    /* Card — gradient-tinted glass with depth */
+    .perf-card {
+      position: relative;
+      background:
+        radial-gradient(120% 80% at 100% 0%, rgba(236,72,153,0.06), transparent 55%),
+        radial-gradient(120% 80% at 0% 100%, rgba(99,102,241,0.06), transparent 55%),
+        white;
+      border: 1px solid #eef2ff;
+      border-radius: 22px;
+      padding: 1.4rem 1.3rem 1.2rem;
+      box-shadow: 0 8px 22px rgba(15,23,42,0.05);
+      transition: transform 0.28s cubic-bezier(.2,.9,.3,1.2),
+                  box-shadow 0.28s ease,
+                  border-color 0.28s ease;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .perf-card::before {
+      content: ''; position: absolute; inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(135deg, rgba(99,102,241,0.0) 0%, rgba(236,72,153,0.0) 100%);
+      transition: background 0.3s ease;
+      pointer-events: none; z-index: -1;
+    }
+    .perf-card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(99,102,241,0.35);
+      box-shadow: 0 24px 50px rgba(99,102,241,0.20),
+                  0 8px 18px rgba(236,72,153,0.12);
+    }
+    .perf-card:hover::before {
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.08));
+    }
+    /* Top accent strip — gradient and animated shine */
+    .perf-card::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 4px;
+      background: var(--gradient-hero);
+      background-size: 200% 100%;
+      animation: perfShine 3s ease-in-out infinite;
+    }
+    @keyframes perfShine {
+      0%,100% { background-position: 0% 50%; }
+      50%     { background-position: 100% 50%; }
+    }
+
+    /* Header row: title + status pill */
+    .perf-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 10px; margin-bottom: 1rem;
+    }
+    .perf-head .perf-title {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 1.05rem; font-weight: 800; color: var(--ink);
+      line-height: 1.2;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical;
+    }
+    .perf-head .perf-date {
+      font-size: 0.74rem; color: var(--muted); font-weight: 600;
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 4px;
+    }
+    .perf-head .perf-date i { color: var(--primary); font-size: 0.72rem; }
+    .perf-pill {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 999px;
+      font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .perf-pill.low      { background: rgba(99,102,241,0.1);  color: #4338ca;  border: 1px solid rgba(99,102,241,0.25); }
+    .perf-pill.filling  { background: rgba(16,185,129,0.1);  color: #059669;  border: 1px solid rgba(16,185,129,0.3); }
+    .perf-pill.almost   { background: rgba(245,158,11,0.1);  color: #b45309;  border: 1px solid rgba(245,158,11,0.3); }
+    .perf-pill.soldout  { background: rgba(239,68,68,0.1);   color: #b91c1c;  border: 1px solid rgba(239,68,68,0.3); }
+    .perf-pill.empty    { background: rgba(148,163,184,0.1); color: #475569; border: 1px solid rgba(148,163,184,0.3); }
+
+    /* Donut — center stage, big, with subtle glow */
+    .perf-body {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 1rem;
+    }
+    .perf-donut {
+      position: relative; width: 150px; height: 150px;
+      filter: drop-shadow(0 6px 18px rgba(99,102,241,0.18));
+    }
+    .perf-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .perf-donut-track    { fill: none; stroke: #eef2ff; stroke-width: 10; }
+    .perf-donut-progress {
+      fill: none; stroke: url(#perf-grad); stroke-width: 10;
+      stroke-linecap: round;
+      transition: stroke-dasharray 0.9s cubic-bezier(.2,.9,.3,1.2);
+    }
+    .perf-card.almost  .perf-donut-progress { stroke: url(#perf-grad-amber); }
+    .perf-card.soldout .perf-donut-progress { stroke: url(#perf-grad-red); }
+    .perf-card.filling .perf-donut-progress { stroke: url(#perf-grad-green); }
+    .perf-donut-label {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      line-height: 1;
+    }
+    .perf-donut-pct {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 2rem; font-weight: 800;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .perf-card.almost  .perf-donut-pct { background: linear-gradient(135deg,#f59e0b,#ef4444); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .perf-card.soldout .perf-donut-pct { background: linear-gradient(135deg,#ef4444,#ec4899); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .perf-card.filling .perf-donut-pct { background: linear-gradient(135deg,#10b981,#06b6d4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .perf-donut-sub {
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.05em; text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* Three mini-stats in a row across the bottom of the card */
+    .perf-mini-row {
+      width: 100%;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .perf-mini {
+      text-align: center;
+      padding: 0.6rem 0.4rem;
+      background: rgba(99,102,241,0.04);
+      border: 1px solid rgba(99,102,241,0.08);
+      border-radius: 12px;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .perf-mini:hover { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.18); }
+    .perf-mini .perf-mini-num {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 1.05rem; font-weight: 800; color: var(--ink);
+      line-height: 1;
+    }
+    .perf-mini.booked  .perf-mini-num { color: #6366f1; }
+    .perf-mini.free    .perf-mini-num { color: #10b981; }
+    .perf-mini.cap     .perf-mini-num { color: var(--ink); }
+    .perf-mini .perf-mini-lbl {
+      font-size: 0.62rem; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-top: 5px;
+    }
+
+    /* Animated capacity bar with sheen */
+    .perf-bar-wrap {
+      width: 100%;
+      height: 8px; background: #eef2ff; border-radius: 999px; overflow: hidden;
+      position: relative;
+    }
+    .perf-bar-fill {
+      height: 100%;
+      background: var(--gradient-hero);
+      border-radius: 999px;
+      transition: width 0.9s cubic-bezier(.2,.9,.3,1.2);
+      position: relative; overflow: hidden;
+    }
+    .perf-bar-fill::after {
+      content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+      animation: perfBarSheen 2.5s ease-in-out infinite;
+    }
+    @keyframes perfBarSheen {
+      0%   { left: -100%; }
+      60%  { left: 100%; }
+      100% { left: 100%; }
+    }
+    .perf-card.almost  .perf-bar-fill { background: linear-gradient(135deg,#f59e0b,#ef4444); }
+    .perf-card.soldout .perf-bar-fill { background: linear-gradient(135deg,#ef4444,#ec4899); }
+    .perf-card.filling .perf-bar-fill { background: linear-gradient(135deg,#10b981,#06b6d4); }
+
+    /* Empty state */
+    .perf-empty {
+      grid-column: 1 / -1;
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      background: linear-gradient(135deg, rgba(99,102,241,0.03), rgba(236,72,153,0.03));
+      border: 1px dashed rgba(99,102,241,0.3);
+      border-radius: 22px;
+    }
+    .perf-empty .ic {
+      width: 60px; height: 60px;
+      margin: 0 auto 0.8rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      display: grid; place-items: center;
+      font-size: 1.5rem; color: var(--primary);
+    }
+
+    /* ─────────── Earnings page ─────────── */
+    .earn-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.1rem;
+      margin-bottom: 2rem;
+    }
+    .earn-kpi {
+      position: relative;
+      display: flex; align-items: center; gap: 14px;
+      padding: 1.2rem 1.1rem;
+      border-radius: 18px;
+      background: white;
+      border: 1px solid #eef2ff;
+      box-shadow: 0 8px 22px rgba(15,23,42,0.05);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      overflow: hidden;
+    }
+    .earn-kpi:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 36px rgba(99,102,241,0.16);
+      border-color: rgba(99,102,241,0.25);
+    }
+    .earn-kpi::before {
+      content: ''; position: absolute; top: 0; left: 0; bottom: 0;
+      width: 4px;
+      background: var(--gradient-hero);
+    }
+    .earn-kpi.refund::before { background: linear-gradient(180deg,#f59e0b,#ef4444); }
+    .earn-kpi.net::before    { background: linear-gradient(180deg,#10b981,#06b6d4); }
+    .earn-kpi.avg::before    { background: linear-gradient(180deg,#06b6d4,#6366f1); }
+
+    .earn-kpi-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      display: grid; place-items: center;
+      color: white; font-size: 1.2rem;
+      background: var(--gradient-hero);
+      box-shadow: 0 6px 14px rgba(99,102,241,0.3);
+      flex-shrink: 0;
+    }
+    .earn-kpi.refund .earn-kpi-icon { background: linear-gradient(135deg,#f59e0b,#ef4444); box-shadow: 0 6px 14px rgba(245,158,11,0.3); }
+    .earn-kpi.net    .earn-kpi-icon { background: linear-gradient(135deg,#10b981,#06b6d4); box-shadow: 0 6px 14px rgba(16,185,129,0.3); }
+    .earn-kpi.avg    .earn-kpi-icon { background: linear-gradient(135deg,#06b6d4,#6366f1); box-shadow: 0 6px 14px rgba(6,182,212,0.3); }
+
+    .earn-kpi-lbl {
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .earn-kpi-val {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 1.55rem; font-weight: 800; color: var(--ink);
+      line-height: 1.1;
+    }
+    .earn-kpi.gross  .earn-kpi-val { background: var(--gradient-hero); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .earn-kpi.refund .earn-kpi-val { color: #b45309; }
+    .earn-kpi.net    .earn-kpi-val { background: linear-gradient(135deg,#10b981,#06b6d4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .earn-kpi.avg    .earn-kpi-val { color: var(--ink); }
+    .earn-kpi-sub {
+      font-size: 0.74rem; font-weight: 600; color: var(--muted); margin-top: 3px;
+    }
+
+    /* Block (top events / transactions) */
+    .earn-block {
+      background: white;
+      border: 1px solid #eef2ff;
+      border-radius: 18px;
+      padding: 1.3rem 1.3rem 1.1rem;
+      margin-bottom: 1.4rem;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.04);
+    }
+    .earn-block-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.6rem; border-bottom: 1px solid #f1f5f9;
+    }
+    .earn-block-head h3 {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 1rem; font-weight: 800; color: var(--ink);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .earn-block-head h3 i { color: var(--primary); }
+    .earn-block-meta { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
+
+    /* Top events list — bar-chart-on-a-row */
+    .earn-top-list { display: flex; flex-direction: column; gap: 0.8rem; }
+    .earn-top-row {
+      display: grid; grid-template-columns: 28px 1fr auto; gap: 12px;
+      align-items: center;
+    }
+    .earn-top-rank {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(99,102,241,0.08);
+      color: #4338ca;
+      font-weight: 800; font-size: 0.78rem;
+      display: grid; place-items: center;
+    }
+    .earn-top-row.gold  .earn-top-rank { background: linear-gradient(135deg,#fcd34d,#f59e0b); color: white; }
+    .earn-top-row.silver .earn-top-rank { background: linear-gradient(135deg,#e2e8f0,#94a3b8); color: white; }
+    .earn-top-row.bronze .earn-top-rank { background: linear-gradient(135deg,#fed7aa,#c2410c); color: white; }
+    .earn-top-info { min-width: 0; }
+    .earn-top-info .name {
+      font-weight: 700; color: var(--ink);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size: 0.92rem;
+    }
+    .earn-top-info .bar {
+      height: 6px; background: #eef2ff; border-radius: 999px; overflow: hidden;
+      margin-top: 6px;
+    }
+    .earn-top-info .bar-fill {
+      height: 100%; border-radius: 999px;
+      background: var(--gradient-hero);
+      transition: width 0.8s cubic-bezier(.2,.9,.3,1.2);
+    }
+    .earn-top-amt {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-weight: 800; color: var(--ink); white-space: nowrap;
+    }
+
+    /* Transactions table */
+    .earn-tx-wrap { overflow-x: auto; }
+    .earn-tx-table {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .earn-tx-table th {
+      text-align: left; padding: 0.7rem 0.8rem;
+      font-size: 0.7rem; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .earn-tx-table td {
+      padding: 0.85rem 0.8rem;
+      border-bottom: 1px solid #f8fafc;
+      color: var(--ink);
+      vertical-align: middle;
+    }
+    .earn-tx-table tr:hover td { background: rgba(99,102,241,0.02); }
+    .earn-tx-table .ev-name { font-weight: 600; }
+    .earn-tx-table .at-name { color: #475569; }
+    .earn-tx-table .amt {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-weight: 800; text-align: right;
+    }
+    .earn-tx-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .earn-tx-pill.confirmed { background: rgba(16,185,129,0.1);  color: #059669; }
+    .earn-tx-pill.cancelled { background: rgba(239,68,68,0.1);   color: #b91c1c; }
+
+    .earn-empty {
+      padding: 2rem 1rem;
+      text-align: center;
+      color: var(--muted);
+      background: linear-gradient(135deg, rgba(99,102,241,0.03), rgba(236,72,153,0.03));
+      border: 1px dashed rgba(99,102,241,0.25);
+      border-radius: 16px;
+    }
+    .earn-empty i { font-size: 1.6rem; color: var(--primary); margin-bottom: 0.4rem; }
+
+    /* ─────────── Ticket Scanner ─────────── */
+    .scn-picker-wrap { margin-bottom: 1.5rem; max-width: 520px; }
+    .scn-picker-lbl {
+      display: block;
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .scn-picker {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      border: 2px solid #eef2ff; border-radius: 14px;
+      background: #fafbff; color: var(--ink);
+      font-size: 0.95rem; font-family: inherit; font-weight: 600;
+      cursor: pointer; transition: border-color 0.2s, background 0.2s;
+    }
+    .scn-picker:focus { outline: none; border-color: var(--primary); background: white; }
+
+    .scn-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .scn-stat {
+      display: flex; align-items: center; gap: 12px;
+      padding: 1rem 1.1rem;
+      background: white;
+      border: 1px solid #eef2ff;
+      border-radius: 16px;
+      box-shadow: 0 6px 18px rgba(15,23,42,0.04);
+    }
+    .scn-stat-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: grid; place-items: center;
+      color: white; font-size: 1.05rem; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+    }
+    .scn-stat-lbl {
+      font-size: 0.7rem; font-weight: 700; color: var(--muted);
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .scn-stat-val {
+      font-family: 'Space Grotesk', Inter, sans-serif;
+      font-size: 1.5rem; font-weight: 800; color: var(--ink);
+      line-height: 1.1; margin-top: 2px;
+    }
+
+    .scn-camera-wrap {
+      position: relative;
+      max-width: 420px; margin: 0 auto 1.5rem;
+      background: #0f172a;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(15,23,42,0.4);
+    }
+    .scn-camera { width: 100%; min-height: 320px; background: #0f172a; position: relative; }
+    .scn-camera video { width: 100% !important; height: auto !important; display: block; }
+    .scn-camera-overlay {
+      position: absolute; inset: 0;
+      pointer-events: none;
+    }
+    .scn-corner {
+      position: absolute; width: 36px; height: 36px;
+      border: 4px solid #25d366;
+      box-shadow: 0 0 12px rgba(37,211,102,0.6);
+    }
+    .scn-corner.tl { top: 14px;    left: 14px;  border-right: none; border-bottom: none; border-top-left-radius: 14px; }
+    .scn-corner.tr { top: 14px;    right: 14px; border-left:  none; border-bottom: none; border-top-right-radius: 14px; }
+    .scn-corner.bl { bottom: 14px; left: 14px;  border-right: none; border-top:    none; border-bottom-left-radius: 14px; }
+    .scn-corner.br { bottom: 14px; right: 14px; border-left:  none; border-top:    none; border-bottom-right-radius: 14px; }
+
+    .scn-camera-controls {
+      display: flex; gap: 10px; justify-content: center;
+      padding: 12px;
+      background: rgba(15,23,42,0.95);
+    }
+    .btn-camera {
+      padding: 0.7rem 1.4rem;
+      border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #25d366, #06b6d4);
+      color: white; font-weight: 700; font-family: inherit; font-size: 0.92rem;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(37,211,102,0.35);
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-camera:hover { transform: translateY(-1px); }
+    .btn-camera.off { background: linear-gradient(135deg, #ef4444, #ec4899); box-shadow: 0 6px 14px rgba(239,68,68,0.35); }
+
+    .scn-result {
+      position: absolute; left: 12px; right: 12px; bottom: 70px;
+      padding: 0.9rem 1rem;
+      background: rgba(255,255,255,0.97);
+      border-radius: 14px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.25);
+      font-size: 0.9rem; font-weight: 600;
+      display: none;
+      animation: scnPop 0.25s cubic-bezier(.2,.9,.3,1.2);
+    }
+    .scn-result.show    { display: block; }
+    .scn-result.success { border-left: 4px solid #25d366; color: #065f46; }
+    .scn-result.warning { border-left: 4px solid #f59e0b; color: #92400e; }
+    .scn-result.error   { border-left: 4px solid #ef4444; color: #991b1b; }
+    .scn-result b { display: block; font-size: 1rem; margin-bottom: 2px; font-family: 'Space Grotesk',Inter,sans-serif; }
+    @keyframes scnPop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .scn-recent-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .scn-recent-row {
+      display: grid; grid-template-columns: 36px 1fr auto;
+      align-items: center; gap: 12px;
+      padding: 0.6rem 0.8rem;
+      background: rgba(99,102,241,0.04);
+      border: 1px solid rgba(99,102,241,0.08);
+      border-radius: 12px;
+    }
+    .scn-recent-row .ic {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #25d366, #06b6d4);
+      color: white; display: grid; place-items: center; font-size: 0.85rem;
+    }
+    .scn-recent-row .info { min-width: 0; }
+    .scn-recent-row .info .nm { font-weight: 700; color: var(--ink); font-size: 0.92rem; }
+    .scn-recent-row .info .code { font-size: 0.72rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    .scn-recent-row .when { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
 
     /* Buttons */
     .btn {
@@ -699,6 +1219,213 @@
     .msg-empty h3 { font-size: 1.1rem; margin-bottom: 0.3rem; }
     .msg-empty p  { color: var(--muted); }
 
+    /* ───────── Bookings section (organizer view) ───────── */
+    .bk-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .bk-stat {
+      display: flex; align-items: center; gap: 12px;
+      padding: 1rem 1.1rem;
+      background: linear-gradient(135deg, white, #fafbff);
+      border: 1px solid #f1f5f9;
+      border-radius: 16px;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .bk-stat:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(99,102,241,0.18); }
+    .bk-stat-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      color: white; font-size: 1rem;
+      flex-shrink: 0;
+      box-shadow: 0 6px 14px rgba(99,102,241,0.25);
+    }
+    .bk-stat-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.4rem; font-weight: 800;
+    }
+    .bk-stat-lbl {
+      font-size: 0.74rem; color: var(--muted);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .bk-filter-bar {
+      display: flex; gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      padding: 0.6rem 0.8rem;
+      background: linear-gradient(135deg, #fafbff, white);
+      border: 1px solid #f1f5f9;
+      border-radius: 14px;
+    }
+    .bk-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .bk-pill {
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      color: var(--gray);
+      font-weight: 600; font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      font-family: inherit;
+    }
+    .bk-pill:hover { border-color: var(--primary); color: var(--primary); }
+    .bk-pill.active {
+      background: var(--gradient-hero);
+      color: white; border-color: transparent;
+      box-shadow: 0 6px 14px rgba(99,102,241,0.3);
+    }
+    .bk-search-wrap { position: relative; flex: 1; min-width: 220px; }
+    .bk-search-wrap i {
+      position: absolute; left: 14px; top: 50%;
+      transform: translateY(-50%); color: var(--muted);
+    }
+    .bk-search-wrap input {
+      width: 100%;
+      padding: 0.65rem 1rem 0.65rem 2.4rem;
+      border: 1px solid #eef2ff;
+      background: white;
+      border-radius: 10px;
+      font-family: inherit; font-size: 0.92rem;
+      color: var(--ink);
+      transition: all 0.2s ease;
+    }
+    .bk-search-wrap input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+
+    .bk-list { display: flex; flex-direction: column; gap: 0.85rem; }
+    .bk-row {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      padding: 1rem 1.1rem;
+      background: white;
+      border: 1px solid #f1f5f9;
+      border-radius: 14px;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .bk-row:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.2); }
+    .bk-row .bk-ava {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white; font-weight: 800; font-size: 1.05rem;
+      overflow: hidden;
+    }
+    .bk-row .bk-ava img { width: 100%; height: 100%; object-fit: cover; }
+    .bk-row .bk-info { min-width: 0; line-height: 1.3; }
+    .bk-row .bk-info .name {
+      font-weight: 700; font-size: 1rem; color: var(--ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .bk-row .bk-info .contact {
+      font-size: 0.82rem; color: var(--muted);
+      display: flex; gap: 14px; flex-wrap: wrap;
+      margin-top: 3px;
+    }
+    .bk-row .bk-info .contact span { display: inline-flex; align-items: center; gap: 5px; }
+    .bk-row .bk-info .contact i { color: var(--primary); }
+    .bk-row .bk-info .event {
+      margin-top: 6px;
+      font-size: 0.85rem; color: var(--ink);
+      display: flex; gap: 12px; flex-wrap: wrap;
+    }
+    .bk-row .bk-info .event .ev-title {
+      font-weight: 700; color: var(--primary);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .bk-row .bk-info .event .meta {
+      color: var(--muted);
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .bk-row .bk-info .ticket {
+      margin-top: 6px;
+      font-family: 'JetBrains Mono','Fira Code',monospace;
+      font-size: 0.76rem; color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .bk-row .bk-right {
+      text-align: right;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    }
+    .bk-row .bk-amount {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800; font-size: 1.1rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .bk-row .bk-amount.free {
+      background: linear-gradient(135deg,#10b981,#06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .bk-row .bk-seats {
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .bk-row .bk-status {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .bk-row .bk-status.confirmed {
+      background: rgba(16,185,129,0.12); color: var(--success);
+      border: 1px solid rgba(16,185,129,0.25);
+    }
+    .bk-row .bk-status.cancelled {
+      background: rgba(239,68,68,0.12); color: var(--danger);
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+    .bk-row .bk-status.pending {
+      background: rgba(245,158,11,0.12); color: var(--accent);
+      border: 1px solid rgba(245,158,11,0.25);
+    }
+    .bk-row.cancelled-row {
+      opacity: 0.7;
+      background: linear-gradient(135deg,#fef2f2,white);
+    }
+    .bk-empty {
+      padding: 3rem 1.5rem;
+      text-align: center;
+      background: linear-gradient(135deg, #eef2ff, #fdf2f8);
+      border: 1px dashed rgba(99,102,241,0.3);
+      border-radius: 16px;
+    }
+    .bk-empty i {
+      font-size: 2rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.7rem; display: block;
+    }
+
+    @media (max-width: 700px) {
+      .bk-row { grid-template-columns: 48px 1fr; }
+      .bk-row .bk-ava { width: 48px; height: 48px; }
+      .bk-row .bk-right { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+
     /* Sidebar unread badge */
     .sidebar-menu a { position: relative; }
     .sidebar-menu a .nav-badge {
@@ -765,6 +1492,7 @@
       .sidebar { position: static; }
     }
   </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
 </head>
 <body>
 
@@ -807,6 +1535,7 @@
             <li><a onclick="showSection('create')" id="nav-create"><i class="fas fa-plus-circle"></i> Create Event</a></li>
             <li><a onclick="showSection('bookings')" id="nav-bookings"><i class="fas fa-ticket"></i> Bookings</a></li>
             <li><a onclick="showSection('earnings')" id="nav-earnings"><i class="fas fa-indian-rupee-sign"></i> Earnings</a></li>
+            <li><a onclick="showSection('scanner')"  id="nav-scanner"><i class="fas fa-qrcode"></i> Scanner</a></li>
             <li><a onclick="showSection('messages')" id="nav-messages"><i class="fas fa-comment"></i> Messages <span class="nav-badge" id="nav-messages-badge">0</span></a></li>
             <li><a onclick="showSection('profile')" id="nav-profile"><i class="fas fa-user"></i> Profile</a></li>
           </ul>
@@ -823,17 +1552,36 @@
             <div class="stats-grid">
               <div class="stat-card">
                 <div class="stat-icon" style="background:var(--gradient-hero)"><i class="fas fa-calendar"></i></div>
-                <div><p>Total Events</p><h3 id="stat-events">0</h3></div>
+                <div>
+                  <p>Total Events</p>
+                  <h3 id="stat-events">0</h3>
+                  <span class="stat-sub" id="stat-events-sub">No events yet</span>
+                </div>
               </div>
               <div class="stat-card">
                 <div class="stat-icon" style="background:linear-gradient(135deg,#10b981,#06b6d4)"><i class="fas fa-indian-rupee-sign"></i></div>
-                <div><p>Revenue</p><h3>₹0</h3></div>
+                <div>
+                  <p>Revenue</p>
+                  <h3 id="stat-revenue">₹0</h3>
+                  <span class="stat-sub" id="stat-revenue-sub">from 0 bookings</span>
+                </div>
               </div>
               <div class="stat-card">
                 <div class="stat-icon" style="background:linear-gradient(135deg,#f59e0b,#ec4899)"><i class="fas fa-users"></i></div>
-                <div><p>Attendees</p><h3>0</h3></div>
+                <div>
+                  <p>Attendees</p>
+                  <h3 id="stat-attendees">0</h3>
+                  <span class="stat-sub" id="stat-attendees-sub">0 confirmed · 0 cancelled</span>
+                </div>
               </div>
             </div>
+
+            <!-- Events performance — per-event donut showing booked vs total seats -->
+            <div class="events-perf-head">
+              <h3><i class="fas fa-chart-pie"></i> Event Performance</h3>
+              <span id="events-perf-meta" class="events-perf-meta">Loading…</span>
+            </div>
+            <div id="events-perf-grid" class="events-perf-grid"></div>
           </section>
 
           <!-- My Events -->
@@ -997,14 +1745,176 @@
 
           <!-- Other -->
           <section id="bookings-section" class="section">
-            <span class="eyebrow">Sales</span>
-            <h2>Bookings</h2>
-            <p style="color:var(--muted); margin-top:0.6rem;">Manage your ticket sales here. Booking analytics coming soon.</p>
+            <div class="section-header">
+              <div>
+                <span class="eyebrow">Sales</span>
+                <h2>Bookings</h2>
+              </div>
+              <button class="btn btn-ghost" id="bk-refresh-btn"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+
+            <!-- Stats strip -->
+            <div class="bk-stats">
+              <div class="bk-stat"><div class="bk-stat-icon" style="background:var(--gradient-hero);"><i class="fas fa-ticket"></i></div>
+                <div><div class="bk-stat-num" id="bk-stat-total">0</div><div class="bk-stat-lbl">Total bookings</div></div>
+              </div>
+              <div class="bk-stat"><div class="bk-stat-icon" style="background:linear-gradient(135deg,#10b981,#06b6d4);"><i class="fas fa-users"></i></div>
+                <div><div class="bk-stat-num" id="bk-stat-seats">0</div><div class="bk-stat-lbl">Seats sold</div></div>
+              </div>
+              <div class="bk-stat"><div class="bk-stat-icon" style="background:linear-gradient(135deg,#f59e0b,#ec4899);"><i class="fas fa-indian-rupee-sign"></i></div>
+                <div><div class="bk-stat-num" id="bk-stat-revenue">₹0</div><div class="bk-stat-lbl">Confirmed revenue</div></div>
+              </div>
+              <div class="bk-stat"><div class="bk-stat-icon" style="background:linear-gradient(135deg,#ef4444,#ec4899);"><i class="fas fa-circle-xmark"></i></div>
+                <div><div class="bk-stat-num" id="bk-stat-cancel">0</div><div class="bk-stat-lbl">Cancellations</div></div>
+              </div>
+            </div>
+
+            <!-- Filter pills + search -->
+            <div class="bk-filter-bar">
+              <div class="bk-pills" id="bk-pills">
+                <button class="bk-pill active" data-bk-status="all">All</button>
+                <button class="bk-pill" data-bk-status="confirmed">Confirmed</button>
+                <button class="bk-pill" data-bk-status="cancelled">Cancelled</button>
+              </div>
+              <div class="bk-search-wrap">
+                <i class="fas fa-search"></i>
+                <input type="text" id="bk-search" placeholder="Search attendee, email, event…">
+              </div>
+            </div>
+
+            <p id="bk-summary" style="color:var(--muted); margin-bottom: 1rem;">Loading bookings…</p>
+            <div id="bk-list" class="bk-list"></div>
           </section>
           <section id="earnings-section" class="section">
             <span class="eyebrow">Finance</span>
             <h2>Earnings</h2>
-            <p style="color:var(--muted); margin-top:0.6rem;">Your total revenue: <b>₹0</b>.</p>
+            <p style="color:var(--muted); margin: 0.4rem 0 1.6rem;">Track revenue, refunds, and per-event performance.</p>
+
+            <!-- Top KPI row -->
+            <div class="earn-kpi-grid">
+              <div class="earn-kpi gross">
+                <div class="earn-kpi-icon"><i class="fas fa-sack-dollar"></i></div>
+                <div>
+                  <div class="earn-kpi-lbl">Gross Revenue</div>
+                  <div class="earn-kpi-val" id="earn-gross">₹0</div>
+                  <div class="earn-kpi-sub" id="earn-gross-sub">No bookings yet</div>
+                </div>
+              </div>
+              <div class="earn-kpi refund">
+                <div class="earn-kpi-icon"><i class="fas fa-rotate-left"></i></div>
+                <div>
+                  <div class="earn-kpi-lbl">Refunded</div>
+                  <div class="earn-kpi-val" id="earn-refund">₹0</div>
+                  <div class="earn-kpi-sub" id="earn-refund-sub">0 cancellations</div>
+                </div>
+              </div>
+              <div class="earn-kpi net">
+                <div class="earn-kpi-icon"><i class="fas fa-piggy-bank"></i></div>
+                <div>
+                  <div class="earn-kpi-lbl">Net Earnings</div>
+                  <div class="earn-kpi-val" id="earn-net">₹0</div>
+                  <div class="earn-kpi-sub" id="earn-net-sub">Gross − Refunds</div>
+                </div>
+              </div>
+              <div class="earn-kpi avg">
+                <div class="earn-kpi-icon"><i class="fas fa-arrow-trend-up"></i></div>
+                <div>
+                  <div class="earn-kpi-lbl">Avg / Booking</div>
+                  <div class="earn-kpi-val" id="earn-avg">₹0</div>
+                  <div class="earn-kpi-sub" id="earn-avg-sub">across all sales</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Top earning events -->
+            <div class="earn-block">
+              <div class="earn-block-head">
+                <h3><i class="fas fa-trophy"></i> Top earning events</h3>
+                <span class="earn-block-meta" id="earn-top-meta"></span>
+              </div>
+              <div id="earn-top-list" class="earn-top-list"></div>
+            </div>
+
+            <!-- Recent transactions -->
+            <div class="earn-block">
+              <div class="earn-block-head">
+                <h3><i class="fas fa-receipt"></i> Recent transactions</h3>
+                <span class="earn-block-meta" id="earn-tx-meta">Last 10 bookings</span>
+              </div>
+              <div class="earn-tx-wrap">
+                <table class="earn-tx-table" id="earn-tx-table">
+                  <thead>
+                    <tr><th>Date</th><th>Event</th><th>Attendee</th><th>Seats</th><th style="text-align:right;">Amount</th><th>Status</th></tr>
+                  </thead>
+                  <tbody id="earn-tx-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+          <section id="scanner-section" class="section">
+            <span class="eyebrow">At the gate</span>
+            <h2>Ticket Scanner</h2>
+            <p style="color:var(--muted); margin: 0.4rem 0 1.6rem;">Pick an event, point the camera at a ticket QR, and we'll validate + check the attendee in.</p>
+
+            <!-- Event picker -->
+            <div class="scn-picker-wrap">
+              <label class="scn-picker-lbl">Select event</label>
+              <select id="scn-event-select" class="scn-picker">
+                <option value="">— Choose one of your events —</option>
+              </select>
+            </div>
+
+            <!-- Stats panel — hidden until an event is picked -->
+            <div id="scn-stats" class="scn-stats" style="display:none;">
+              <div class="scn-stat">
+                <div class="scn-stat-icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);"><i class="fas fa-chair"></i></div>
+                <div>
+                  <div class="scn-stat-lbl">Total Seats</div>
+                  <div class="scn-stat-val" id="scn-total">0</div>
+                </div>
+              </div>
+              <div class="scn-stat">
+                <div class="scn-stat-icon" style="background:linear-gradient(135deg,#f59e0b,#ec4899);"><i class="fas fa-ticket"></i></div>
+                <div>
+                  <div class="scn-stat-lbl">Booked</div>
+                  <div class="scn-stat-val" id="scn-booked">0</div>
+                </div>
+              </div>
+              <div class="scn-stat">
+                <div class="scn-stat-icon" style="background:linear-gradient(135deg,#10b981,#06b6d4);"><i class="fas fa-circle-check"></i></div>
+                <div>
+                  <div class="scn-stat-lbl">Scanned in</div>
+                  <div class="scn-stat-val" id="scn-scanned">0</div>
+                </div>
+              </div>
+              <div class="scn-stat">
+                <div class="scn-stat-icon" style="background:linear-gradient(135deg,#06b6d4,#6366f1);"><i class="fas fa-hourglass-half"></i></div>
+                <div>
+                  <div class="scn-stat-lbl">Yet to enter</div>
+                  <div class="scn-stat-val" id="scn-remaining">0</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Camera viewport + scan-result toast -->
+            <div id="scn-camera-wrap" class="scn-camera-wrap" style="display:none;">
+              <div id="scn-camera" class="scn-camera"></div>
+              <div class="scn-camera-overlay"><div class="scn-corner tl"></div><div class="scn-corner tr"></div><div class="scn-corner bl"></div><div class="scn-corner br"></div></div>
+              <div class="scn-camera-controls">
+                <button type="button" id="scn-start-btn" class="btn-camera"><i class="fas fa-camera"></i> Start scanner</button>
+                <button type="button" id="scn-stop-btn"  class="btn-camera off" style="display:none;"><i class="fas fa-stop"></i> Stop scanner</button>
+              </div>
+              <div id="scn-result" class="scn-result"></div>
+            </div>
+
+            <!-- Recent scans feed -->
+            <div id="scn-recent-wrap" class="earn-block" style="display:none;">
+              <div class="earn-block-head">
+                <h3><i class="fas fa-clock-rotate-left"></i> Recent check-ins</h3>
+                <span class="earn-block-meta" id="scn-recent-meta">last 10</span>
+              </div>
+              <div id="scn-recent-list" class="scn-recent-list"></div>
+            </div>
           </section>
           <section id="messages-section" class="section">
             <div class="section-header">
@@ -1193,7 +2103,10 @@
     });
   </script>
   <script src="/Public/js/popup.js"></script>
+  <!-- html5-qrcode for the in-app ticket scanner (uses device camera) -->
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="dashboard.js"></script>
   <script src="/Public/js/chat-widget.js"></script>
+  <script src="/Public/js/ai-chat-widget.js"></script>
 </body>
 </html>

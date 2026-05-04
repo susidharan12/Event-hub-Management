@@ -1,0 +1,481 @@
+/**
+ * Global responsive fixes — mobile + tablet only.
+ * ------------------------------------------------
+ * Every rule is scoped inside an @media block with `max-width` so the
+ * desktop layout (>1024px) is NEVER affected. Linked from every HTML
+ * page's <head> so it applies sitewide without per-page edits.
+ *
+ * Breakpoints:
+ *   - Tablet:   max-width 1024px
+ *   - Mobile:   max-width 768px
+ *   - Phone:    max-width 480px
+ */
+
+/* ──────────────────────────────────────────────────────────────────
+   TABLET (≤1024px) — collapse multi-column layouts to single column.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  /* Universal overflow safety on small screens — kills rogue horizontal
+     scroll without touching desktop. */
+  html, body {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+  img, video, iframe { max-width: 100% !important; height: auto !important; }
+
+  /* CRITICAL: grid/flex children default to min-width:auto which makes them
+     grow to fit content and break the parent layout. Force min-width:0 so
+     they respect their column/flex track. Long words also break. */
+  .container,
+  .main-content,
+  .sidebar,
+  .dashboard-content,
+  .section,
+  .stat-card,
+  .form-card,
+  .form-section,
+  .preview-card,
+  .booking-card,
+  .event-card,
+  .ticket-card,
+  .profile-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Organizer dashboard layout: sidebar (260px) + content stacks vertically */
+  .main-content {
+    grid-template-columns: 1fr !important;
+    gap: 1.2rem !important;
+  }
+  .sidebar {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    padding: 0.6rem !important;
+    margin-bottom: 1rem !important;
+    overflow: visible !important;
+  }
+  .sidebar-menu {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    padding: 0 !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .sidebar-menu li {
+    margin-bottom: 0 !important;
+    flex: 0 0 auto !important;
+  }
+  .sidebar-menu a {
+    padding: 8px 14px !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  /* Two-column form grids → one column */
+  .form-grid,
+  .preview-details {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Login / signup split panels stack */
+  .login-container,
+  .signup-container {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Generic 2/3-col stat / summary grids */
+  .stats-grid,
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   MOBILE (≤768px) — tighten spacing, stack everything, table-friendly.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Crush outer paddings on the most-used containers */
+  .page,
+  .container,
+  .auth-container,
+  .login-container,
+  .signup-container,
+  .dashboard-content,
+  .events-section,
+  .form-card {
+    padding-left: clamp(0.7rem, 3vw, 1rem) !important;
+    padding-right: clamp(0.7rem, 3vw, 1rem) !important;
+  }
+
+  /* Section/card inner paddings — was 2rem, way too generous on phones */
+  .section,
+  .section-card,
+  .form-section,
+  .preview-card,
+  .booking-card,
+  .event-card,
+  .ticket-card,
+  .profile-card,
+  .login-right,
+  .signup-right {
+    padding: 1.1rem !important;
+  }
+
+  /* Stat cards inside the dashboard had 1.5rem padding + a flex layout that
+     pushes content out of the box on narrow phones. Tighten and let the
+     icon shrink. */
+  .stat-card {
+    padding: 1rem !important;
+    gap: 0.75rem !important;
+  }
+  .stat-card > * {
+    min-width: 0 !important;     /* lets text content wrap inside flex */
+  }
+  .stat-card .stat-icon,
+  .stat-card .icon {
+    flex: 0 0 auto !important;
+  }
+  .stat-card .stat-value,
+  .stat-card .value {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  /* Hide decorative auth split panels on small screens to free up height */
+  .login-left,
+  .signup-left {
+    display: none !important;
+  }
+
+  /* Force every multi-column grid to a single column on phones.
+     Also kills the `repeat(auto-fit, minmax(200px, 1fr))` pattern which
+     burst out on 375px because 200px + paddings exceeded available width. */
+  .stats-grid,
+  .stat-grid,
+  .summary-grid,
+  .ticket-meta,
+  .preview-meta,
+  .booking-meta,
+  .detail-grid,
+  [style*="grid-template-columns"][style*="200px"],
+  [style*="grid-template-columns"][style*="220px"] {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem !important;
+  }
+
+  /* Make sure the dashboard-content cell doesn't exceed its track */
+  .dashboard-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Tables become horizontally scrollable on mobile */
+  .events-table,
+  .bookings-table,
+  table {
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100% !important;
+  }
+
+  /* Action buttons in events table — shrink so all three fit */
+  .org-row-edit,
+  .org-row-delete,
+  .org-row-share {
+    padding: 5px 8px !important;
+    font-size: 0.78rem !important;
+    margin-right: 4px !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Profile / nav header rows wrap */
+  .profile-head,
+  .nav-inner,
+  .navbar-inner,
+  .header-inner {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  .profile-head .who { width: 100% !important; }
+
+  /* Floating chat fab smaller and tucked */
+  #chat-widget-fab,
+  .chat-widget-fab,
+  .floating-chat-btn {
+    bottom: 14px !important;
+    right: 14px !important;
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  /* Toasts/popups shrink to viewport */
+  .login-popup,
+  .signup-popup,
+  .toast {
+    left: 12px !important;
+    right: 12px !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  /* Forms: prevent iOS zoom-on-focus, comfortable padding */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Hero / detail banners shrink */
+  .event-hero,
+  .detail-hero,
+  .header-hero {
+    height: auto !important;
+    min-height: 200px !important;
+    padding: 1.2rem !important;
+  }
+
+  /* Pill / tab bars wrap */
+  .tab-bar,
+  .filter-pills,
+  .pill-row {
+    flex-wrap: wrap !important;
+  }
+
+  /* Floating back button doesn't overlap the navbar */
+  #floating-back-btn {
+    top: 70px !important;
+    left: 12px !important;
+    padding: 0.45rem 0.85rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Headlines shrink so they don't burst out */
+  h1 { font-size: clamp(1.4rem, 6vw, 2rem) !important; }
+  h2 { font-size: clamp(1.2rem, 5vw, 1.6rem) !important; }
+  h3 { font-size: clamp(1.05rem, 4.5vw, 1.3rem) !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   PHONE (≤480px) — final crush for the smallest screens.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .page,
+  .container,
+  .dashboard-content,
+  .events-section {
+    padding-left: 0.7rem !important;
+    padding-right: 0.7rem !important;
+  }
+
+  .section-card,
+  .form-card,
+  .form-section,
+  .preview-card,
+  .login-right,
+  .signup-right {
+    padding: 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  /* Logo/brand text shrinks so the nav fits */
+  .nav-logo,
+  .brand,
+  .navbar .logo {
+    font-size: 1.1rem !important;
+  }
+  .nav-logo span, .brand span { font-size: 1.05rem !important; }
+
+  /* Primary CTAs stretch full-width on phones */
+  .login-btn,
+  .signup-btn,
+  .form-submit,
+  .primary-btn,
+  .cta {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Hide bulky decorative orbs on tiny phones for clarity + perf */
+  .orb-3 { display: none !important; }
+  .orb-1, .orb-2 {
+    opacity: 0.25 !important;
+    filter: blur(60px) !important;
+  }
+
+  /* Profile dropdown narrower */
+  .profile-dropdown,
+  .dropdown-menu {
+    right: 8px !important;
+    min-width: 200px !important;
+  }
+
+  /* Stats grid forced to single column on tiny screens */
+  .stats-grid,
+  .summary-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 2-up role selector stays 2-up but tighter */
+  .role-selector {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Touch-only devices — comfortable hit targets at any size.
+   (Doesn't trigger on desktop with mouse + 1080p screen.)
+   ────────────────────────────────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) and (max-width: 1024px) {
+  button,
+  a.btn,
+  .btn,
+  .sidebar-menu a {
+    min-height: 40px;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Inheritance fixes — earlier rules added overflow-wrap:anywhere /
+   word-break:break-word to .section / .form-card / etc. That cascades
+   into buttons & links and lets text break char-by-char ("Save Event"
+   becomes "S a v e  E v e n t" stacked). Reset on inline interactive
+   elements so words stay whole. Scoped to ≤1024px only — desktop
+   untouched.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  button,
+  a,
+  .btn,
+  .action-btn,
+  .login-btn,
+  .signup-btn,
+  .cta {
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Targeted page fixes — selectors taken straight from dashboard.html
+   so we hit the actual elements that broke in screenshots.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Save / Preview / Create Event — actual class is .action-buttons-container
+     (not .action-row). Three side-by-side buttons don't fit at 375px even
+     when text wraps; stack them so each gets a full-width row. */
+  .action-buttons-container,
+  .action-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.7rem !important;
+    margin-top: 1.4rem !important;
+    align-items: stretch !important;
+  }
+  .action-btn {
+    width: 100% !important;
+    padding: 0.85rem 1rem !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+
+  /* Profile section: stack avatar above name, center everything. */
+  .profile-head {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 1.2rem !important;
+  }
+  .profile-head .who { text-align: center !important; min-width: 0 !important; }
+
+  /* Avatar circle — make it a true 110px circle that fully clips its
+     image. The original .avatar-big uses `display:grid; place-items:center`
+     which can size a child <img> at its natural size, leaving gradient
+     visible around it. Force the image to fill via absolute positioning. */
+  .avatar-big {
+    width: 110px !important;
+    height: 110px !important;
+    border-radius: 50% !important;
+    margin: 0 auto 0.8rem !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  .avatar-big img,
+  .avatar-big > img {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+    display: block !important;
+  }
+  /* Camera-edit pill stays anchored to the bottom-right of the circle */
+  .avatar-edit-btn {
+    position: absolute !important;
+    bottom: 4px !important;
+    right: 4px !important;
+    left: auto !important;
+    transform: none !important;
+    width: 30px !important;
+    height: 30px !important;
+    z-index: 2 !important;
+  }
+
+  /* Top navbar user-menu — avatar getting cut off because email is long
+     and stretches the row past the navbar's rounded right edge. Hide
+     the long email on phones; keep avatar + name. */
+  .user-menu {
+    gap: 8px !important;
+    padding: 4px !important;
+  }
+  .user-info-top { display: none !important; }   /* hide name+email block */
+  .user-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 50% !important;
+  }
+  /* Same fix as .avatar-big — force the injected <img> to fully cover
+     the 38px circle so the underlying gradient doesn't show through. */
+  .user-avatar img,
+  .user-avatar > img {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+    display: block !important;
+  }
+}
+
+
+/* On the slightly larger phones / small tablets keep email but truncate */
+@media (min-width: 481px) and (max-width: 768px) {
+  .user-info-top {
+    display: block !important;
+    max-width: 130px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .user-info-top .name,
+  .user-info-top .role {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+}

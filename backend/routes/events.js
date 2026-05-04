@@ -26,7 +26,7 @@ const upload = multer({ storage: storage });
 // GET /api/events - List events
 router.get('/', eventController.getEvents);
 
-// ✅ GET MY EVENTS - Fixed to use PostgreSQL
+// GET MY EVENTS - Fixed to use PostgreSQL
 router.get('/my-events', authenticateToken, async (req, res) => {
   try {
     console.log("User from token:", req.user);
@@ -37,12 +37,12 @@ router.get('/my-events', authenticateToken, async (req, res) => {
     
     res.json(result.rows);
   } catch (error) {
-    console.error("🔥 MY EVENTS ERROR:", error);
+    console.error("MY EVENTS ERROR:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
-// ⚠️ THIS MUST COME AFTER
+// THIS MUST COME AFTER
 router.get('/:id', eventController.getEventById);
 
 // DELETE /api/events/:id - Delete event
@@ -67,7 +67,7 @@ const optionalAuth = (req, res, next) => {
       try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
-        console.log('[EVENTS] ✅ Token verified for user:', decoded.id);
+        console.log('[EVENTS] Token verified for user:', decoded.id);
       } catch (err) {
         console.log('[EVENTS] Token verification failed:', err.message);
         // Continue without user - will use fallback organizer

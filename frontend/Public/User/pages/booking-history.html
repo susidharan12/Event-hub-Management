@@ -438,6 +438,7 @@
       .skel-img { width: 100%; height: 160px; }
     }
   </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
 </head>
 <body>
 
@@ -470,11 +471,12 @@
         <a href="dashboard.html#events" class="btn btn-primary"><i class="fas fa-plus"></i> Book new event</a>
       </div>
 
-      <!-- Tabs (booking-history.js relies on tab.textContent containing All/Upcoming/Past) -->
+      <!-- Tabs (booking-history.js relies on tab.textContent containing All/Upcoming/Past/Cancel) -->
       <div class="booking-tabs">
         <div class="tab active" onclick="filterBookings('all')">All Bookings</div>
         <div class="tab" onclick="filterBookings('upcoming')">Upcoming</div>
         <div class="tab" onclick="filterBookings('past')">Past Events</div>
+        <div class="tab" onclick="filterBookings('cancelled')">Cancelled</div>
       </div>
 
       <div class="booking-list" id="bookingContainer">
@@ -512,6 +514,7 @@
 
   <script src="/Public/js/popup.js"></script>
   <script src="/Public/js/chat-widget.js"></script>
+  <script src="/Public/js/ai-chat-widget.js"></script>
   <!-- booking-history.js: loads bookings into #bookingContainer and wires window.filterBookings -->
   <script src="../js/pages/booking-history.js"></script>
 </body>

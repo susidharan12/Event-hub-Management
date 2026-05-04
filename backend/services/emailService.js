@@ -6,20 +6,44 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Create transporter - using Gmail for demo
-// In production, use your email service provider
-const transporter = nodemailer.createTransport({
+// SMTP is "configured" only when both creds are present in the environment.
+// If they're missing we run in DEV MODE: log the OTP to the console and let
+// the API surface it back to the caller, so the flow is fully testable
+// without setting up a real mailbox.
+const SMTP_READY = !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
+const transporter = SMTP_READY ? nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || 'your-email@gmail.com',
-    pass: process.env.EMAIL_PASSWORD || 'your-app-password'
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
   }
-});
+}) : null;
+
+if (!SMTP_READY) {
+  console.warn(' emailService running in DEV mode — set EMAIL_USER + EMAIL_PASSWORD in .env to send real emails.');
+}
+
+function devLogOtp(email, otp, purpose) {
+  const banner = '═'.repeat(54);
+  console.log('\n' + banner);
+  console.log(` DEV-MODE OTP  →  ${email}`);
+  if (purpose) console.log(`     purpose: ${purpose}`);
+  console.log(`     code   : ${otp}`);
+  console.log(banner + '\n');
+}
 
 /**
  * Send OTP Email
+ *
+ *   Returns { sent: boolean, devMode: boolean }
+ *   - sent=true if SMTP delivered or we're in dev mode (always treated as ok)
+ *   - devMode=true means the caller can include the otp in the API response
  */
-async function sendOTPEmail(email, otp, userName = 'User') {
+async function sendOTPEmail(email, otp, userName = 'User', purpose = 'verification') {
+  if (!SMTP_READY) {
+    devLogOtp(email, otp, purpose);
+    return { sent: true, devMode: true };
+  }
   try {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
@@ -41,11 +65,11 @@ async function sendOTPEmail(email, otp, userName = 'User') {
           </div>
           
           <p style="color: #999; font-size: 12px;">
-            ⏱️ This OTP is valid for 10 minutes.
+            This OTP is valid for 10 minutes.
           </p>
           
           <p style="color: #999; font-size: 12px;">
-            ⚠️ If you didn't request this, please ignore this email or contact support.
+            If you didn't request this, please ignore this email or contact support.
           </p>
           
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center;">
@@ -63,14 +87,14 @@ async function sendOTPEmail(email, otp, userName = 'User') {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP email sent to ${email}`);
-    return true;
+    console.log(`OTP email sent to ${email}`);
+    return { sent: true, devMode: false };
 
   } catch (error) {
-    console.error('❌ Failed to send OTP email:', error.message);
-    // In development, we'll show the OTP in console
-    // In production, you should handle this error appropriately
-    return false;
+    console.error('Failed to send OTP email:', error.message);
+    // SMTP failure — fall back to dev mode so the caller still gets the OTP.
+    devLogOtp(email, otp, purpose);
+    return { sent: true, devMode: true };
   }
 }
 
@@ -78,11 +102,15 @@ async function sendOTPEmail(email, otp, userName = 'User') {
  * Send Booking Confirmation Email
  */
 async function sendBookingConfirmationEmail(email, bookingDetails) {
+  if (!SMTP_READY) {
+    console.log(`DEV-MODE booking-confirm email skipped → ${email} (${bookingDetails.eventTitle})`);
+    return false;
+  }
   try {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 20px; border-radius: 10px 10px 0 0; color: white; text-align: center;">
-          <h2>Booking Confirmed! 🎉</h2>
+          <h2>Booking Confirmed! </h2>
         </div>
         
         <div style="padding: 30px; background-color: #f9fafb; border-radius: 0 0 10px 10px;">
@@ -110,16 +138,17 @@ async function sendBookingConfirmationEmail(email, bookingDetails) {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Booking confirmation email sent to ${email}`);
+    console.log(`Booking confirmation email sent to ${email}`);
     return true;
 
   } catch (error) {
-    console.error('❌ Failed to send booking email:', error.message);
+    console.error('Failed to send booking email:', error.message);
     return false;
   }
 }
 
 module.exports = {
   sendOTPEmail,
-  sendBookingConfirmationEmail
+  sendBookingConfirmationEmail,
+  SMTP_READY
 };

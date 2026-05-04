@@ -27,4 +27,8 @@ router.get('/profile', authenticateToken, authController.getProfile);
 router.put('/update-profile', authenticateToken, authController.updateProfile);
 router.post('/upload-avatar', authenticateToken, avatarUpload.single('avatar'), authController.uploadAvatar);
 
+// Forgot-password (mobile-first lookup, OTP delivered via email).
+router.post('/forgot-password/request', authController.forgotPasswordRequest);
+router.post('/forgot-password/reset',   authController.forgotPasswordReset);
+
 module.exports = router;
