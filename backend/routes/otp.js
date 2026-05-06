@@ -11,9 +11,29 @@
  */
 const express = require('express');
 const crypto  = require('crypto');
+const jwt     = require('jsonwebtoken');
 const router  = express.Router();
 const pool    = require('../db');
 const { sendOTPEmail, SMTP_READY } = require('../services/emailService');
+const { sendOTPSms, SMS_READY }    = require('../services/smsService');
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_key';
+
+// Optional auth — extracts the user id from a Bearer token if present, but
+// does NOT reject unauthenticated requests. Used by /send so the same route
+// supports both signup (no auth) and update-mobile/update-email (auth required).
+function optionalAuth(req, _res, next) {
+  const auth = req.headers.authorization;
+  if (auth && auth.startsWith('Bearer ')) {
+    const token = auth.slice(7);
+    if (token && token !== 'null' && token !== 'undefined') {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+      } catch (_) { /* invalid/expired token — proceed unauthenticated */ }
+    }
+  }
+  next();
+}
 
 const VALID_PURPOSES = new Set(['signup', 'update-email', 'update-mobile', 'password-reset']);
 const OTP_TTL_MIN    = 10;      // minutes
@@ -30,9 +50,27 @@ function genOtp() {
  * look up the user's registered email by mobile and send there. The
  * frontend tells the attendee where the OTP went via the response.
  */
-async function resolveDeliveryEmail(target, target_type) {
+async function resolveDeliveryEmail(target, target_type, purpose, authedUserId) {
+  // ── Cross-channel verification for profile updates ────────────────
+  // When the user is updating their EMAIL or MOBILE, we must NEVER send
+  // the OTP to the new value they typed (they could be typing anyone's
+  // address). Instead, deliver to the channel that's NOT being changed:
+  //   • update-mobile  → send to the user's current registered email
+  //   • update-email   → send to the user's current registered mobile
+  // We don't have SMS in this project, so for update-email we fall back to
+  // the current registered email (the only channel we can actually use).
+  // Either way, the user must have access to the OTHER channel to confirm.
+  if ((purpose === 'update-mobile' || purpose === 'update-email') && authedUserId) {
+    const r = await pool.query('SELECT email FROM users WHERE id = $1', [authedUserId]);
+    if (r.rows.length === 0) return null;
+    return r.rows[0].email || null;
+  }
+
+  // ── Default flows ────────────────────────────────────────────────
+  // signup / password-reset:
+  //   • email target  → deliver directly
+  //   • mobile target → look up the registered user's email
   if (target_type === 'email') return target;
-  // mobile → look up the registered user's email
   const r = await pool.query('SELECT email FROM users WHERE mobile = $1', [target]);
   if (r.rows.length === 0) return null;
   return r.rows[0].email || null;
@@ -45,11 +83,18 @@ function maskEmail(e) {
   return masked + '@' + d;
 }
 
+function maskPhone(p) {
+  if (!p) return '';
+  const digits = String(p).replace(/\D/g, '');
+  if (digits.length < 4) return p;
+  return '****' + digits.slice(-4);
+}
+
 // ──────────────────────────────────────────────────────────────────
 // POST /api/otp/send
 // body: { target, target_type, purpose, name? }
 // ──────────────────────────────────────────────────────────────────
-router.post('/send', async (req, res) => {
+router.post('/send', optionalAuth, async (req, res) => {
   try {
     const { target, target_type, purpose, name } = req.body || {};
     if (!target || !target_type || !purpose) {
@@ -61,14 +106,33 @@ router.post('/send', async (req, res) => {
     if (!VALID_PURPOSES.has(purpose)) {
       return res.status(400).json({ error: 'invalid purpose' });
     }
+    // For profile-update purposes the user MUST be logged in — otherwise
+    // we can't know whose email to send the OTP to.
+    if ((purpose === 'update-mobile' || purpose === 'update-email') && !(req.user && (req.user.id || req.user.userId))) {
+      return res.status(401).json({ error: 'Login required to change your email or mobile.' });
+    }
 
-    const deliveryEmail = await resolveDeliveryEmail(String(target).trim(), target_type);
-    if (!deliveryEmail) {
-      return res.status(404).json({
-        error: target_type === 'mobile'
-          ? 'No account found for this mobile number.'
-          : 'No email address available to send the OTP.'
-      });
+    const authedUserId = req.user ? (req.user.userId || req.user.id) : null;
+
+    // ── Decide channel (SMS vs email) based on target_type + provider config ──
+    // For signup / password-reset on a mobile target we send SMS directly to
+    // that number when Twilio is configured. For profile-update flows (or
+    // if Twilio isn't configured) we fall back to the existing email path.
+    const trimmedTarget = String(target).trim();
+    const useSms = target_type === 'mobile'
+                && SMS_READY
+                && (purpose === 'signup' || purpose === 'password-reset');
+
+    let deliveryEmail = null;
+    if (!useSms) {
+      deliveryEmail = await resolveDeliveryEmail(trimmedTarget, target_type, purpose, authedUserId);
+      if (!deliveryEmail) {
+        return res.status(404).json({
+          error: target_type === 'mobile'
+            ? 'No account found for this mobile number.'
+            : 'No email address available to send the OTP.'
+        });
+      }
     }
 
     const code = genOtp();
@@ -77,24 +141,33 @@ router.post('/send', async (req, res) => {
     // newest one is the only one in play.
     await pool.query(
       `DELETE FROM otps WHERE target = $1 AND purpose = $2 AND verified = FALSE`,
-      [target, purpose]
+      [trimmedTarget, purpose]
     );
     await pool.query(
       `INSERT INTO otps (target, target_type, code, purpose, expires_at)
        VALUES ($1, $2, $3, $4, $5)`,
-      [String(target).trim(), target_type, code, purpose, expiresAt]
+      [trimmedTarget, target_type, code, purpose, expiresAt]
     );
 
-    const result = await sendOTPEmail(deliveryEmail, code, name || 'there', purpose);
+    let result, channel, deliveredToMasked;
+    if (useSms) {
+      result = await sendOTPSms(trimmedTarget, code, purpose);
+      channel = 'sms';
+      deliveredToMasked = maskPhone(result.deliveredTo || trimmedTarget);
+    } else {
+      result = await sendOTPEmail(deliveryEmail, code, name || 'there', purpose);
+      channel = 'email';
+      deliveredToMasked = maskEmail(deliveryEmail);
+    }
 
     return res.json({
       success: true,
-      delivered_to: maskEmail(deliveryEmail),
-      via: 'email',                 // we always deliver via email today
+      delivered_to: deliveredToMasked,
+      via: channel,
       target_type,
       expires_in_min: OTP_TTL_MIN,
-      // In dev mode (no SMTP creds, or SMTP failure) we surface the OTP
-      // in the response so the user can paste it from the API/console.
+      // In dev mode (no provider creds, or provider failure) we surface the
+      // OTP in the response so the user can paste it from the API/console.
       devMode: !!result.devMode,
       ...(result.devMode ? { otp: code } : {})
     });

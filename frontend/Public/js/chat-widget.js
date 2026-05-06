@@ -209,6 +209,74 @@
         animation: ehPanelIn 0.32s cubic-bezier(.2,.9,.3,1.2);
       }
       .eh-chat-panel.show { display: flex; }
+
+      /* In-panel confirm dialog — replaces native confirm() so the prompt
+         feels part of the chat card instead of a generic browser alert. */
+      .eh-chat-confirm {
+        position: absolute; inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        display: none;
+        align-items: flex-end; justify-content: center;
+        padding: 18px;
+        z-index: 50;
+        animation: ehConfirmFade 0.18s ease;
+      }
+      .eh-chat-confirm.show { display: flex; }
+      @keyframes ehConfirmFade { from { opacity: 0; } to { opacity: 1; } }
+      .eh-chat-confirm-card {
+        background: white;
+        border-radius: 16px;
+        padding: 18px 18px 14px;
+        width: 100%;
+        max-width: 320px;
+        box-shadow: 0 18px 40px rgba(15,23,42,0.25);
+        animation: ehConfirmSlide 0.28s cubic-bezier(.2,.9,.3,1.2);
+      }
+      @keyframes ehConfirmSlide {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .eh-chat-confirm-icon {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #ef4444, #ec4899);
+        color: white;
+        display: grid; place-items: center;
+        font-size: 1.1rem;
+        margin-bottom: 10px;
+      }
+      .eh-chat-confirm-title {
+        font-weight: 700; font-size: 1rem; color: #1f2937;
+        margin-bottom: 4px;
+      }
+      .eh-chat-confirm-msg {
+        color: #64748b; font-size: 0.88rem; line-height: 1.4;
+        margin-bottom: 14px;
+      }
+      .eh-chat-confirm-actions {
+        display: flex; gap: 8px; justify-content: flex-end;
+      }
+      .eh-chat-confirm-btn {
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        font-size: 0.88rem;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .eh-chat-confirm-btn.cancel {
+        background: #f1f5f9; color: #1f2937;
+      }
+      .eh-chat-confirm-btn.cancel:hover { background: #e2e8f0; }
+      .eh-chat-confirm-btn.danger {
+        background: linear-gradient(135deg, #ef4444, #ec4899); color: white;
+        box-shadow: 0 6px 14px rgba(239,68,68,0.35);
+      }
+      .eh-chat-confirm-btn.danger:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(239,68,68,0.45); }
       @keyframes ehPanelIn {
         from { opacity: 0; transform: translateY(20px) scale(0.96); }
         to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -586,6 +654,46 @@
   document.body.appendChild(tip);
   document.body.appendChild(panel);
 
+  // ─── In-panel confirm dialog ───────────────────────────────────────
+  // Drop-in replacement for window.confirm() that lives INSIDE the chat
+  // panel so the prompt visually belongs to the conversation. Returns
+  // a Promise<boolean> the caller can `await`.
+  function confirmInChat({ title = 'Are you sure?', message = '', okLabel = 'Confirm', cancelLabel = 'Cancel' } = {}) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'eh-chat-confirm';
+      overlay.innerHTML = `
+        <div class="eh-chat-confirm-card" role="dialog" aria-modal="true">
+          <div class="eh-chat-confirm-icon"><i class="fas fa-triangle-exclamation"></i></div>
+          <div class="eh-chat-confirm-title"></div>
+          <div class="eh-chat-confirm-msg"></div>
+          <div class="eh-chat-confirm-actions">
+            <button type="button" class="eh-chat-confirm-btn cancel"></button>
+            <button type="button" class="eh-chat-confirm-btn danger"></button>
+          </div>
+        </div>`;
+      overlay.querySelector('.eh-chat-confirm-title').textContent = title;
+      overlay.querySelector('.eh-chat-confirm-msg').textContent = message;
+      const cancelBtn = overlay.querySelector('.cancel');
+      const okBtn     = overlay.querySelector('.danger');
+      cancelBtn.textContent = cancelLabel;
+      okBtn.textContent     = okLabel;
+
+      function close(result) {
+        overlay.classList.remove('show');
+        setTimeout(() => overlay.remove(), 180);
+        resolve(result);
+      }
+      cancelBtn.addEventListener('click', () => close(false));
+      okBtn.addEventListener('click', () => close(true));
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(false); });
+
+      panel.appendChild(overlay);
+      requestAnimationFrame(() => overlay.classList.add('show'));
+      okBtn.focus();
+    });
+  }
+
   const head      = panel.querySelector('.eh-chat-head');
   const headBack  = panel.querySelector('.eh-chat-head-back');
   const headAva   = panel.querySelector('.eh-chat-head-avatar');
@@ -939,7 +1047,13 @@
     menu.querySelector('.eh-delete').addEventListener('click', async (ev) => {
       ev.stopPropagation();
       close();
-      if (!confirm('Delete this message? This cannot be undone.')) return;
+      const ok = await confirmInChat({
+        title: 'Delete message?',
+        message: 'This message will be removed for everyone in this chat. This cannot be undone.',
+        okLabel: 'Delete',
+        cancelLabel: 'Cancel'
+      });
+      if (!ok) return;
       try {
         const r = await authedFetch(`/messages/${m.id}`, { method: 'DELETE' });
         if (!r.ok) throw new Error('Delete failed');

@@ -398,17 +398,16 @@
   }
   .profile-head .who { text-align: center !important; min-width: 0 !important; }
 
-  /* Avatar circle — make it a true 110px circle that fully clips its
-     image. The original .avatar-big uses `display:grid; place-items:center`
-     which can size a child <img> at its natural size, leaving gradient
-     visible around it. Force the image to fill via absolute positioning. */
+  /* Avatar circle — 110px circle that fully clips its image. The wrapper
+     allows overflow so the camera-edit button can stick OUT of the corner;
+     the image is rounded directly so the photo itself stays circular. */
   .avatar-big {
     width: 110px !important;
     height: 110px !important;
     border-radius: 50% !important;
     margin: 0 auto 0.8rem !important;
     position: relative !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
   .avatar-big img,
   .avatar-big > img {
@@ -420,15 +419,15 @@
     border-radius: 50% !important;
     display: block !important;
   }
-  /* Camera-edit pill stays anchored to the bottom-right of the circle */
+  /* Camera-edit pill anchored just outside the bottom-right of the circle. */
   .avatar-edit-btn {
     position: absolute !important;
-    bottom: 4px !important;
-    right: 4px !important;
+    bottom: -2px !important;
+    right: -2px !important;
     left: auto !important;
     transform: none !important;
-    width: 30px !important;
-    height: 30px !important;
+    width: 32px !important;
+    height: 32px !important;
     z-index: 2 !important;
   }
 

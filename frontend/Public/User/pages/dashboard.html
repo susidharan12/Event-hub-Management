@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="/Public/js/api-base-shim.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -655,6 +656,55 @@
       align-items: center;
       gap: 6px;
     }
+
+    /* Feedback icon — square icon button beside the Book/Register CTA on each
+       event card. Hovers into a teal→cyan gradient so it pops out from the
+       neutral Book Now button next to it. Routes to the dedicated feedback
+       page with the event's organizer_id baked into the query string, so any
+       review submitted lands on the right organization. */
+    .event-actions { display: inline-flex; align-items: center; gap: 8px; }
+    .feedback-icon-btn {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: inline-grid;
+      place-items: center;
+      background: linear-gradient(135deg, rgba(16,185,129,0.14), rgba(6,182,212,0.14));
+      color: #10b981;
+      border: 1px solid rgba(16,185,129,0.25);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: transform 0.3s ease, background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .feedback-icon-btn:hover {
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      color: white;
+      transform: translateY(-2px) scale(1.05);
+      box-shadow: 0 10px 22px rgba(16,185,129,0.4);
+    }
+    /* Tooltip on hover so the icon's purpose is unambiguous. */
+    .feedback-icon-btn::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%) translateY(4px);
+      background: var(--ink);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .feedback-icon-btn:hover::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
     .book-btn:hover {
       background: var(--gradient-hero);
       transform: translateX(3px);
@@ -1239,9 +1289,18 @@
               <p class="meta"><i class="fas fa-users"></i> ${event.available_seats ?? event.total_seats ?? '—'} seats available</p>
               <div class="event-row">
                 <span class="price ${free ? 'free' : ''}">${priceText}</span>
-                <a href="event-detail.html?id=${encodeURIComponent(event.id)}" class="book-btn">
-                  ${buttonText} <i class="fas fa-arrow-right"></i>
-                </a>
+                <div class="event-actions">
+                  ${event.organizer_id ? `
+                    <a href="feedback.html?organizer=${encodeURIComponent(event.organizer_id)}"
+                       class="feedback-icon-btn"
+                       data-tip="Leave feedback"
+                       aria-label="Leave feedback for this organizer">
+                      <i class="fas fa-comment-dots"></i>
+                    </a>` : ''}
+                  <a href="event-detail.html?id=${encodeURIComponent(event.id)}" class="book-btn">
+                    ${buttonText} <i class="fas fa-arrow-right"></i>
+                  </a>
+                </div>
               </div>
             </div>
           </article>

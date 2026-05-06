@@ -27,7 +27,7 @@ router.get('/health', async (_req, res) => {
 });
 
 router.post('/chat', async (req, res) => {
-  const { message, history } = req.body || {};
+  const { message, sessionId, history } = req.body || {};
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ error: 'message is required' });
   }
@@ -38,15 +38,22 @@ router.post('/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
+  // Forward whichever the client sent. The new Spring Boot service uses
+  // sessionId as the memory key (preferred); the old shape (history array)
+  // is still passed through so older clients keep working during rollout.
+  const upstreamBody = { message };
+  if (sessionId) upstreamBody.sessionId = sessionId;
+  if (Array.isArray(history)) upstreamBody.history = history;
+
   try {
-    console.log('[AI proxy] → Spring Boot, msg:', JSON.stringify(message).slice(0, 60));
+    console.log('[AI proxy] → Spring Boot, sid:', sessionId || '(none)', 'msg:', JSON.stringify(message).slice(0, 60));
     // Note: no AbortSignal — it was interfering with response delivery in
     // the Express request context. If the client disconnects we'll just
     // let the upstream complete naturally.
     const aiRes = await fetch(`${AI_BASE}/api/ai/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
-      body: JSON.stringify({ message, history: Array.isArray(history) ? history : [] }),
+      body: JSON.stringify(upstreamBody),
     });
 
     console.log('[AI proxy] ← Spring Boot status:', aiRes.status, 'CT:', aiRes.headers.get('content-type'));
@@ -72,6 +79,22 @@ router.post('/chat', async (req, res) => {
     console.error('[AI proxy] error:', err.message);
     try { res.write(`data: [ERROR] ${err.message}\n\n`); res.write('data: [DONE]\n\n'); } catch (_) {}
     try { res.end(); } catch (_) {}
+  }
+});
+
+// Memory clear — proxies to the Spring Boot service so the browser doesn't
+// need to know the AI host. The client calls this when it wants to wipe
+// the server-side conversation memory for a session (e.g. "New chat" button).
+router.delete('/memory/:sessionId', async (req, res) => {
+  const sid = String(req.params.sessionId || '').trim();
+  if (!sid) return res.status(400).json({ error: 'sessionId is required' });
+  try {
+    const r = await fetch(`${AI_BASE}/api/ai/memory/${encodeURIComponent(sid)}`, { method: 'DELETE' });
+    const text = await r.text();
+    res.status(r.status).type(r.headers.get('content-type') || 'text/plain').send(text);
+  } catch (err) {
+    console.error('[AI proxy] memory-clear error:', err.message);
+    res.status(503).json({ error: 'AI service unreachable' });
   }
 });
 

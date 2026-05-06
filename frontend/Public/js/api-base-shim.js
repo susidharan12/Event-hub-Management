@@ -26,19 +26,102 @@
       .replace(/^https?:\/\/localhost:3000/i,    ORIGIN);
   }
 
+  // ─── Stale-token auto-logout ────────────────────────────────
+  // If the backend's JWT_SECRET changes (e.g. switching between local and
+  // Docker), every existing token in localStorage becomes invalid. Without
+  // this guard the user just sees broken pages until they manually log out.
+  // Here we listen for any /api/* response with status 401 (or 403 paired
+  // with an "invalid signature" / "expired" message) and silently force a
+  // logout + redirect to the login page.
+  let __redirectingToLogin = false;
+  function isAuthApiUrl(url) {
+    if (typeof url !== 'string') return false;
+    return /\/api\//.test(url);
+  }
+  function isAuthPage() {
+    return /\/auth\//.test(window.location.pathname);
+  }
+  function clearAuthAndRedirect() {
+    if (__redirectingToLogin || isAuthPage()) return;
+    __redirectingToLogin = true;
+    try {
+      ['token', 'authToken', 'eventhub_token', 'auth_token',
+       'user', 'auth_user', 'authUser']
+        .forEach(k => localStorage.removeItem(k));
+      try {
+        if (window.CONFIG && CONFIG.STORAGE) {
+          localStorage.removeItem(CONFIG.STORAGE.TOKEN);
+          localStorage.removeItem(CONFIG.STORAGE.USER);
+        }
+      } catch (_) {}
+    } catch (_) {}
+    // Use a tiny delay so the original caller can finish handling the response.
+    setTimeout(() => {
+      window.location.href = '/Public/auth/pages/login.html?reason=session-expired';
+    }, 50);
+  }
+
+  // Tight match for the EXACT JWT-failure phrases the backend emits, so we
+  // don't false-positive on unrelated 403s (role-permission errors, the AI
+  // service being offline, etc.). Only these mean "your token is bad — log out":
+  //
+  //   • "Invalid or expired token."        ← JsonWebTokenError (wrong secret / tampered)
+  //   • "Session expired. Please login..." ← TokenExpiredError
+  //   • "jwt expired" / "jwt malformed"    ← raw jsonwebtoken error names
+  //
+  // Anything else (e.g. "You do not have permission") is left alone — it's a
+  // real authorization failure, not a stale-token issue, and shouldn't kick
+  // the user out.
+  const JWT_FAIL_RX = /Invalid or expired token|Session expired|jwt (expired|malformed|signature)|JsonWebTokenError|TokenExpiredError/i;
+  // Per-page-load grace: don't auto-logout in the first 5 seconds of any page.
+  // This single guard handles every "just logged in" case (because login.js
+  // navigates to a new page so PAGE_LOAD_TIME resets) AND prevents redirect
+  // loops when a dashboard fires multiple parallel calls on first load.
+  // Using sessionStorage here would NOT work because the `storage` event
+  // doesn't fire on the same tab that wrote the value.
+  const PAGE_LOAD_TIME = Date.now();
+  const POST_LOAD_GRACE_MS = 5000;
+
+  async function maybeHandleUnauthorized(response, url) {
+    if (!response || !isAuthApiUrl(url)) return;
+    if (response.status !== 401 && response.status !== 403) return;
+    // Only act if we actually had a token (i.e. user thought they were logged in).
+    const hadToken = !!(localStorage.getItem('token') ||
+                       localStorage.getItem('authToken') ||
+                       localStorage.getItem('eventhub_token') ||
+                       localStorage.getItem('auth_token'));
+    if (!hadToken) return;
+    // Grace window: ignore 401s during page-load + ~5s of settling time.
+    if ((Date.now() - PAGE_LOAD_TIME) < POST_LOAD_GRACE_MS) return;
+    // Clone so we don't drain the original body — caller still needs it.
+    try {
+      const clone = response.clone();
+      const txt   = await clone.text();
+      if (JWT_FAIL_RX.test(txt)) {
+        console.warn('[api-shim] Auto-logout: JWT failure on', url, '→', txt.slice(0, 200));
+        clearAuthAndRedirect();
+      }
+    } catch (_) { /* if we can't peek the body, do nothing — don't break the page */ }
+  }
+
   // Patch fetch
   if (typeof window.fetch === 'function') {
     const origFetch = window.fetch.bind(window);
     window.fetch = function (input, init) {
+      let urlForCheck = '';
       try {
         if (typeof input === 'string') {
           input = rewrite(input);
+          urlForCheck = input;
         } else if (input && typeof input === 'object' && 'url' in input) {
+          urlForCheck = input.url;
           const u = rewrite(input.url);
           if (u !== input.url) input = new Request(u, input);
         }
       } catch (_) { /* ignore */ }
-      return origFetch(input, init);
+      const p = origFetch(input, init);
+      p.then(res => maybeHandleUnauthorized(res, urlForCheck)).catch(() => {});
+      return p;
     };
   }
 

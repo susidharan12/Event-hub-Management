@@ -75,6 +75,9 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_description TEXT`);
     // Presence tracking — updated on every authenticated request.
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+    // Bookkeeping column carried over from the legacy local DB schema, kept so
+    // pg_dump imports from older databases don't fail with "column does not exist".
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     
     // Create events table
     await client.query(`
@@ -102,6 +105,7 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS images TEXT[]`);
     await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS place VARCHAR(255)`);
     await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS map_url TEXT`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     
     // Create bookings table
     await client.query(`
@@ -116,6 +120,26 @@ async function initializeDatabase() {
       )
     `);
     // Ensure bookings have holder/contact and transaction columns for richer ticket data
+    // Schema drift fix: the original schema used `seats_booked`, but every
+    // route now reads/writes `number_of_seats`. Add the column if missing
+    // (fresh DBs) and backfill from the old one (databases that were created
+    // with the original schema). Both columns can coexist; queries use the new.
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS number_of_seats INTEGER`);
+    await client.query(`
+      UPDATE bookings
+         SET number_of_seats = seats_booked
+       WHERE number_of_seats IS NULL
+         AND seats_booked    IS NOT NULL
+    `).catch(() => { /* old column may not exist on truly-fresh DBs — ignore */ });
+    // Add status alias too (some routes use b.status, schema uses booking_status)
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'confirmed'`);
+    await client.query(`
+      UPDATE bookings
+         SET status = booking_status
+       WHERE status IS NULL
+         AND booking_status IS NOT NULL
+    `).catch(() => { /* same — older DBs may not have booking_status either */ });
+
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS ticket_holder_name VARCHAR(255)`);
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS ticket_holder_email VARCHAR(255)`);
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS ticket_holder_mobile VARCHAR(20)`);
@@ -126,6 +150,9 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP`);
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS refund_amount DECIMAL(10,2)`);
     await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT`);
+    // Legacy columns from the older local DB schema — kept so pg_dump imports succeed.
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     
     // Create payments table
     await client.query(`
@@ -139,6 +166,9 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Legacy columns from the older local DB schema — kept so pg_dump imports succeed.
+    await client.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS status VARCHAR(20)`);
+    await client.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     
     // Create check_ins table — used by the organizer's in-app scanner.
     // Each row is one validated entry. seat_code uniquely identifies which
@@ -175,6 +205,25 @@ async function initializeDatabase() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_messages_recipient_unread ON messages (recipient_id, read_at)`);
     // Track edits so the UI can show an "edited" label.
     await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
+
+    // Organizer reviews — public ratings + comments left by other users on an
+    // organizer's profile page. Each user may post up to 2 reviews per
+    // organizer; the row count is enforced in the POST handler.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS organizer_reviews (
+        id SERIAL PRIMARY KEY,
+        organizer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        rating       INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+        comment      TEXT,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    // Older databases were created with UNIQUE (organizer_id, user_id), which
+    // limited each user to ONE review per organizer. We now allow up to 2.
+    await client.query(`ALTER TABLE organizer_reviews DROP CONSTRAINT IF EXISTS organizer_reviews_organizer_id_user_id_key`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reviews_organizer ON organizer_reviews(organizer_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_reviews_org_user ON organizer_reviews(organizer_id, user_id)`);
 
     // OTP store — used for signup, profile-update and password-reset.
     await client.query(`

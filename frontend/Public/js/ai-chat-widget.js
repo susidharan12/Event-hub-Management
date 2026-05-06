@@ -13,9 +13,11 @@
   if (window.__ehAiWidgetLoaded) return;
   window.__ehAiWidgetLoaded = true;
 
-  // Skip on auth + landing pages — same rules as the human chat widget.
+  // Render on EVERY page so visitors and signed-in users alike can ask the
+  // AI assistant. The only exception is the standalone QR-scan verify page,
+  // which is a thin landing meant to look like a printed ticket — adding a
+  // floating chat there would be visually distracting.
   const path = location.pathname.toLowerCase();
-  if (path.includes('/auth/') || path === '/index.html' || path === '/' || path === '') return;
   if (path.endsWith('/verify.html')) return;
 
   // Resolve API base. The api-base-shim rewrites localhost→origin so this
@@ -101,7 +103,8 @@
     .eh-ai-head .ttl b { font-family: 'Space Grotesk','Inter',sans-serif; font-weight: 800; font-size: 0.98rem; }
     .eh-ai-head .ttl span { display: block; font-size: 0.72rem; opacity: 0.9; }
     .eh-ai-head .close,
-    .eh-ai-head .expand {
+    .eh-ai-head .expand,
+    .eh-ai-head .newchat {
       background: rgba(255,255,255,0.2); border: none; color: white;
       width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
       display: grid; place-items: center; font-size: 0.85rem;
@@ -109,8 +112,10 @@
       flex-shrink: 0;
     }
     .eh-ai-head .close:hover,
-    .eh-ai-head .expand:hover { background: rgba(255,255,255,0.35); }
-    .eh-ai-head .expand:hover { transform: scale(1.08); }
+    .eh-ai-head .expand:hover,
+    .eh-ai-head .newchat:hover { background: rgba(255,255,255,0.35); }
+    .eh-ai-head .expand:hover,
+    .eh-ai-head .newchat:hover { transform: scale(1.08); }
     .eh-ai-head .close { font-size: 0.95rem; }
 
     .eh-ai-msgs {
@@ -221,9 +226,15 @@
   }
 
   let panel = null;
+  // Local conversation log — kept ONLY for re-rendering the panel when the user
+  // closes and reopens it. The backend now uses sessionId for memory, so we
+  // don't send `history` to the server anymore.
   let history = [];     // [{ role: 'user'|'assistant', content: string }, ...]
   let streaming = false;
   let abortCtl  = null;
+  // Session id — generated once per browser tab. The Java AI service uses
+  // this as the memory key for multi-turn context.
+  const SESSION_ID = 'eh-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
 
   function open() {
     if (panel) return;
@@ -234,6 +245,7 @@
       <div class="eh-ai-head">
         <div class="dot" id="eh-ai-dot"></div>
         <div class="ttl"><b>EventHub AI</b><span id="eh-ai-status">Online · ready to help</span></div>
+        <button class="newchat" title="New chat (clears memory)"><i class="fas fa-arrow-rotate-left"></i></button>
         <button class="expand" title="Expand"><i class="fas fa-up-right-and-down-left-from-center"></i></button>
         <button class="close" title="Close"><i class="fas fa-xmark"></i></button>
       </div>
@@ -258,6 +270,20 @@
     }
 
     panel.querySelector('.close').addEventListener('click', close);
+
+    // New chat — wipes both the local UI history and the server-side memory
+    // for this session, so the AI starts fresh without remembering prior turns.
+    panel.querySelector('.newchat').addEventListener('click', async () => {
+      if (streaming && abortCtl) { try { abortCtl.abort(); } catch (_) {} streaming = false; }
+      history = [];
+      const m = panel.querySelector('#eh-ai-msgs');
+      if (m) m.innerHTML = '';
+      // Greet again so the panel doesn't look empty.
+      addMsg('bot', "Fresh start! What would you like to ask?");
+      try {
+        await fetch(`${apiBase()}/ai/memory/${encodeURIComponent(SESSION_ID)}`, { method: 'DELETE' });
+      } catch (_) { /* if the server is down, the local reset is still useful */ }
+    });
 
     // Expand / collapse — toggles the panel between its compact size and
     // a near-full-height layout for reading long AI answers comfortably.
@@ -362,7 +388,8 @@
       const res = await fetch(`${apiBase()}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history: history.slice(0, -1) }),
+        // Backend uses sessionId-based memory, so we no longer send history.
+        body: JSON.stringify({ message, sessionId: SESSION_ID }),
         signal: abortCtl.signal,
       });
 

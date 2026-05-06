@@ -113,16 +113,27 @@ const getEvents = async (req, res) => {
 };
 
 // Get single event by ID
+// Joins users so the public event page can show "Presented by …" without
+// a second round-trip — exposes only safe-to-display organizer fields.
 const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-    const query = 'SELECT * FROM events WHERE id = $1';
+    const query = `
+      SELECT
+        e.*,
+        u.name              AS organizer_name,
+        u.organization_name AS organizer_organization_name,
+        u.profile_image     AS organizer_profile_image
+      FROM events e
+      LEFT JOIN users u ON u.id = e.organizer_id
+      WHERE e.id = $1
+    `;
     const result = await pool.query(query, [id]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Event not found' });
     }
-    
+
     res.status(200).json(result.rows[0]);
   } catch (error) {
     console.error('Error fetching event:', error);
@@ -178,9 +189,28 @@ const updateEvent = async (req, res) => {
     if (req.files && req.files['image'] && req.files['image'][0]) {
       push('image_url', `/uploads/${req.files['image'][0].filename}`);
     }
-    if (req.files && req.files['images'] && req.files['images'].length > 0) {
-      const newImgs = req.files['images'].map(f => `/uploads/${f.filename}`);
-      push('images', newImgs);
+
+    // Additional images: merge whichever existing URLs the client chose to keep
+    // (sent as `kept_images`, a JSON array of URL strings) with any newly
+    // uploaded files. We only touch the column when the client explicitly told
+    // us about kept images OR uploaded new files — otherwise leave it alone.
+    const newUploadUrls = (req.files && req.files['images'])
+      ? req.files['images'].map(f => `/uploads/${f.filename}`)
+      : [];
+    let keptUrls = null;
+    if (b.kept_images !== undefined) {
+      try {
+        const parsed = typeof b.kept_images === 'string'
+          ? JSON.parse(b.kept_images)
+          : b.kept_images;
+        if (Array.isArray(parsed)) {
+          keptUrls = parsed.filter(u => typeof u === 'string');
+        }
+      } catch (_) { /* invalid JSON → treat as not provided */ }
+    }
+    if (keptUrls !== null || newUploadUrls.length > 0) {
+      const merged = (keptUrls || []).concat(newUploadUrls);
+      push('images', merged);
     }
 
     if (sets.length === 0) return res.status(400).json({ error: 'No fields to update' });

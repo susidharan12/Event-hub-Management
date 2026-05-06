@@ -1,5 +1,11 @@
 const API_BASE = 'http://localhost:3000/api';
 
+// Snapshot of the user's CURRENT registered email/mobile, kept in sync by
+// fetchUserProfile() so the form's "did this actually change?" check is
+// always against the real saved values (not the empty form on first paint).
+let originalEmail  = '';
+let originalMobile = '';
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Profile Page Loaded. Fetching data...");
     fetchUserProfile();
@@ -44,7 +50,11 @@ async function fetchUserProfile() {
             // Pre-fill the Form Inputs
             document.getElementById('mobile').value = user.mobile || user.phone || '';
             document.getElementById('email').value = user.email || '';
-            
+            // Snapshot AFTER fields are populated — eliminates the timing race
+            // where the form was empty on first paint.
+            originalEmail  = document.getElementById('email').value;
+            originalMobile = document.getElementById('mobile').value;
+
             lucide.createIcons();
         } else {
             // Try to log backend error body
@@ -69,6 +79,8 @@ async function fetchUserProfile() {
                         document.getElementById('mobile').value = user.mobile || '';
                         document.getElementById('email').value = user.email || '';
                         document.getElementById('user-category').textContent = user.role || 'User';
+                        originalEmail  = document.getElementById('email').value;
+                        originalMobile = document.getElementById('mobile').value;
                     } catch (e) {
                         console.error('Failed to parse cached user:', e);
                     }
@@ -86,20 +98,10 @@ async function fetchUserProfile() {
     }
 }
 
-// 2. Handle Profile Update — with OTP gating on email / mobile changes
+// 2. Handle Profile Update — with OTP gating ONLY on email / mobile changes
 function setupUpdateForm() {
     const form = document.getElementById('update-form');
     if (!form) return;
-
-    // Snapshot the original values so we can detect actual changes.
-    let originalEmail  = document.getElementById('email').value;
-    let originalMobile = document.getElementById('mobile').value;
-    // Re-read after fetchUserProfile populates the form.
-    const refreshOriginals = () => {
-        originalEmail  = document.getElementById('email').value;
-        originalMobile = document.getElementById('mobile').value;
-    };
-    setTimeout(refreshOriginals, 1500);
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -111,20 +113,37 @@ function setupUpdateForm() {
 
         const newEmail  = document.getElementById('email').value.trim();
         const newMobile = document.getElementById('mobile').value.trim();
-        const emailChanged  = newEmail  && newEmail  !== originalEmail;
-        const mobileChanged = newMobile && newMobile !== originalMobile;
+        const emailChanged  = !!newEmail  && newEmail  !== originalEmail;
+        const mobileChanged = !!newMobile && newMobile !== originalMobile;
+
+        // ── No actual changes? Don't fire OTP, don't even hit the API.
+        if (!emailChanged && !mobileChanged) {
+            showModal("No changes", "Your email and mobile are already up to date. Any profile-picture changes you made are saved separately.");
+            return;
+        }
+
+        // ── Quick confirmation BEFORE the OTP gate so the user understands
+        //    why they're about to be asked for a code.
+        const what = emailChanged && mobileChanged
+            ? 'email and mobile number'
+            : emailChanged ? 'email address' : 'mobile number';
+        const proceed = await profileConfirmDialog({
+            title:   `Update ${what}?`,
+            message: `For security, we'll send a verification code to your registered email before saving the new ${what}.`
+        });
+        if (!proceed) return;
 
         const payload = { mobile: newMobile, email: newEmail };
 
-        // ── OTP gates ───────────────────────────────────────────────
+        // ── OTP gates — only for the field(s) the user actually changed.
         try {
             if (emailChanged) {
                 payload.email_verification_token =
-                    await sendAndVerifyOtp(newEmail, 'email', 'update-email', `Verify your new email`);
+                    await sendAndVerifyOtp(newEmail, 'email', 'update-email', `Confirm email change`);
             }
             if (mobileChanged) {
                 payload.mobile_verification_token =
-                    await sendAndVerifyOtp(newMobile, 'mobile', 'update-mobile', `Verify your new mobile`);
+                    await sendAndVerifyOtp(newMobile, 'mobile', 'update-mobile', `Confirm mobile change`);
             }
         } catch (cancel) {
             // User cancelled the OTP modal — abort the save.
@@ -143,8 +162,8 @@ function setupUpdateForm() {
 
             if (response.ok) {
                 showModal("Success", "Your profile has been updated successfully.");
+                // Re-fetch — fetchUserProfile() resets `originalEmail/Mobile` for us.
                 fetchUserProfile();
-                refreshOriginals();
             } else {
                 let errorMsg = "Something went wrong.";
                 try { const e = await response.json(); errorMsg = e.message || errorMsg; }
@@ -157,20 +176,68 @@ function setupUpdateForm() {
     });
 }
 
+// Reusable confirm dialog matching the OTP modal's visual language.
+function profileConfirmDialog(opts) {
+    return new Promise(resolve => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:99000;display:flex;align-items:center;justify-content:center;background:rgba(7,9,26,0.6);backdrop-filter:blur(8px);padding:1.5rem;font-family:Inter,Segoe UI,sans-serif;';
+        wrap.innerHTML = `
+          <div style="background:white;border-radius:22px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 30px 60px rgba(15,23,42,0.4);">
+            <div style="padding:1.6rem 1.5rem 1.2rem;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 35%,#ec4899 100%);color:white;text-align:center;">
+              <div style="width:54px;height:54px;border-radius:50%;background:white;color:#6366f1;display:grid;place-items:center;font-size:1.4rem;margin:0 auto 0.7rem;box-shadow:0 8px 22px rgba(0,0,0,0.18);">
+                <i class="fas fa-circle-question"></i>
+              </div>
+              <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.2rem;font-weight:800;margin:0 0 4px;">${escapePf(opts.title || 'Confirm')}</h3>
+              <p style="opacity:0.95;font-size:0.86rem;margin:0;">${opts.message || ''}</p>
+            </div>
+            <div style="display:flex;gap:10px;padding:1.2rem 1.5rem 1.5rem;">
+              <button class="pcd-cancel" style="flex:1;padding:0.85rem 1rem;border-radius:12px;border:1px solid rgba(99,102,241,0.2);background:rgba(99,102,241,0.08);color:#6366f1;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.92rem;">Cancel</button>
+              <button class="pcd-ok" style="flex:1;padding:0.85rem 1rem;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#ec4899);color:white;font-weight:700;cursor:pointer;font-family:inherit;font-size:0.92rem;box-shadow:0 8px 20px rgba(99,102,241,0.35);">
+                <i class="fas fa-check"></i> Continue
+              </button>
+            </div>
+          </div>`;
+        document.body.appendChild(wrap);
+        document.body.style.overflow = 'hidden';
+        const close = (val) => { wrap.remove(); document.body.style.overflow = ''; resolve(val); };
+        wrap.querySelector('.pcd-cancel').addEventListener('click', () => close(false));
+        wrap.querySelector('.pcd-ok').addEventListener('click', () => close(true));
+        wrap.addEventListener('click', e => { if (e.target === wrap) close(false); });
+    });
+}
+
 // Reusable OTP helper for the profile page — sends an OTP to the new
 // target and opens an inline modal to verify it. Returns the verification_token.
+// Sends the user's auth token so the backend knows whose email to deliver the
+// OTP to when the user is changing their mobile to a brand-new number.
 function sendAndVerifyOtp(target, target_type, purpose, headerTitle) {
     return new Promise(async (resolve, reject) => {
         try {
+            const authToken = localStorage.getItem('token') ||
+                              localStorage.getItem('authToken') ||
+                              localStorage.getItem('eventhub_token') ||
+                              localStorage.getItem('auth_token') ||
+                              (typeof CONFIG !== 'undefined' && CONFIG.STORAGE ? localStorage.getItem(CONFIG.STORAGE.TOKEN) : null);
+            const headers = { 'Content-Type': 'application/json' };
+            if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
             const r = await fetch(`${API_BASE}/otp/send`, {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method: 'POST',
+                headers,
                 body: JSON.stringify({ target, target_type, purpose })
             });
             const d = await r.json();
             if (!r.ok) { showModal('Error', d.error || 'Failed to send OTP.'); reject(new Error('send')); return; }
+            // Profile-update flows use cross-channel verification: when you
+            // change one contact, the OTP is sent to the OTHER (registered)
+            // contact so you can prove ownership. Make this explicit in the UI.
+            const isUpdate = (purpose === 'update-mobile' || purpose === 'update-email');
+            const subtitle = isUpdate
+                ? `For your security we sent a 6-digit code to your <b>registered email</b> <span style="opacity:.85;">(${escapePf(d.delivered_to || '')})</span>.`
+                : `We sent a 6-digit code to <b>${escapePf(d.delivered_to || target)}</b>.`;
             const token = await profileOtpModal({
                 title: headerTitle,
-                subtitle: `We sent a 6-digit code to <b>${escapePf(d.delivered_to || target)}</b>.`,
+                subtitle,
                 target, target_type, purpose,
                 devOtp: d.devMode ? d.otp : null
             });

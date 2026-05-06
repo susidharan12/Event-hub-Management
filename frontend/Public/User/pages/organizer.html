@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/Public/js/api-base-shim.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Organizer — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --dark: #0b1020;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --light: #f8fafc;
+      --success: #10b981;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, .display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* ───────── Floating glass navbar (matches dashboard / event-detail) ───────── */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1280px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .navbar.scrolled {
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    }
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+      animation: pulse 4s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4); }
+      50%     { box-shadow: 0 8px 28px rgba(236, 72, 153, 0.55); }
+    }
+    .logo .grad { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .nav-auth { display: flex; gap: 0.75rem; align-items: center; }
+
+    /* ───────── Centered "spotlight" pill ─────────
+       Replaces the row of nav links with something more atmospheric:
+       a glass pill with twinkling sparkle icons on either side and a
+       single rotating tagline in the middle that fades between phrases.
+       Hidden on small screens so the layout stays clean on mobile. */
+    .nav-spotlight {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 8px 22px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.07), rgba(236,72,153,0.07));
+      border: 1px solid rgba(99,102,241,0.15);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+      position: relative;
+      overflow: hidden;
+      /* Fill the space between the logo and the right-side buttons so the
+         tagline never clips. flex:1 makes the pill expand; max-width caps it
+         on very wide screens so it doesn't look comically long. */
+      flex: 1 1 auto;
+      max-width: 720px;
+      margin: 0 1.25rem;
+      min-width: 0;
+    }
+    /* Soft shimmer that sweeps across the pill every few seconds. */
+    .nav-spotlight::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg,
+                  transparent 30%,
+                  rgba(255,255,255,0.55) 50%,
+                  transparent 70%);
+      transform: translateX(-100%);
+      animation: navShimmer 4.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes navShimmer {
+      0%   { transform: translateX(-100%); }
+      55%  { transform: translateX(100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Sparkle icons that "twinkle" — each has a slightly different
+       animation so the cluster feels alive instead of uniform. */
+    .nav-spotlight .spark {
+      flex-shrink: 0;
+      font-size: 0.7rem;
+      color: var(--primary);
+      filter: drop-shadow(0 0 4px rgba(99,102,241,0.45));
+      animation: navTwinkle 2.4s ease-in-out infinite;
+    }
+    .nav-spotlight .spark.big   { font-size: 0.95rem; color: var(--secondary); }
+    .nav-spotlight .spark.s1 { animation-delay: 0s;    }
+    .nav-spotlight .spark.s2 { animation-delay: 0.6s;  }
+    .nav-spotlight .spark.s3 { animation-delay: 1.2s;  }
+    .nav-spotlight .spark.s4 { animation-delay: 1.8s;  }
+    @keyframes navTwinkle {
+      0%, 100% { opacity: 0.35; transform: scale(0.8) rotate(0deg); }
+      50%      { opacity: 1;    transform: scale(1.25) rotate(20deg); }
+    }
+
+    /* Rotating tagline — fixed-height window so the navbar height never jumps,
+       absolute-positioned messages crossfade in and out. */
+    .nav-spotlight .rotator {
+      position: relative;
+      flex: 1 1 auto;
+      height: 22px;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .nav-spotlight .rotator .msg {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.55s ease, transform 0.55s cubic-bezier(.2,.9,.3,1.2);
+    }
+    .nav-spotlight .rotator .msg.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .nav-spotlight .rotator .msg i {
+      font-size: 0.85rem;
+      -webkit-text-fill-color: var(--secondary);
+    }
+
+    /* Hide on narrow viewports so the navbar doesn't get crowded. */
+    @media (max-width: 820px) {
+      .nav-spotlight { display: none; }
+    }
+
+    .btn {
+      padding: 0.7rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost {
+      background: rgba(99,102,241,0.08);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+
+    /* ───────── Page wrapper / background flair ───────── */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ───────── Hero card (centered) ───────── */
+    .org-hero {
+      position: relative;
+      background: white;
+      border-radius: 28px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      overflow: hidden;
+      animation: heroIn 0.9s cubic-bezier(.2,.9,.3,1.2) both;
+      text-align: center;
+    }
+    @keyframes heroIn {
+      from { opacity: 0; transform: translateY(28px) scale(0.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    /* The banner is now an *image hero*, just like the event-detail page.
+       The organizer's profile photo fills the area as a cover image; if it
+       isn't provided, .org-hero-banner.no-image kicks in and we fall back to
+       the original gradient. A dark scrim sits on top so the centered rating
+       overlay stays readable. */
+    .org-hero-banner {
+      position: relative;
+      height: clamp(280px, 38vw, 420px);
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      padding: 1.5rem 2rem;
+      /* Default look until JS confirms there's a profile image. */
+      background:
+        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.4), transparent 55%),
+        radial-gradient(circle at 75% 80%, rgba(255,255,255,0.2), transparent 60%),
+        var(--gradient-hero);
+    }
+    .org-hero-banner img.banner-cover {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 0;
+      animation: bannerZoom 18s ease-in-out infinite alternate;
+    }
+    @keyframes bannerZoom {
+      from { transform: scale(1); }
+      to   { transform: scale(1.06); }
+    }
+    /* Dark scrim so the white rating + stars are readable on busy photos. */
+    .org-hero-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(11,16,32,0.25) 0%, rgba(11,16,32,0.75) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+    /* When there's no image, drop the dark scrim — the gradient itself is colorful enough. */
+    .org-hero-banner.no-image::before {
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.08'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      opacity: 0.5;
+    }
+    .banner-rating {
+      position: relative; z-index: 2;
+      color: white;
+      animation: fadeUp 0.7s ease-out 0.3s both;
+    }
+    .banner-rating .num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2.4rem, 6vw, 3.8rem);
+      font-weight: 800;
+      line-height: 1;
+      text-shadow: 0 6px 24px rgba(0,0,0,0.25);
+    }
+    .banner-rating .num small {
+      font-size: 0.4em;
+      font-weight: 600;
+      opacity: 0.7;
+      margin-left: 4px;
+    }
+    .banner-rating .stars {
+      display: inline-flex;
+      gap: 6px;
+      font-size: 1.4rem;
+      margin: 0.5rem 0 0.25rem;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+    }
+    .banner-rating .stars i { transition: transform 0.3s ease; }
+    .banner-rating .stars i.full { color: #fde047; }
+    .banner-rating .stars i.half { color: #fde047; }
+    .banner-rating .stars i.empty { color: rgba(255,255,255,0.55); }
+    .banner-rating .reviews-count {
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      font-weight: 500;
+      opacity: 0.92;
+      text-transform: uppercase;
+      margin-top: 0.4rem;
+    }
+    .org-hero-body {
+      padding: 0 2.2rem 2.2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+    .org-avatar {
+      width: 140px; height: 140px;
+      border-radius: 24px;
+      background: var(--gradient-hero);
+      color: white;
+      display: grid; place-items: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 3.4rem;
+      overflow: hidden;
+      border: 6px solid white;
+      box-shadow: 0 18px 40px rgba(99,102,241,0.35);
+      flex-shrink: 0;
+    }
+    .org-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .org-titles { min-width: 0; }
+    .org-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.7rem;
+    }
+    .org-title {
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      font-weight: 800;
+      line-height: 1.15;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      word-break: break-word;
+    }
+    .org-subtitle {
+      color: var(--muted);
+      margin-top: 0.4rem;
+      font-weight: 500;
+    }
+    .org-subtitle i { color: var(--primary); margin-right: 4px; }
+    .org-actions {
+      display: flex; gap: 10px;
+      margin-top: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ───────── Stats row ───────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.1rem;
+      margin-top: 2rem;
+      animation: fadeUp 0.8s ease-out 0.4s both;
+    }
+    .stat-card {
+      background: white;
+      padding: 1.4rem 1.5rem;
+      border-radius: 18px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      display: flex; align-items: center; gap: 14px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-card-hover); }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .stat-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .stat-text .label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .stat-text .value {
+      display: block;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-top: 4px;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ───────── Detail blocks (about + contact) ───────── */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 1.6rem;
+      margin-top: 2rem;
+      align-items: start;
+    }
+    .panel {
+      background: white;
+      padding: 2rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+      animation: fadeUp 0.8s ease-out 0.5s both;
+    }
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .panel h3 {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .panel h3 i {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+    .panel p { color: #475569; }
+    .panel .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .contact-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .contact-list li {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px;
+      background: linear-gradient(135deg, rgba(99,102,241,0.05), rgba(236,72,153,0.05));
+      border: 1px solid rgba(99,102,241,0.1);
+      border-radius: 12px;
+      color: var(--ink);
+      font-weight: 500;
+      word-break: break-word;
+    }
+    .contact-list li i {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: white;
+      color: var(--primary);
+      flex-shrink: 0;
+    }
+    .contact-list a { color: var(--primary); text-decoration: none; word-break: break-all; }
+    .contact-list a:hover { text-decoration: underline; }
+
+    /* ───────── Events section ───────── */
+    .events-section {
+      margin-top: 3rem;
+      animation: fadeUp 0.9s ease-out 0.6s both;
+    }
+    .section-head {
+      text-align: center;
+      margin-bottom: 1.6rem;
+    }
+    .section-head .eyebrow {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(99,102,241,0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+    .section-head h2 {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800;
+    }
+    .section-head p { color: var(--muted); margin-top: 0.4rem; }
+
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .event-card {
+      background: white;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.06);
+      transition: transform 0.4s cubic-bezier(.2,.9,.3,1.2), box-shadow 0.4s;
+      position: relative;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardIn 0.6s ease-out forwards;
+      text-decoration: none;
+      color: var(--ink);
+      display: block;
+    }
+    @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+    .event-card:hover { transform: translateY(-8px); box-shadow: var(--shadow-card-hover); }
+
+    .event-img-placeholder {
+      position: relative;
+      height: 200px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 55%),
+        radial-gradient(circle at 75% 80%, rgba(255,255,255,0.18), transparent 60%),
+        var(--card-gradient, linear-gradient(135deg, #6366f1, #ec4899));
+    }
+    .event-img-placeholder .cover-img {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s ease;
+      z-index: 1;
+    }
+    .event-img-placeholder .cover-fallback {
+      position: absolute; inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,0.92);
+      font-size: 3.2rem;
+      z-index: 0;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,0.18));
+    }
+    .event-card:hover .cover-img { transform: scale(1.06); }
+    .event-img-placeholder::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.45));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      z-index: 2;
+    }
+    .event-card:hover .event-img-placeholder::after { opacity: 1; }
+    .event-badge-pill {
+      position: absolute;
+      top: 14px; left: 14px;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(8px);
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      z-index: 3;
+    }
+    .event-date-chip {
+      position: absolute;
+      top: 14px; right: 14px;
+      background: rgba(15,23,42,0.85);
+      color: white;
+      backdrop-filter: blur(8px);
+      border-radius: 14px;
+      padding: 8px 12px;
+      text-align: center;
+      line-height: 1;
+      z-index: 3;
+    }
+    .event-date-chip .day { font-family: 'Space Grotesk', sans-serif; font-size: 1.15rem; font-weight: 700; }
+    .event-date-chip .month { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.85; }
+
+    .event-info { padding: 1.4rem 1.4rem 1.5rem; }
+    .event-info h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.3; }
+    .event-info .meta { color: var(--muted); font-size: 0.88rem; display: flex; align-items: center; gap: 6px; margin-bottom: 0.4rem; }
+    .event-info .meta i { color: var(--primary); }
+    .event-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 1.1rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid #f1f5f9;
+    }
+    .price {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 1.2rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .price.free { background: linear-gradient(135deg, #10b981, #06b6d4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0.55rem 1rem;
+      border-radius: 10px;
+      background: var(--ink);
+      color: white;
+      font-weight: 600;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+    .event-card:hover .open-link {
+      background: var(--gradient-hero);
+      box-shadow: 0 8px 18px rgba(99,102,241,0.35);
+    }
+    .event-card:hover .open-link i { transform: translateX(3px); }
+    .open-link i { transition: transform 0.3s ease; }
+
+    /* Skeleton */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .skeleton-card {
+      background: white;
+      border-radius: 22px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.06);
+    }
+    .skeleton-img {
+      height: 200px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    .skeleton-body { padding: 1.4rem; }
+    .skeleton-line {
+      height: 14px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      border-radius: 7px;
+      margin-bottom: 10px;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    .skeleton-line.w-60 { width: 60%; }
+    .skeleton-line.w-80 { width: 80%; }
+    .skeleton-line.w-40 { width: 40%; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ───────── Reviews section ───────── */
+    .reviews-section {
+      margin-top: 3rem;
+      animation: fadeUp 0.9s ease-out 0.5s both;
+    }
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 1.6rem;
+      margin-top: 1.5rem;
+      align-items: start;
+    }
+    .review-summary {
+      background: white;
+      padding: 2rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+    .review-summary::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .review-summary .big {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 3.6rem;
+      font-weight: 800;
+      line-height: 1;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .review-summary .big small {
+      font-size: 0.32em;
+      color: var(--muted);
+      font-weight: 600;
+      margin-left: 6px;
+      -webkit-text-fill-color: var(--muted);
+    }
+    .review-summary .stars-sm {
+      display: inline-flex;
+      gap: 4px;
+      font-size: 1.05rem;
+      margin: 0.7rem 0 0.4rem;
+    }
+    .review-summary .stars-sm i.full,
+    .review-summary .stars-sm i.half { color: #f59e0b; }
+    .review-summary .stars-sm i.empty { color: #e2e8f0; }
+    .review-summary .total {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .review-write {
+      background: white;
+      padding: 2rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .review-write::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(135deg,#10b981,#06b6d4);
+    }
+    .review-write h3 {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 1.15rem;
+      margin-bottom: 1rem;
+    }
+    .review-write h3 i {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg,rgba(16,185,129,0.18),rgba(6,182,212,0.18));
+      color: #10b981;
+      font-size: 0.95rem;
+    }
+    .star-input {
+      display: inline-flex;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .star-input button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.6rem;
+      color: #e2e8f0;
+      padding: 0;
+      transition: transform 0.2s ease, color 0.2s ease;
+      font-family: inherit;
+    }
+    .star-input button:hover { transform: scale(1.15); }
+    .star-input button.active { color: #f59e0b; }
+    .review-write textarea {
+      width: 100%;
+      min-height: 90px;
+      max-height: 220px;
+      padding: 0.9rem 1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: vertical;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .review-write textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .review-write .submit-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .review-write .hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .review-write button[type=submit] {
+      padding: 0.8rem 1.5rem;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      font-family: inherit;
+      font-size: 0.95rem;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .review-write button[type=submit]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(236,72,153,0.45);
+    }
+    .review-write button[type=submit]:disabled {
+      background: #cbd5e1; box-shadow: none; cursor: not-allowed; transform: none;
+    }
+    .review-write .feedback {
+      margin-top: 0.8rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .review-write .feedback.ok    { color: #10b981; }
+    .review-write .feedback.error { color: #ef4444; }
+    .review-write .login-cta {
+      padding: 1rem;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.08));
+      border: 1px dashed rgba(99,102,241,0.3);
+      border-radius: 14px;
+      color: var(--ink);
+      font-weight: 500;
+    }
+    .review-write .login-cta a {
+      color: var(--primary);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .review-write .login-cta a:hover { text-decoration: underline; }
+
+    .review-list {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .review-card {
+      background: white;
+      padding: 1.4rem 1.5rem;
+      border-radius: 18px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.06);
+      animation: fadeUp 0.6s ease-out both;
+    }
+    .review-card-head {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 0.7rem;
+    }
+    .review-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: var(--gradient-hero);
+      color: white;
+      display: grid; place-items: center;
+      font-weight: 700;
+      overflow: hidden;
+      flex-shrink: 0;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .review-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .review-meta { flex: 1; min-width: 0; }
+    .review-meta .who { font-weight: 700; }
+    .review-meta .when { color: var(--muted); font-size: 0.82rem; }
+    .review-rating {
+      display: inline-flex; gap: 3px;
+      font-size: 0.95rem;
+      color: #f59e0b;
+    }
+    .review-rating .empty { color: #e2e8f0; }
+    .review-comment {
+      color: #475569;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .review-comment.empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .empty-state, .error-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 3.5rem 2rem;
+      background: white;
+      border-radius: 22px;
+      border: 1px dashed #cbd5e1;
+    }
+    .empty-state i, .error-state i {
+      font-size: 3rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: block;
+      margin-bottom: 0.6rem;
+    }
+    .empty-state p, .error-state p {
+      color: var(--muted);
+      margin-top: 0.4rem;
+    }
+
+    /* ───────── Responsive ───────── */
+    @media (max-width: 900px) {
+      .org-hero-body { padding: 0 1.5rem 1.8rem; }
+      .detail-grid   { grid-template-columns: 1fr; }
+      .reviews-grid  { grid-template-columns: 1fr; }
+    }
+  </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
+</head>
+<body>
+
+  <!-- Floating glass navbar (mirrors dashboard.html so the experience is consistent) -->
+  <nav class="navbar" id="navbar">
+    <a href="dashboard.html" class="logo">
+      <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+      Event<span class="grad">Hub</span>
+    </a>
+    <div class="nav-spotlight" aria-hidden="true">
+      <i class="fas fa-star spark s1"></i>
+      <i class="fas fa-sparkles spark big s2"></i>
+      <span class="rotator" id="nav-rotator">
+        <span class="msg active"><i class="fas fa-wand-magic-sparkles"></i> Discover amazing events</span>
+        <span class="msg"><i class="fas fa-shield-halved"></i> Verified organizers, every time</span>
+        <span class="msg"><i class="fas fa-bolt"></i> Book your seat in seconds</span>
+        <span class="msg"><i class="fas fa-heart"></i> Loved by thousands of explorers</span>
+      </span>
+      <i class="fas fa-sparkles spark big s3"></i>
+      <i class="fas fa-star spark s4"></i>
+    </div>
+    <div class="nav-auth">
+      <button onclick="window.location.href='/Public/User/pages/profile.html'" class="btn btn-ghost"><i class="fas fa-user-circle"></i> Profile</button>
+      <button onclick="history.length > 1 ? history.back() : (window.location.href='dashboard.html')" class="btn btn-primary">
+        <i class="fas fa-arrow-left"></i> Back
+      </button>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+
+      <!-- Loading skeleton (replaced by JS once data arrives) -->
+      <div id="loading">
+        <div class="skeleton-card" style="height: 280px;">
+          <div class="skeleton-img" style="height:180px;"></div>
+          <div class="skeleton-body">
+            <div class="skeleton-line w-40"></div>
+            <div class="skeleton-line w-80"></div>
+            <div class="skeleton-line w-60"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div id="error" class="error-state" style="display:none;">
+        <i class="fas fa-circle-exclamation"></i>
+        <h3>We couldn't find this organizer</h3>
+        <p id="error-msg">They may have removed their account, or the link is incorrect.</p>
+      </div>
+
+      <!-- Hero -->
+      <section class="org-hero" id="org-hero" style="display:none;">
+        <div class="org-hero-banner no-image" id="org-hero-banner">
+          <!-- Cover image (filled by JS when organizer has profile_image). -->
+          <img id="banner-cover" class="banner-cover" alt="" style="display:none;">
+          <!-- Centered rating overlay (the "home" of the page). -->
+          <div class="banner-rating" id="banner-rating">
+            <div class="num"><span id="banner-rating-num">0.0</span><small>/ 5</small></div>
+            <div class="stars" id="banner-stars" aria-label="Star rating">
+              <i class="fas fa-star empty"></i><i class="fas fa-star empty"></i>
+              <i class="fas fa-star empty"></i><i class="fas fa-star empty"></i>
+              <i class="fas fa-star empty"></i>
+            </div>
+            <div class="reviews-count"><span id="banner-reviews-count">No reviews yet</span></div>
+          </div>
+        </div>
+        <div class="org-hero-body">
+          <div class="org-avatar" id="org-avatar"><span id="org-initial">O</span></div>
+          <div class="org-titles">
+            <span class="org-eyebrow"><i class="fas fa-star"></i> Verified Organizer</span>
+            <h1 class="org-title" id="org-title">Organization Name</h1>
+            <p class="org-subtitle" id="org-subtitle"><i class="fas fa-user"></i> Organizer name</p>
+          </div>
+          <div class="org-actions">
+            <a id="org-website" class="btn btn-primary" href="#" target="_blank" rel="noopener" style="display:none;">
+              <i class="fas fa-globe"></i> Visit website
+            </a>
+            <a id="leave-feedback-btn" href="#" class="btn" style="background: linear-gradient(135deg, #10b981, #06b6d4); color: white; box-shadow: 0 8px 20px rgba(16,185,129,0.35);">
+              <i class="fas fa-pen-to-square"></i> Leave feedback
+            </a>
+            <a href="#reviews-section" class="btn" style="background: rgba(99,102,241,0.08); color: var(--primary); border: 1px solid rgba(99,102,241,0.2);">
+              <i class="fas fa-comments"></i> Read reviews
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stats -->
+      <section class="stats-row" id="stats-row" style="display:none;">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+          <div class="stat-text">
+            <span class="label">Events conducted</span>
+            <span class="value" id="stat-events">0</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,rgba(16,185,129,0.18),rgba(6,182,212,0.18));color:#10b981;"><i class="fas fa-chart-line"></i></div>
+          <div class="stat-text">
+            <span class="label">Success rate</span>
+            <span class="value" id="stat-success" style="background:linear-gradient(135deg,#10b981,#06b6d4);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">—</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:linear-gradient(135deg,rgba(245,158,11,0.18),rgba(236,72,153,0.18));color:#f59e0b;"><i class="fas fa-clock-rotate-left"></i></div>
+          <div class="stat-text">
+            <span class="label">Member since</span>
+            <span class="value" id="stat-since" style="background:linear-gradient(135deg,#f59e0b,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">—</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Details: about + contact -->
+      <section class="detail-grid" id="detail-grid" style="display:none;">
+        <div class="panel">
+          <h3><i class="fas fa-circle-info"></i> About the organization</h3>
+          <p id="org-about" class="empty">No description provided yet.</p>
+        </div>
+        <div class="panel">
+          <h3><i class="fas fa-address-book"></i> Get in touch</h3>
+          <ul class="contact-list" id="contact-list">
+            <!-- filled by JS -->
+          </ul>
+        </div>
+      </section>
+
+      <!-- Events -->
+      <section class="events-section" id="events-section" style="display:none;">
+        <div class="section-head">
+          <span class="eyebrow">Conducted events</span>
+          <h2>Past &amp; upcoming events</h2>
+          <p id="events-summary">Every event hosted by this organizer.</p>
+        </div>
+        <div class="events-grid" id="events-grid">
+          <!-- filled by JS -->
+        </div>
+      </section>
+
+      <!-- Reviews -->
+      <section class="reviews-section" id="reviews-section" style="display:none;">
+        <div class="section-head">
+          <span class="eyebrow">Reviews &amp; comments</span>
+          <h2>What people say</h2>
+          <p>Honest feedback from attendees.</p>
+        </div>
+
+        <div class="reviews-grid">
+          <!-- Summary card (overall stars) -->
+          <aside class="review-summary">
+            <div class="big"><span id="rs-num">0.0</span><small>/ 5</small></div>
+            <div class="stars-sm" id="rs-stars" aria-label="Average rating">
+              <i class="fas fa-star empty"></i><i class="fas fa-star empty"></i>
+              <i class="fas fa-star empty"></i><i class="fas fa-star empty"></i>
+              <i class="fas fa-star empty"></i>
+            </div>
+            <div class="total" id="rs-total">No reviews yet</div>
+          </aside>
+
+          <!-- Write a review -->
+          <div class="review-write" id="review-write">
+            <h3><i class="fas fa-pen-to-square"></i> Share your experience</h3>
+
+            <!-- Logged-out: prompt to sign in -->
+            <div id="review-login-cta" class="login-cta" style="display:none;">
+              <i class="fas fa-lock"></i>
+              You need to <a href="/Public/User/pages/profile.html">log in</a> to leave a review.
+            </div>
+
+            <!-- Self-view: organizers can't review themselves -->
+            <div id="review-self-note" class="login-cta" style="display:none;">
+              <i class="fas fa-circle-info"></i>
+              This is your own organizer page — others can leave you a review.
+            </div>
+
+            <!-- Form -->
+            <form id="review-form" style="display:none;">
+              <label style="display:block;font-weight:600;margin-bottom:0.4rem;">Your rating</label>
+              <div class="star-input" id="star-input" role="radiogroup" aria-label="Star rating">
+                <button type="button" data-v="1" aria-label="1 star"><i class="fas fa-star"></i></button>
+                <button type="button" data-v="2" aria-label="2 stars"><i class="fas fa-star"></i></button>
+                <button type="button" data-v="3" aria-label="3 stars"><i class="fas fa-star"></i></button>
+                <button type="button" data-v="4" aria-label="4 stars"><i class="fas fa-star"></i></button>
+                <button type="button" data-v="5" aria-label="5 stars"><i class="fas fa-star"></i></button>
+              </div>
+              <label for="review-comment" style="display:block;font-weight:600;margin-bottom:0.4rem;">Your comment</label>
+              <textarea id="review-comment" placeholder="What was your experience like?" maxlength="1000"></textarea>
+              <div class="submit-row">
+                <span class="hint">You can update your review anytime — it just replaces the old one.</span>
+                <button type="submit" id="review-submit"><i class="fas fa-paper-plane"></i> Post review</button>
+              </div>
+              <div id="review-feedback" class="feedback"></div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Existing reviews list -->
+        <div class="review-list" id="review-list">
+          <!-- filled by JS -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/Public/js/popup.js"></script>
+  <script src="/Public/js/ai-chat-widget.js"></script>
+
+  <script>
+    (function () {
+      const SERVER_URL = 'http://localhost:3000';
+      const API_BASE   = 'http://localhost:3000/api';
+
+      const params = new URLSearchParams(window.location.search);
+      const organizerId = params.get('id');
+
+      // Cycle of card-cover gradients (mirrors dashboard look-and-feel).
+      const CARD_GRADIENTS = [
+        'linear-gradient(135deg,#6366f1,#8b5cf6)',
+        'linear-gradient(135deg,#ec4899,#f59e0b)',
+        'linear-gradient(135deg,#10b981,#06b6d4)',
+        'linear-gradient(135deg,#8b5cf6,#ec4899)',
+        'linear-gradient(135deg,#f59e0b,#ef4444)',
+        'linear-gradient(135deg,#06b6d4,#6366f1)',
+      ];
+      // Match dashboard's category → icon mapping for the placeholder.
+      const CATEGORY_ICONS = {
+        tech:        'fa-microchip',
+        gathering:   'fa-people-group',
+        music:       'fa-music',
+        sports:      'fa-volleyball',
+        food:        'fa-utensils',
+        education:   'fa-graduation-cap',
+        business:    'fa-briefcase',
+        wellness:    'fa-spa',
+        festival:    'fa-tree',
+        photography: 'fa-camera-retro',
+      };
+
+      function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+      function resolveUrl(u) {
+        if (!u) return null;
+        return u.startsWith('/') ? `${SERVER_URL}${u}` : u;
+      }
+      function formatDateChip(iso) {
+        if (!iso) return null;
+        const d = new Date(iso);
+        if (isNaN(d)) return null;
+        return {
+          day:   String(d.getDate()).padStart(2, '0'),
+          month: d.toLocaleString('en-US', { month: 'short' })
+        };
+      }
+      function formatFullDate(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (isNaN(d)) return '—';
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      function pickGradient(i) {
+        return CARD_GRADIENTS[i % CARD_GRADIENTS.length];
+      }
+      function categoryIcon(category) {
+        if (!category) return 'fa-calendar-day';
+        return CATEGORY_ICONS[String(category).toLowerCase()] || 'fa-calendar-day';
+      }
+
+      // Navbar shadow on scroll.
+      const navbar = document.getElementById('navbar');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 30) navbar.classList.add('scrolled');
+        else navbar.classList.remove('scrolled');
+      });
+
+      // Rotate the centered tagline every ~3 seconds. setInterval is fine here
+      // because the navbar lives for the entire page lifetime — no cleanup needed.
+      (function startNavRotator() {
+        const rotator = document.getElementById('nav-rotator');
+        if (!rotator) return;
+        const messages = rotator.querySelectorAll('.msg');
+        if (messages.length < 2) return;
+        let idx = 0;
+        setInterval(() => {
+          messages[idx].classList.remove('active');
+          idx = (idx + 1) % messages.length;
+          messages[idx].classList.add('active');
+        }, 3200);
+      })();
+
+      function showError(msg) {
+        document.getElementById('loading').style.display = 'none';
+        const err = document.getElementById('error');
+        err.style.display = 'block';
+        if (msg) document.getElementById('error-msg').textContent = msg;
+      }
+
+      function renderHero(org) {
+        const displayName = (org.organization_name && org.organization_name.trim()) || org.name || 'Organizer';
+        document.title = `${displayName} — EventHub`;
+        document.getElementById('org-title').textContent = displayName;
+        document.getElementById('org-initial').textContent = displayName.trim().charAt(0).toUpperCase();
+        const avatar = document.getElementById('org-avatar');
+        // Profile image becomes BOTH the hero banner cover (full-bleed, like the
+        // event-detail page) AND the small avatar circle below it. Falls back
+        // to the gradient banner when the organizer hasn't uploaded a photo yet.
+        if (org.profile_image) {
+          const url = resolveUrl(org.profile_image);
+          avatar.innerHTML = `<img src="${escapeHtml(url)}" alt="${escapeHtml(displayName)}">`;
+
+          const cover  = document.getElementById('banner-cover');
+          const banner = document.getElementById('org-hero-banner');
+          cover.src = url;
+          cover.alt = displayName;
+          cover.style.display = 'block';
+          banner.classList.remove('no-image');
+        }
+        const subtitle = document.getElementById('org-subtitle');
+        if (org.organization_name && org.name && org.organization_name.trim() !== org.name.trim()) {
+          subtitle.innerHTML = `<i class="fas fa-user"></i> Run by ${escapeHtml(org.name)}`;
+        } else {
+          subtitle.innerHTML = `<i class="fas fa-user"></i> Event Organizer`;
+        }
+        if (org.organization_website && org.organization_website.trim()) {
+          const link = document.getElementById('org-website');
+          let href = org.organization_website.trim();
+          if (!/^https?:\/\//i.test(href)) href = 'https://' + href;
+          link.href = href;
+          link.style.display = 'inline-flex';
+        }
+
+        // Wire the "Leave feedback" CTA to the dedicated feedback page so
+        // the URL carries the organizer id and the page knows whose reviews
+        // to show.
+        const feedbackBtn = document.getElementById('leave-feedback-btn');
+        if (feedbackBtn) {
+          feedbackBtn.href = `feedback.html?organizer=${encodeURIComponent(org.id)}`;
+        }
+      }
+
+      function renderStats(org, stats) {
+        const evCount     = stats?.events_count   ?? 0;
+        const successRate = stats?.success_rate;     // null when no bookings
+        document.getElementById('stat-events').textContent = evCount;
+        document.getElementById('stat-success').textContent =
+          (successRate == null) ? 'N/A' : `${successRate}%`;
+        if (org.created_at) {
+          const d = new Date(org.created_at);
+          if (!isNaN(d)) {
+            document.getElementById('stat-since').textContent =
+              d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          }
+        }
+      }
+
+      // Render N stars into a container. classes: full / half / empty.
+      function paintStars(container, value) {
+        const v = Math.max(0, Math.min(5, Number(value) || 0));
+        const stars = container.querySelectorAll('i');
+        stars.forEach((s, i) => {
+          s.classList.remove('full', 'half', 'empty');
+          if (v >= i + 1)            s.classList.add('full');
+          else if (v >= i + 0.5)     s.classList.add('half');
+          else                       s.classList.add('empty');
+          // Half stars get the "star-half-stroke" icon swap.
+          s.classList.remove('fa-star', 'fa-star-half-stroke');
+          s.classList.add(s.classList.contains('half') ? 'fa-star-half-stroke' : 'fa-star');
+        });
+      }
+
+      function renderRatingOverlays(stats) {
+        const avg     = Number(stats?.avg_rating || 0);
+        const count   = Number(stats?.reviews_count || 0);
+        const num     = avg.toFixed(1);
+        const countTxt= count === 0
+          ? 'No reviews yet'
+          : `Based on ${count} ${count === 1 ? 'review' : 'reviews'}`;
+
+        // Hero banner overlay
+        document.getElementById('banner-rating-num').textContent = num;
+        document.getElementById('banner-reviews-count').textContent = countTxt;
+        paintStars(document.getElementById('banner-stars'), avg);
+
+        // Reviews-section summary card
+        document.getElementById('rs-num').textContent = num;
+        document.getElementById('rs-total').textContent = countTxt;
+        paintStars(document.getElementById('rs-stars'), avg);
+      }
+
+      function renderReviewList(reviews) {
+        const list = document.getElementById('review-list');
+        if (!reviews || reviews.length === 0) {
+          list.innerHTML = `
+            <div class="empty-state">
+              <i class="fas fa-comment-slash"></i>
+              <h3>No reviews yet</h3>
+              <p>Be the first to share your experience.</p>
+            </div>`;
+          return;
+        }
+        list.innerHTML = reviews.map(r => {
+          const initial = (r.user_name || '?').trim().charAt(0).toUpperCase();
+          const avatar  = r.user_profile_image
+            ? `<img src="${escapeHtml(resolveUrl(r.user_profile_image))}" alt="${escapeHtml(r.user_name)}">`
+            : escapeHtml(initial);
+          const stars = Array.from({ length: 5 }, (_, i) =>
+            `<i class="fas fa-star${i < r.rating ? '' : ' empty'}"></i>`).join('');
+          const when  = formatFullDate(r.created_at);
+          const hasComment = r.comment && r.comment.trim();
+          return `
+            <article class="review-card">
+              <div class="review-card-head">
+                <div class="review-avatar">${avatar}</div>
+                <div class="review-meta">
+                  <div class="who">${escapeHtml(r.user_name || 'Anonymous')}</div>
+                  <div class="when">${escapeHtml(when)}</div>
+                </div>
+                <div class="review-rating">${stars}</div>
+              </div>
+              <div class="review-comment ${hasComment ? '' : 'empty'}">
+                ${hasComment ? escapeHtml(r.comment) : 'No written comment.'}
+              </div>
+            </article>
+          `;
+        }).join('');
+      }
+
+      // ── Review form ────────────────────────────────────────────────
+      const STAR_INPUT_BTNS = () => Array.from(document.querySelectorAll('#star-input button'));
+      let chosenRating = 0;
+
+      function setupReviewForm(currentUserId, organizer, existingReview) {
+        const form    = document.getElementById('review-form');
+        const loginCta= document.getElementById('review-login-cta');
+        const selfNote= document.getElementById('review-self-note');
+        const cmt     = document.getElementById('review-comment');
+
+        // Logged-out → show CTA, hide form.
+        if (!currentUserId) {
+          loginCta.style.display = 'block';
+          return;
+        }
+        // Looking at your own organizer page → show self-note.
+        if (currentUserId === organizer.id) {
+          selfNote.style.display = 'block';
+          return;
+        }
+
+        form.style.display = 'block';
+
+        // Pre-fill if user already reviewed before.
+        if (existingReview) {
+          chosenRating = existingReview.rating;
+          paintInputStars();
+          if (existingReview.comment) cmt.value = existingReview.comment;
+        }
+
+        // Star clicks
+        STAR_INPUT_BTNS().forEach(btn => {
+          btn.addEventListener('click', () => {
+            chosenRating = parseInt(btn.dataset.v, 10);
+            paintInputStars();
+          });
+        });
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const fb = document.getElementById('review-feedback');
+          fb.classList.remove('ok', 'error');
+          fb.textContent = '';
+
+          if (!chosenRating) {
+            fb.classList.add('error');
+            fb.textContent = 'Please pick a star rating before submitting.';
+            return;
+          }
+
+          const submit = document.getElementById('review-submit');
+          submit.disabled = true;
+          submit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting…';
+
+          try {
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            const res = await fetch(`${API_BASE}/auth/organizer/${organizer.id}/reviews`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+              },
+              body: JSON.stringify({
+                rating:  chosenRating,
+                comment: cmt.value.trim() || null
+              })
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              fb.classList.add('error');
+              fb.textContent = err.error || `Could not save review (${res.status}).`;
+            } else {
+              fb.classList.add('ok');
+              fb.textContent = 'Thanks! Your review has been posted.';
+              // Reload reviews + stats so the UI reflects the change.
+              await Promise.all([loadReviews(organizer.id, currentUserId), refreshStats(organizer.id)]);
+            }
+          } catch (err) {
+            fb.classList.add('error');
+            fb.textContent = 'Network error — please try again.';
+          } finally {
+            submit.disabled = false;
+            submit.innerHTML = '<i class="fas fa-paper-plane"></i> Post review';
+          }
+        });
+      }
+
+      function paintInputStars() {
+        STAR_INPUT_BTNS().forEach(btn => {
+          const v = parseInt(btn.dataset.v, 10);
+          btn.classList.toggle('active', v <= chosenRating);
+        });
+      }
+
+      async function loadReviews(organizerId, currentUserId) {
+        try {
+          const res = await fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(organizerId)}/reviews`);
+          const data = res.ok ? await res.json() : { reviews: [] };
+          const reviews = Array.isArray(data.reviews) ? data.reviews : [];
+          renderReviewList(reviews);
+          // Return the current user's existing review (if any) so the form can pre-fill.
+          return reviews.find(r => r.user_id === currentUserId) || null;
+        } catch {
+          renderReviewList([]);
+          return null;
+        }
+      }
+
+      async function refreshStats(organizerId) {
+        try {
+          const res = await fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(organizerId)}`);
+          if (!res.ok) return;
+          const { stats } = await res.json();
+          renderRatingOverlays(stats);
+        } catch { /* non-critical */ }
+      }
+
+      // Decode the JWT (no signature check — server still authoritative).
+      // Used purely to know "who am I" client-side so the review form decides
+      // login-cta vs. self-note vs. form. Keep it tolerant: any failure → null.
+      function getCurrentUserId() {
+        try {
+          const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+          if (!token) return null;
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          return payload.userId || payload.id || null;
+        } catch { return null; }
+      }
+
+      function renderDetails(org) {
+        // About
+        const about = document.getElementById('org-about');
+        if (org.organization_description && org.organization_description.trim()) {
+          about.classList.remove('empty');
+          about.textContent = org.organization_description.trim();
+        }
+
+        // Contact
+        const list = document.getElementById('contact-list');
+        const items = [];
+        if (org.organization_phone && org.organization_phone.trim()) {
+          items.push(`<li><i class="fas fa-phone"></i><a href="tel:${escapeHtml(org.organization_phone.trim())}">${escapeHtml(org.organization_phone.trim())}</a></li>`);
+        }
+        if (org.organization_website && org.organization_website.trim()) {
+          let href = org.organization_website.trim();
+          const display = href.replace(/^https?:\/\//i, '');
+          if (!/^https?:\/\//i.test(href)) href = 'https://' + href;
+          items.push(`<li><i class="fas fa-globe"></i><a href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(display)}</a></li>`);
+        }
+        if (org.organization_address && org.organization_address.trim()) {
+          items.push(`<li><i class="fas fa-location-dot"></i><span>${escapeHtml(org.organization_address.trim())}</span></li>`);
+        }
+        if (items.length === 0) {
+          list.innerHTML = `<li style="border:1px dashed #cbd5e1;background:transparent;color:var(--muted);font-style:italic;justify-content:center;">No public contact info shared.</li>`;
+        } else {
+          list.innerHTML = items.join('');
+        }
+      }
+
+      function renderEvents(events) {
+        const grid = document.getElementById('events-grid');
+        const summary = document.getElementById('events-summary');
+        if (!events || events.length === 0) {
+          grid.innerHTML = `
+            <div class="empty-state">
+              <i class="fas fa-calendar-xmark"></i>
+              <h3>No events yet</h3>
+              <p>This organizer hasn't created any events.</p>
+            </div>`;
+          summary.textContent = 'No events to show.';
+          return;
+        }
+
+        // Most recent first
+        events.sort((a, b) => new Date(b.event_date || 0) - new Date(a.event_date || 0));
+        summary.textContent = `Showing ${events.length} ${events.length === 1 ? 'event' : 'events'}.`;
+
+        grid.innerHTML = events.map((e, i) => {
+          const chip = formatDateChip(e.event_date);
+          const cover = resolveUrl(e.image_url) || (Array.isArray(e.images) && e.images.length ? resolveUrl(e.images[0]) : null);
+          const seats = (e.available_seats != null) ? e.available_seats : (e.total_seats != null ? e.total_seats : '—');
+          const priceVal = parseFloat(e.ticket_price);
+          const priceHtml = (!priceVal || priceVal === 0)
+            ? `<span class="price free">Free</span>`
+            : `<span class="price">₹${priceVal.toFixed(0)}</span>`;
+          return `
+            <a class="event-card" href="event-detail.html?id=${encodeURIComponent(e.id)}" style="--card-gradient: ${pickGradient(i)}; animation-delay:${(i % 8) * 0.07}s;">
+              <div class="event-img-placeholder">
+                <i class="fas ${categoryIcon(e.category)} cover-fallback"></i>
+                ${cover ? `<img class="cover-img" src="${escapeHtml(cover)}" alt="${escapeHtml(e.title || 'Event')}" onerror="this.style.display='none'">` : ''}
+                ${e.category ? `<span class="event-badge-pill">${escapeHtml(e.category)}</span>` : ''}
+                ${chip ? `<div class="event-date-chip"><div class="day">${chip.day}</div><div class="month">${chip.month}</div></div>` : ''}
+              </div>
+              <div class="event-info">
+                <h3>${escapeHtml(e.title || 'Untitled event')}</h3>
+                <div class="meta"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(e.location || 'Location TBA')}</div>
+                <div class="meta"><i class="fas fa-calendar-day"></i> ${escapeHtml(formatFullDate(e.event_date))}</div>
+                <div class="event-row">
+                  ${priceHtml}
+                  <span class="open-link">View <i class="fas fa-arrow-right"></i></span>
+                </div>
+              </div>
+            </a>
+          `;
+        }).join('');
+      }
+
+      async function loadOrganizer() {
+        if (!organizerId) {
+          showError('Missing organizer id. Please open this page from an event link.');
+          return;
+        }
+        try {
+          // Pull profile and event list in parallel.
+          const [profileRes, eventsRes] = await Promise.all([
+            fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(organizerId)}`),
+            fetch(`${API_BASE}/events?organizer=${encodeURIComponent(organizerId)}`)
+          ]);
+
+          if (profileRes.status === 404) {
+            showError("This organizer is no longer available.");
+            return;
+          }
+          if (!profileRes.ok) {
+            showError(`Server error (${profileRes.status}).`);
+            return;
+          }
+
+          const { organizer, stats } = await profileRes.json();
+          const eventsPayload = eventsRes.ok ? await eventsRes.json() : { events: [] };
+          const events = Array.isArray(eventsPayload.events) ? eventsPayload.events : [];
+
+          // Reveal the page
+          document.getElementById('loading').style.display       = 'none';
+          document.getElementById('org-hero').style.display      = 'block';
+          document.getElementById('stats-row').style.display     = 'grid';
+          document.getElementById('detail-grid').style.display   = 'grid';
+          document.getElementById('events-section').style.display= 'block';
+          document.getElementById('reviews-section').style.display = 'block';
+
+          renderHero(organizer);
+          renderStats(organizer, stats || { events_count: events.length });
+          renderRatingOverlays(stats || {});
+          renderDetails(organizer);
+          renderEvents(events);
+
+          // Load reviews + wire the form. Pre-fills if the user already reviewed.
+          const currentUserId = getCurrentUserId();
+          const existingReview = await loadReviews(organizer.id, currentUserId);
+          setupReviewForm(currentUserId, organizer, existingReview);
+        } catch (err) {
+          console.error('Organizer page load failed', err);
+          showError('Network error. Please try again in a moment.');
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', loadOrganizer);
+    })();
+  </script>
+</body>
+</html>

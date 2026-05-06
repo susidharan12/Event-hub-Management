@@ -1,0 +1,143 @@
+# ═══════════════════════════════════════════════════════════════════
+# EventHub — full stack
+#
+#   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+#   │  frontend    │──▶│   backend    │──▶│      db      │
+#   │  (nginx :80) │   │ (node :3000) │   │ (postgres)   │
+#   └──────────────┘   └──────┬───────┘   └──────────────┘
+#                             ├──▶ ai      (java :8080)  Groq / Anthropic
+#                             └──▶ payment (java :8081)  Razorpay
+#
+# Run:        docker compose up -d --build
+# Stop:       docker compose down
+# Logs:       docker compose logs -f
+# Visit:      http://localhost:5050
+# ═══════════════════════════════════════════════════════════════════
+
+# Build contexts for the two Java services. They live OUTSIDE the
+# EventHub project tree (in ~/Downloads/Services-EventHub/), so we
+# use environment variables with sensible defaults so anyone can
+# override on their machine if the path differs.
+#
+#   $env:AI_CONTEXT      = "C:/path/to/ai-service-final"        (PowerShell)
+#   $env:PAYMENT_CONTEXT = "C:/path/to/razorpay-payment-service-final"
+
+name: eventhub
+
+services:
+
+  # ── PostgreSQL ────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: eventhub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-eventhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eventhub}
+      POSTGRES_DB:       ${POSTGRES_DB:-eventhub}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:    ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eventhub}"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  # ── Node.js backend (Express + PostgreSQL client) ────────────
+  backend:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
+    container_name: eventhub-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV:        production
+      PORT:            "3000"
+      PGHOST:          db
+      PGPORT:          "5432"
+      PGUSER:          ${POSTGRES_USER:-eventhub}
+      PGPASSWORD:      ${POSTGRES_PASSWORD:-eventhub}
+      PGDATABASE:      ${POSTGRES_DB:-eventhub}
+      DATABASE_URL:    postgresql://${POSTGRES_USER:-eventhub}:${POSTGRES_PASSWORD:-eventhub}@db:5432/${POSTGRES_DB:-eventhub}
+      JWT_SECRET:      ${JWT_SECRET:-change_me_in_production_please}
+      AI_BASE_URL:     http://ai:8080
+      PAYMENT_BASE_URL: http://payment:8081
+      EMAIL_USER:      ${EMAIL_USER:-}
+      EMAIL_PASSWORD:  ${EMAIL_PASSWORD:-}
+      # Generic SMTP — preferred over the EMAIL_USER/EMAIL_PASSWORD pair
+      # because it works with any provider (SendGrid, Brevo, Mailtrap, etc.)
+      # and supports custom port + SSL/TLS settings.
+      SMTP_HOST:       ${SMTP_HOST:-}
+      SMTP_PORT:       ${SMTP_PORT:-}
+      SMTP_USER:       ${SMTP_USER:-}
+      SMTP_PASS:       ${SMTP_PASS:-}
+      SMTP_SECURE:     ${SMTP_SECURE:-}
+      SMTP_FROM:       ${SMTP_FROM:-}
+      # Twilio SMS — set all three to enable real SMS OTP delivery to
+      # mobile targets (signup / password-reset). Without these the
+      # backend falls back to delivering the OTP via the user's email.
+      TWILIO_ACCOUNT_SID:      ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN:       ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM:             ${TWILIO_FROM:-}
+      TWILIO_DEFAULT_COUNTRY:  ${TWILIO_DEFAULT_COUNTRY:-IN}
+    volumes:
+      # Persist user uploads (event covers, avatars) outside the image
+      - uploads:/app/uploads
+    ports:
+      - "3000:3000"
+
+  # ── Spring Boot AI service ───────────────────────────────────
+  ai:
+    build:
+      context: ${AI_CONTEXT:-C:/Users/softsuave/Downloads/Services-EventHub/ai-service-final}
+      dockerfile: Dockerfile
+    container_name: eventhub-ai
+    restart: unless-stopped
+    environment:
+      SERVER_PORT:     "8080"
+      # Configure the LLM provider via env vars (don't commit keys).
+      # Pick one: GROQ or ANTHROPIC depending on which your service uses.
+      GROQ_API_KEY:        ${GROQ_API_KEY:-}
+      ANTHROPIC_API_KEY:   ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL:     ${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
+      GROQ_MODEL:          ${GROQ_MODEL:-llama-3.3-70b-versatile}
+    ports:
+      - "8080:8080"
+
+  # ── Spring Boot Razorpay payment service ─────────────────────
+  payment:
+    build:
+      context: ${PAYMENT_CONTEXT:-C:/Users/softsuave/Downloads/Services-EventHub/razorpay-payment-service-final}
+      dockerfile: Dockerfile
+    container_name: eventhub-payment
+    restart: unless-stopped
+    environment:
+      SERVER_PORT:           "8081"
+      RAZORPAY_KEY_ID:       ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET:   ${RAZORPAY_KEY_SECRET:-}
+      UPI_ID:                ${UPI_ID:-devilsusi54@oksbi}
+      UPI_PAYEE:             ${UPI_PAYEE:-EventHub}
+    ports:
+      - "8081:8081"
+
+  # ── Frontend (nginx serving the static site + /api proxy) ────
+  frontend:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+    container_name: eventhub-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5050:80"     # browse to http://localhost:5050
+
+# ── Persistent volumes ─────────────────────────────────────────
+volumes:
+  db_data:            # PostgreSQL data
+  uploads:            # event images / avatars

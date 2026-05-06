@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="/Public/js/api-base-shim.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -251,32 +252,43 @@
     }
     .avatar-big {
       position: relative;
-      width: 84px; height: 84px;
-      border-radius: 22px;
+      width: 96px; height: 96px;
+      border-radius: 24px;
       background: var(--gradient-hero);
       display: grid; place-items: center;
       color: white;
       font-family: 'Space Grotesk', sans-serif;
-      font-size: 2rem;
+      font-size: 2.4rem;
       font-weight: 700;
-      box-shadow: 0 10px 24px rgba(139, 92, 246, 0.35);
+      box-shadow: 0 12px 28px rgba(139, 92, 246, 0.4);
       flex-shrink: 0;
-      overflow: hidden;
+      /* Let the camera edit button render outside the avatar's rounded corner. */
+      overflow: visible;
     }
-    .avatar-big > img { width: 100%; height: 100%; object-fit: cover; }
+    /* Force the image to fully fill the 96px square — `position: absolute;
+       inset: 0` is more reliable than width/height: 100% inside the parent's
+       grid container, which can size children by their natural dimensions. */
+    .avatar-big > img {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 24px;
+      display: block;
+    }
     .avatar-edit-btn {
       position: absolute;
       bottom: -6px; right: -6px;
-      width: 30px; height: 30px;
+      width: 32px; height: 32px;
       border-radius: 50%;
       border: 2px solid var(--primary);
       background: white;
       color: var(--primary);
       cursor: pointer;
       display: grid; place-items: center;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
     .avatar-edit-btn:hover { background: var(--primary); color: white; transform: scale(1.08); }
     .profile-head h2 {

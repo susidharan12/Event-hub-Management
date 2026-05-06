@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/Public/js/api-base-shim.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
+  <title>Leave feedback — EventHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-2: #8b5cf6;
+      --secondary: #ec4899;
+      --accent: #f59e0b;
+      --teal: #06b6d4;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --gradient-hero: linear-gradient(135deg, #6366f1 0%, #8b5cf6 35%, #ec4899 100%);
+      --gradient-soft: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
+      --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
+      --nav-height: 76px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+      background: var(--gradient-soft);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.02em; }
+
+    /* Navbar */
+    .navbar {
+      position: fixed;
+      top: 16px; left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 1280px;
+      height: var(--nav-height);
+      padding: 0 1.5rem;
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(99,102,241,0.12);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+      z-index: 1000;
+      animation: navDrop 0.7s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes navDrop {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to   { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .navbar.scrolled { background: rgba(255,255,255,0.92); box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12); }
+    .logo {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.45rem; font-weight: 800;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 10px;
+      color: var(--ink);
+    }
+    .logo-mark {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      background: var(--gradient-hero);
+      display: grid; place-items: center;
+      color: white;
+      box-shadow: 0 8px 18px rgba(139, 92, 246, 0.4);
+    }
+    .logo .grad { background: var(--gradient-hero); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .live-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.12));
+      border: 1px solid rgba(16,185,129,0.25);
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #10b981;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .live-pill .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16,185,129,0.7);
+      animation: livePulse 1.6s ease-in-out infinite;
+    }
+    @keyframes livePulse {
+      0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.7); }
+      70%  { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+      100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+    }
+    .btn {
+      padding: 0.7rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(.2,.9,.3,1.2);
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--gradient-hero); color: white; box-shadow: 0 8px 20px rgba(99,102,241,0.35); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(236,72,153,0.45); }
+    .btn-ghost { background: rgba(99,102,241,0.08); color: var(--primary); border: 1px solid rgba(99,102,241,0.2); }
+    .btn-ghost:hover { background: rgba(99,102,241,0.15); transform: translateY(-1px); }
+
+    /* Page bg flair */
+    .page {
+      position: relative;
+      padding-top: calc(var(--nav-height) + 50px);
+      padding-bottom: 4rem;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .page::before, .page::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page::before { width: 380px; height: 380px; background: #8b5cf6; top: 80px; left: -120px; animation: float 16s ease-in-out infinite; }
+    .page::after  { width: 320px; height: 320px; background: #ec4899; top: 30%; right: -120px; animation: float 18s ease-in-out infinite -4s; }
+    @keyframes float {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33%     { transform: translate(40px,-30px) scale(1.08); }
+      66%     { transform: translate(-30px,20px) scale(0.94); }
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header strip — who is being reviewed */
+    .org-strip {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      background: white;
+      padding: 1.4rem 1.6rem;
+      border-radius: 22px;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      animation: heroIn 0.8s cubic-bezier(.2,.9,.3,1.2) both;
+    }
+    @keyframes heroIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .org-strip .av {
+      width: 64px; height: 64px;
+      border-radius: 16px;
+      background: var(--gradient-hero);
+      color: white;
+      display: grid; place-items: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 800;
+      font-size: 1.6rem;
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(99,102,241,0.3);
+    }
+    .org-strip .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .org-strip .meta { flex: 1; min-width: 0; }
+    .org-strip .meta .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .org-strip .meta h1 {
+      font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+      font-weight: 800;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-top: 2px;
+    }
+    .org-strip .meta .by { color: var(--muted); font-size: 0.92rem; margin-top: 0.2rem; }
+    .org-strip .agg {
+      text-align: right;
+      flex-shrink: 0;
+      min-width: 130px;
+    }
+    .org-strip .agg .num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .org-strip .agg .num small { font-size: 0.4em; color: var(--muted); -webkit-text-fill-color: var(--muted); margin-left: 4px; }
+    .org-strip .agg .stars i { color: #f59e0b; font-size: 0.9rem; }
+    .org-strip .agg .stars i.empty { color: #e2e8f0; }
+    .org-strip .agg .total {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-top: 0.25rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* Two-column layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 1.6rem;
+      margin-top: 1.6rem;
+      align-items: start;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 22px;
+      padding: 2rem;
+      box-shadow: var(--shadow-card);
+      border: 1px solid rgba(99,102,241,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--gradient-hero);
+    }
+    .panel.green::before { background: linear-gradient(135deg,#10b981,#06b6d4); }
+    .panel h2 {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 1.2rem;
+      margin-bottom: 0.4rem;
+    }
+    .panel h2 i {
+      width: 36px; height: 36px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(236,72,153,0.15));
+      color: var(--primary);
+      font-size: 1rem;
+    }
+    .panel.green h2 i {
+      background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.18));
+      color: #10b981;
+    }
+    .panel .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.4rem;
+    }
+
+    /* Star input */
+    .star-input { display: flex; gap: 10px; margin-bottom: 1.2rem; }
+    .star-input button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 2rem;
+      color: #e2e8f0;
+      padding: 0;
+      transition: transform 0.2s ease, color 0.2s ease;
+      font-family: inherit;
+    }
+    .star-input button:hover { transform: scale(1.18) rotate(-6deg); }
+    .star-input button.active { color: #f59e0b; filter: drop-shadow(0 4px 10px rgba(245,158,11,0.5)); }
+
+    /* Form elements */
+    label.field-label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      max-height: 280px;
+      padding: 1rem 1.1rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: vertical;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      line-height: 1.5;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+    }
+    .submit-row {
+      margin-top: 1.2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .hint { color: var(--muted); font-size: 0.85rem; }
+    button[type=submit] {
+      padding: 0.9rem 1.6rem;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: var(--gradient-hero);
+      color: white;
+      box-shadow: 0 8px 20px rgba(99,102,241,0.35);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      font-family: inherit;
+      font-size: 0.95rem;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    button[type=submit]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(236,72,153,0.45);
+    }
+    button[type=submit]:disabled {
+      background: #cbd5e1; box-shadow: none; cursor: not-allowed; transform: none;
+    }
+    .feedback-msg {
+      margin-top: 1rem;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      display: none;
+    }
+    .feedback-msg.ok    { display: block; background: #ecfdf5; color: #047857; border: 1px solid rgba(16,185,129,0.3); }
+    .feedback-msg.err   { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid rgba(239,68,68,0.3); }
+    .login-cta, .self-note {
+      padding: 1.2rem;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.08));
+      border: 1px dashed rgba(99,102,241,0.3);
+      border-radius: 14px;
+      color: var(--ink);
+      font-weight: 500;
+    }
+    .login-cta a { color: var(--primary); font-weight: 700; text-decoration: none; }
+    .login-cta a:hover { text-decoration: underline; }
+
+    /* Reviews stream */
+    .stream-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .stream-count {
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .stream {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-height: 720px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .stream::-webkit-scrollbar { width: 6px; }
+    .stream::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 999px; }
+
+    .review-card {
+      background: white;
+      padding: 1.3rem 1.4rem;
+      border-radius: 18px;
+      border: 1px solid rgba(99,102,241,0.06);
+      box-shadow: 0 4px 14px rgba(15,23,42,0.04);
+      animation: cardIn 0.5s ease-out both;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .review-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(99,102,241,0.15); }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    /* Newest review pulses briefly to draw attention to a fresh post. */
+    .review-card.fresh {
+      animation: cardIn 0.5s ease-out, freshGlow 2.4s ease-out;
+    }
+    @keyframes freshGlow {
+      0%   { box-shadow: 0 0 0 6px rgba(99,102,241,0.25); }
+      100% { box-shadow: 0 4px 14px rgba(15,23,42,0.04); }
+    }
+    .head-row {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 0.7rem;
+    }
+    .head-row .av-sm {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--gradient-hero);
+      color: white;
+      display: grid; place-items: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .head-row .av-sm img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .head-row .who-meta { flex: 1; min-width: 0; }
+    .head-row .who { font-weight: 700; }
+    .head-row .when { color: var(--muted); font-size: 0.82rem; }
+    .head-row .stars-row {
+      display: inline-flex; gap: 3px;
+      font-size: 0.95rem;
+      color: #f59e0b;
+    }
+    .head-row .stars-row .empty { color: #e2e8f0; }
+    .review-body {
+      color: #475569;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.6;
+    }
+    .review-body.empty { color: var(--muted); font-style: italic; }
+    .you-pill {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 8px;
+      background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.18));
+      color: #10b981;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    .empty-stream, .error-stream {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      background: white;
+      border-radius: 18px;
+      border: 1px dashed #cbd5e1;
+    }
+    .empty-stream i, .error-stream i {
+      font-size: 2.4rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    .empty-stream p, .error-stream p { color: var(--muted); margin-top: 0.4rem; }
+
+    .skeleton-card {
+      background: white;
+      padding: 1.3rem 1.4rem;
+      border-radius: 18px;
+      border: 1px solid rgba(99,102,241,0.06);
+    }
+    .sk-line {
+      height: 12px;
+      background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      background-size: 200% 100%;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      animation: shimmer 1.4s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .org-strip { flex-wrap: wrap; }
+      .org-strip .agg { text-align: left; min-width: 0; flex: 1; }
+    }
+  </style>
+  <link rel="stylesheet" href="/Public/js/responsive.css">
+</head>
+<body>
+
+  <nav class="navbar" id="navbar">
+    <a href="dashboard.html" class="logo">
+      <span class="logo-mark"><i class="fas fa-bolt"></i></span>
+      Event<span class="grad">Hub</span>
+    </a>
+    <span class="live-pill"><span class="dot"></span> Real-time feedback</span>
+    <button onclick="history.length > 1 ? history.back() : (window.location.href='dashboard.html')" class="btn btn-primary">
+      <i class="fas fa-arrow-left"></i> Back
+    </button>
+  </nav>
+
+  <main class="page">
+    <div class="container">
+
+      <!-- Error state (organizer not found / missing id) -->
+      <div id="error" class="error-stream" style="display:none;">
+        <i class="fas fa-circle-exclamation"></i>
+        <h3>We couldn't load this organizer</h3>
+        <p id="error-msg">Please open this page from a valid organizer link.</p>
+      </div>
+
+      <!-- Header strip -->
+      <section class="org-strip" id="org-strip" style="display:none;">
+        <div class="av" id="org-av"><span id="org-initial">O</span></div>
+        <div class="meta">
+          <span class="eyebrow">You're reviewing</span>
+          <h1 id="org-name">Organization</h1>
+          <div class="by" id="org-sub">Organizer</div>
+        </div>
+        <div class="agg">
+          <div class="num"><span id="agg-num">0.0</span><small>/ 5</small></div>
+          <div class="stars" id="agg-stars">
+            <i class="fas fa-star empty"></i><i class="fas fa-star empty"></i>
+            <i class="fas fa-star empty"></i><i class="fas fa-star empty"></i>
+            <i class="fas fa-star empty"></i>
+          </div>
+          <div class="total" id="agg-total">No reviews yet</div>
+        </div>
+      </section>
+
+      <div class="grid" id="grid" style="display:none;">
+
+        <!-- LEFT: Leave feedback form -->
+        <section class="panel green">
+          <h2><i class="fas fa-pen-to-square"></i> Share your experience</h2>
+          <p class="subtitle">Tell other explorers what to expect — your honest feedback helps the community.</p>
+
+          <!-- Form -->
+          <form id="feedback-form">
+            <div id="form-user-strip" style="display:none; align-items:center; gap:12px; margin-bottom:1.2rem; padding:0.8rem 1rem; background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.08)); border-radius:14px; border:1px solid rgba(99,102,241,0.15);">
+              <div id="form-user-av" style="width:40px; height:40px; border-radius:50%; background:var(--gradient-hero); color:white; display:grid; place-items:center; font-weight:700; flex-shrink:0; overflow:hidden;"></div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:0.75rem; color:var(--muted); font-weight:600; letter-spacing:0.05em; text-transform:uppercase;">Posting as</div>
+                <div id="form-user-name" style="font-weight:700; color:var(--ink);"></div>
+              </div>
+            </div>
+
+            <label class="field-label">Your rating</label>
+            <div class="star-input" id="star-input" role="radiogroup">
+              <button type="button" data-v="1" aria-label="1 star"><i class="fas fa-star"></i></button>
+              <button type="button" data-v="2" aria-label="2 stars"><i class="fas fa-star"></i></button>
+              <button type="button" data-v="3" aria-label="3 stars"><i class="fas fa-star"></i></button>
+              <button type="button" data-v="4" aria-label="4 stars"><i class="fas fa-star"></i></button>
+              <button type="button" data-v="5" aria-label="5 stars"><i class="fas fa-star"></i></button>
+            </div>
+
+            <label class="field-label" for="comment">Your comment</label>
+            <textarea id="comment" placeholder="What was your experience like? Was the event well organized? Was the venue easy to find?" maxlength="1000"></textarea>
+
+            <div class="submit-row">
+              <span class="hint">You can post up to 2 reviews per organizer.</span>
+              <button type="submit" id="submit-btn"><i class="fas fa-paper-plane"></i> Post feedback</button>
+            </div>
+            <div class="feedback-msg" id="form-msg"></div>
+          </form>
+        </section>
+
+        <!-- RIGHT: Live stream of reviews -->
+        <section class="panel">
+          <div class="stream-head">
+            <h2><i class="fas fa-comments"></i> Community feedback</h2>
+            <span class="stream-count" id="stream-count">Loading…</span>
+          </div>
+          <p class="subtitle">Newest first. This list refreshes automatically.</p>
+          <div class="stream" id="stream">
+            <!-- Skeletons until first load -->
+            <div class="skeleton-card"><div class="sk-line" style="width:40%"></div><div class="sk-line" style="width:90%"></div><div class="sk-line" style="width:70%"></div></div>
+            <div class="skeleton-card"><div class="sk-line" style="width:35%"></div><div class="sk-line" style="width:85%"></div><div class="sk-line" style="width:60%"></div></div>
+            <div class="skeleton-card"><div class="sk-line" style="width:45%"></div><div class="sk-line" style="width:80%"></div><div class="sk-line" style="width:65%"></div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="/Public/js/popup.js"></script>
+  <script src="/Public/js/ai-chat-widget.js"></script>
+
+  <script>
+    (function () {
+      const SERVER_URL = 'http://localhost:3000';
+      const API_BASE   = 'http://localhost:3000/api';
+
+      // Accept ?organizer= or ?id= so the page is forgiving about the URL shape.
+      const params = new URLSearchParams(window.location.search);
+      const organizerId = params.get('organizer') || params.get('id');
+
+      // ── Helpers ───────────────────────────────────────────
+      function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+      function resolveUrl(u) {
+        if (!u) return null;
+        return u.startsWith('/') ? `${SERVER_URL}${u}` : u;
+      }
+      function getToken() {
+        return localStorage.getItem('auth_token')
+            || localStorage.getItem('token')
+            || localStorage.getItem('authToken')
+            || localStorage.getItem('eventhub_token')
+            || '';
+      }
+      function getCurrentUserId() {
+        // Prefer the stored user object — it's the source of truth used across the app.
+        try {
+          const userJson = localStorage.getItem('auth_user');
+          if (userJson) {
+            const u = JSON.parse(userJson);
+            if (u && (u.id || u.userId)) return u.id || u.userId;
+          }
+        } catch { /* fall through to token decode */ }
+        try {
+          const token = getToken();
+          if (!token) return null;
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          return payload.userId || payload.id || null;
+        } catch { return null; }
+      }
+      function getCurrentUser() {
+        try {
+          const userJson = localStorage.getItem('auth_user') || localStorage.getItem('user');
+          return userJson ? JSON.parse(userJson) : null;
+        } catch { return null; }
+      }
+      function relTime(iso) {
+        const d = new Date(iso);
+        if (isNaN(d)) return '—';
+        const sec = Math.max(1, Math.round((Date.now() - d.getTime()) / 1000));
+        if (sec < 60)        return `${sec}s ago`;
+        const min = Math.round(sec / 60);
+        if (min < 60)        return `${min}m ago`;
+        const hr  = Math.round(min / 60);
+        if (hr  < 24)        return `${hr}h ago`;
+        const day = Math.round(hr / 24);
+        if (day < 30)        return `${day}d ago`;
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      function paintAvgStars(container, value) {
+        const v = Math.max(0, Math.min(5, Number(value) || 0));
+        container.querySelectorAll('i').forEach((s, i) => {
+          s.classList.remove('full', 'half', 'empty', 'fa-star', 'fa-star-half-stroke');
+          let mode;
+          if      (v >= i + 1)   mode = 'full';
+          else if (v >= i + 0.5) mode = 'half';
+          else                   mode = 'empty';
+          s.classList.add(mode === 'half' ? 'fa-star-half-stroke' : 'fa-star');
+          if (mode === 'empty') s.classList.add('empty');
+        });
+      }
+
+      // Navbar shadow
+      const navbar = document.getElementById('navbar');
+      window.addEventListener('scroll', () => {
+        if (window.scrollY > 30) navbar.classList.add('scrolled');
+        else navbar.classList.remove('scrolled');
+      });
+
+      // ── Error helper ──────────────────────────────────────
+      function showError(msg) {
+        document.getElementById('org-strip').style.display = 'none';
+        document.getElementById('grid').style.display      = 'none';
+        document.getElementById('error').style.display     = 'block';
+        if (msg) document.getElementById('error-msg').textContent = msg;
+      }
+
+      // ── Hero strip ────────────────────────────────────────
+      function renderOrgStrip(org, stats) {
+        const strip = document.getElementById('org-strip');
+        strip.style.display = 'flex';
+        const displayName = (org.organization_name && org.organization_name.trim()) || org.name || 'Organizer';
+        document.title = `Feedback for ${displayName} — EventHub`;
+        document.getElementById('org-name').textContent = displayName;
+        document.getElementById('org-initial').textContent = displayName.trim().charAt(0).toUpperCase();
+        const av = document.getElementById('org-av');
+        if (org.profile_image) {
+          av.innerHTML = `<img src="${escapeHtml(resolveUrl(org.profile_image))}" alt="${escapeHtml(displayName)}">`;
+        }
+        const sub = document.getElementById('org-sub');
+        sub.innerHTML = (org.organization_name && org.name && org.organization_name.trim() !== org.name.trim())
+          ? `<i class="fas fa-user"></i> Run by ${escapeHtml(org.name)}`
+          : `<i class="fas fa-user"></i> Event Organizer`;
+
+        renderAgg(stats);
+      }
+
+      function renderAgg(stats) {
+        const avg   = Number(stats?.avg_rating || 0);
+        const count = Number(stats?.reviews_count || 0);
+        document.getElementById('agg-num').textContent = avg.toFixed(1);
+        paintAvgStars(document.getElementById('agg-stars'), avg);
+        document.getElementById('agg-total').textContent = count === 0
+          ? 'No reviews yet'
+          : `Based on ${count} ${count === 1 ? 'review' : 'reviews'}`;
+      }
+
+      // ── Reviews stream ────────────────────────────────────
+      // Tracks the highest review id seen so polling can highlight new ones.
+      let lastSeenId = 0;
+      // Track currentUserId at module scope so renderStream can mark "(you)".
+      let CURRENT_USER_ID = null;
+
+      // How many reviews to render in the community feedback panel.
+      const STREAM_LIMIT = 10;
+
+      function renderStream(reviews) {
+        const stream = document.getElementById('stream');
+        const count  = document.getElementById('stream-count');
+        const total  = reviews.length;
+        // Show the 10 most recent. The API returns newest-first, so slice from the start.
+        const visible = reviews.slice(0, STREAM_LIMIT);
+
+        count.textContent = total === 0
+          ? 'No reviews yet'
+          : (total > STREAM_LIMIT
+              ? `Showing latest ${visible.length} of ${total}`
+              : `${total} ${total === 1 ? 'review' : 'reviews'}`);
+
+        if (total === 0) {
+          stream.innerHTML = `
+            <div class="empty-stream">
+              <i class="fas fa-comment-slash"></i>
+              <h3>Be the first to share</h3>
+              <p>No one has reviewed this organizer yet — your feedback could be the first.</p>
+            </div>`;
+          return;
+        }
+
+        const newMaxId = Math.max(...visible.map(r => r.id));
+
+        stream.innerHTML = visible.map(r => {
+          const initial = (r.user_name || '?').trim().charAt(0).toUpperCase();
+          const av = r.user_profile_image
+            ? `<img src="${escapeHtml(resolveUrl(r.user_profile_image))}" alt="${escapeHtml(r.user_name)}">`
+            : escapeHtml(initial);
+          const stars = Array.from({ length: 5 }, (_, i) =>
+            `<i class="fas fa-star${i < r.rating ? '' : ' empty'}"></i>`).join('');
+          const isYou = (r.user_id === CURRENT_USER_ID);
+          const isFresh = r.id > lastSeenId && lastSeenId > 0; // pulse only after we've already loaded once
+          const hasText = r.comment && r.comment.trim();
+          return `
+            <article class="review-card${isFresh ? ' fresh' : ''}">
+              <div class="head-row">
+                <div class="av-sm">${av}</div>
+                <div class="who-meta">
+                  <div class="who">
+                    ${escapeHtml(r.user_name || 'Anonymous')}
+                    ${isYou ? '<span class="you-pill">You</span>' : ''}
+                  </div>
+                  <div class="when" title="${escapeHtml(new Date(r.created_at).toLocaleString())}">
+                    ${escapeHtml(relTime(r.created_at))}
+                  </div>
+                </div>
+                <div class="stars-row">${stars}</div>
+              </div>
+              <div class="review-body ${hasText ? '' : 'empty'}">
+                ${hasText ? escapeHtml(r.comment) : 'No written comment.'}
+              </div>
+            </article>`;
+        }).join('');
+
+        lastSeenId = newMaxId;
+      }
+
+      // ── Form ──────────────────────────────────────────────
+      let chosenRating = 0;
+      function paintInputStars() {
+        document.querySelectorAll('#star-input button').forEach(btn => {
+          const v = parseInt(btn.dataset.v, 10);
+          btn.classList.toggle('active', v <= chosenRating);
+        });
+      }
+
+      function setupForm(currentUserId, organizer) {
+        const form     = document.getElementById('feedback-form');
+        const cmt      = document.getElementById('comment');
+
+        // Always show the form — the submit handler still attaches the Bearer
+        // token and the backend is the final authority on whether the request
+        // is authorized.
+        form.style.display = 'block';
+
+        // Show "Posting as <name>" strip with the logged-in user's details.
+        const me = getCurrentUser();
+        if (me) {
+          const strip   = document.getElementById('form-user-strip');
+          const avEl    = document.getElementById('form-user-av');
+          const nameEl  = document.getElementById('form-user-name');
+          const display = me.name || me.username || me.email || 'You';
+          nameEl.textContent = display;
+          if (me.profile_image) {
+            avEl.innerHTML = `<img src="${escapeHtml(resolveUrl(me.profile_image))}" alt="${escapeHtml(display)}" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+          } else {
+            avEl.textContent = display.trim().charAt(0).toUpperCase();
+          }
+          strip.style.display = 'flex';
+        }
+
+        // Each post is a fresh review (up to 2 per user per organizer), so we
+        // intentionally don't prefill from a prior review.
+
+        document.querySelectorAll('#star-input button').forEach(btn => {
+          btn.addEventListener('click', () => {
+            chosenRating = parseInt(btn.dataset.v, 10);
+            paintInputStars();
+          });
+        });
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById('form-msg');
+          msg.className = 'feedback-msg';
+          msg.textContent = '';
+
+          if (!chosenRating) {
+            msg.classList.add('err');
+            msg.textContent = 'Please pick a star rating before submitting.';
+            return;
+          }
+
+          const submitBtn = document.getElementById('submit-btn');
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting…';
+
+          try {
+            const res = await fetch(`${API_BASE}/auth/organizer/${organizer.id}/reviews`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getToken()}`
+              },
+              body: JSON.stringify({
+                rating:  chosenRating,
+                comment: cmt.value.trim() || null
+              })
+            });
+            if (!res.ok) {
+              const err = await res.json().catch(() => ({}));
+              msg.classList.add('err');
+              msg.textContent = err.error || `Could not save feedback (${res.status}).`;
+            } else {
+              // Reset the form so the next review starts clean.
+              cmt.value = '';
+              chosenRating = 0;
+              paintInputStars();
+              // Pull fresh state immediately so the user sees their post.
+              await refresh(organizer.id);
+              // Thanks popup — uses the shared Popup utility loaded above.
+              if (window.Popup && typeof Popup.alert === 'function') {
+                Popup.alert('Thanks for your feedback! Your review has been posted.', {
+                  title: 'Review submitted',
+                  type: 'success',
+                  okLabel: 'Done'
+                });
+              } else {
+                msg.classList.add('ok');
+                msg.textContent = 'Thanks! Your feedback has been posted — see it below.';
+              }
+            }
+          } catch {
+            msg.classList.add('err');
+            msg.textContent = 'Network error — please try again.';
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post feedback';
+          }
+        });
+      }
+
+      // ── Refresh (used both initially and by the polling loop) ─────────
+      async function refresh(orgId) {
+        try {
+          const [statsRes, reviewsRes] = await Promise.all([
+            fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(orgId)}`),
+            fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(orgId)}/reviews`)
+          ]);
+          if (statsRes.ok) {
+            const { stats } = await statsRes.json();
+            renderAgg(stats);
+          }
+          if (reviewsRes.ok) {
+            const { reviews } = await reviewsRes.json();
+            renderStream(Array.isArray(reviews) ? reviews : []);
+          }
+        } catch { /* network blip — try again next tick */ }
+      }
+
+      // ── Initial load ──────────────────────────────────────
+      async function init() {
+        if (!organizerId) { showError('Missing organizer id. Please open this page from a valid organizer link.'); return; }
+
+        try {
+          const profileRes = await fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(organizerId)}`);
+          if (profileRes.status === 404) { showError('This organizer is no longer available.'); return; }
+          if (!profileRes.ok)            { showError(`Server error (${profileRes.status}).`);  return; }
+          const { organizer, stats } = await profileRes.json();
+
+          // Reveal the layout once we know the organizer exists.
+          document.getElementById('grid').style.display = 'grid';
+
+          renderOrgStrip(organizer, stats);
+          CURRENT_USER_ID = getCurrentUserId();
+
+          // Initial review fetch — also captures lastSeenId so the polling loop
+          // can highlight only NEW reviews from this point on.
+          const reviewsRes = await fetch(`${API_BASE}/auth/organizer/${encodeURIComponent(organizerId)}/reviews`);
+          const { reviews = [] } = reviewsRes.ok ? await reviewsRes.json() : { reviews: [] };
+          if (reviews.length > 0) lastSeenId = Math.max(...reviews.map(r => r.id));
+          renderStream(reviews);
+
+          setupForm(CURRENT_USER_ID, organizer);
+
+          // Real-time polling — every 8 seconds. Cheap (single DB query) and
+          // works reliably without WebSockets. Pauses while the tab is hidden
+          // so we don't burn CPU/network for nothing.
+          setInterval(() => {
+            if (!document.hidden) refresh(organizer.id);
+          }, 8000);
+        } catch (err) {
+          console.error('feedback init failed', err);
+          showError('Network error. Please try again in a moment.');
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>

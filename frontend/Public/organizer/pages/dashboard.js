@@ -4,6 +4,46 @@ function getToken() {
     return localStorage.getItem('auth_token') || localStorage.getItem('token') || localStorage.getItem('authToken') || localStorage.getItem('eventhub_token');
 }
 
+// Edit mode: tracks which existing additional-image URLs the organizer wants
+// to keep. Newly uploaded files are still managed by the file input.
+let keptExistingImages = [];
+
+// Resolve a possibly-relative upload URL into something the browser can load.
+// Using a same-origin relative path lets nginx proxy /uploads to the backend
+// (works in Docker and direct dev), with a fallback to the dev backend port.
+function resolveAssetUrl(u) {
+    if (!u) return '';
+    if (/^https?:\/\//i.test(u)) return u;
+    // Browser is already on the frontend origin; nginx proxies /uploads → backend.
+    if (u.startsWith('/uploads/')) return u;
+    return u.startsWith('/') ? u : `/${u}`;
+}
+
+// Image lightbox — click any additional-image thumbnail to expand it. Wired
+// once on first call; subsequent calls just swap the src.
+function openImageLightbox(src) {
+    const lb     = document.getElementById('ev-lightbox');
+    const lbImg  = document.getElementById('ev-lightbox-img');
+    const lbX    = document.getElementById('ev-lightbox-close');
+    if (!lb || !lbImg) return;
+    lbImg.src = src;
+    lb.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    if (!lb.dataset.wired) {
+        const close = () => {
+            lb.classList.remove('show');
+            document.body.style.overflow = '';
+        };
+        lb.addEventListener('click', (e) => { if (e.target === lb) close(); });
+        if (lbX) lbX.addEventListener('click', close);
+        lbImg.addEventListener('click', close);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && lb.classList.contains('show')) close();
+        });
+        lb.dataset.wired = '1';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
     loadDashboardStats();
@@ -874,22 +914,55 @@ function handleProfileImageChange(input) {
 function handleFileChange(input) {
     const files = Array.from(input.files).slice(0, 10);
     const container = document.getElementById('images-row');
-    container.innerHTML = '';
-    
+    // Re-render kept thumbnails first, then append previews of newly chosen files.
+    renderKeptImagesRow();
+
     files.forEach(file => {
         if (file.size > 5 * 1024 * 1024) {
             alert(`File ${file.name} is too large`);
             return;
         }
-        
+
         const reader = new FileReader();
         reader.onload = function(e) {
             const div = document.createElement('div');
             div.className = 'image-item';
-            div.innerHTML = `<img src="${e.target.result}" style="width:120px; height:80px; object-fit:cover; border-radius:8px;">`;
+            div.style.cssText = 'position:relative; display:inline-block; margin:6px;';
+            div.innerHTML = `
+                <img src="${e.target.result}" style="width:120px; height:80px; object-fit:cover; border-radius:8px; display:block; cursor:zoom-in;">
+                <span style="position:absolute; top:4px; right:4px; background:rgba(99,102,241,0.85); color:white; font-size:10px; padding:2px 6px; border-radius:999px; font-weight:700;">NEW</span>`;
+            div.querySelector('img').addEventListener('click', () => openImageLightbox(e.target.result));
             container.appendChild(div);
         };
         reader.readAsDataURL(file);
+    });
+}
+
+// Render the kept-existing-images thumbnails (with × buttons) into #images-row.
+// Called when entering edit mode and after the user picks new files (so the
+// new-file previews append below the kept ones rather than overwriting them).
+function renderKeptImagesRow() {
+    const container = document.getElementById('images-row');
+    if (!container) return;
+    container.innerHTML = '';
+    keptExistingImages.forEach((u, idx) => {
+        const fullUrl = resolveAssetUrl(u);
+        const div = document.createElement('div');
+        div.className = 'image-item kept';
+        div.style.cssText = 'position:relative; display:inline-block; margin:6px;';
+        div.innerHTML = `
+            <img src="${fullUrl}" style="width:120px; height:80px; object-fit:cover; border-radius:8px; display:block; cursor:zoom-in;">
+            <button type="button" data-idx="${idx}" aria-label="Remove image"
+                    style="position:absolute; top:-8px; right:-8px; width:24px; height:24px; border:none; border-radius:50%; background:#ef4444; color:white; cursor:pointer; box-shadow:0 4px 10px rgba(239,68,68,0.4); font-size:13px; line-height:1; display:grid; place-items:center;">
+                <i class="fas fa-times"></i>
+            </button>`;
+        div.querySelector('img').addEventListener('click', () => openImageLightbox(fullUrl));
+        div.querySelector('button').addEventListener('click', (e) => {
+            e.stopPropagation();
+            keptExistingImages.splice(idx, 1);
+            renderKeptImagesRow();
+        });
+        container.appendChild(div);
     });
 }
 
@@ -939,10 +1012,19 @@ function setEditMode(event) {
     setVal('ev-desc', event.description);
 
     // Show existing cover image as preview (without re-uploading).
-    const cover = event.image_url ? `${SERVER_URL}${event.image_url}` : null;
+    const cover = event.image_url ? resolveAssetUrl(event.image_url) : null;
     if (cover) {
         document.getElementById('profile-preview').innerHTML = `<img src="${cover}" alt="Cover" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+        document.getElementById('profile-preview').innerHTML =
+            `<div class="profile-placeholder"><i class="fas fa-image" style="font-size:2rem"></i><span>Event Cover</span></div>`;
     }
+
+    // Show existing additional images as thumbnails. Each has a remove (×)
+    // button so the organizer can drop individual photos. Whatever survives
+    // is sent back to the server as `kept_images` on save.
+    keptExistingImages = Array.isArray(event.images) ? event.images.slice() : [];
+    renderKeptImagesRow();
 
     // Update headings + button labels.
     const formTitle = document.getElementById('form-title');
@@ -962,6 +1044,7 @@ function setEditMode(event) {
 
 function clearEditMode() {
     editingEventId = null;
+    keptExistingImages = [];
     const formTitle = document.getElementById('form-title');
     if (formTitle) formTitle.textContent = 'Create New Event';
     const saveBtn = document.getElementById('save-btn');
@@ -999,6 +1082,14 @@ async function createEvent() {
     const additionalImages = document.getElementById('ev-files').files;
     for (let i = 0; i < additionalImages.length; i++) {
         formData.append('images', additionalImages[i]);
+    }
+
+    // On edit, send the list of existing image URLs the organizer chose to
+    // keep. The backend merges this with any newly uploaded files and stores
+    // the union as the event's images array. Sending `[]` explicitly removes
+    // all existing images.
+    if (isEdit) {
+        formData.append('kept_images', JSON.stringify(keptExistingImages));
     }
 
     try {

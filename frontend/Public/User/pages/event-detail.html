@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="/Public/js/api-base-shim.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -159,6 +160,75 @@
       padding: 0 1.5rem;
       position: relative;
       z-index: 1;
+    }
+
+    /* ───────── Presented-by ribbon (above the hero image) ───────── */
+    .presented-by {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.25rem;
+      animation: fadeUp 0.7s ease-out 0.2s both;
+    }
+    .presented-by a {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 20px 10px 12px;
+      background: white;
+      border: 1px solid rgba(99,102,241,0.18);
+      border-radius: 999px;
+      box-shadow: 0 12px 28px rgba(99,102,241,0.18);
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 600;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .presented-by a:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 36px rgba(236,72,153,0.25);
+      border-color: rgba(236,72,153,0.35);
+    }
+    .presented-by .pb-avatar {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: var(--gradient-hero);
+      color: white;
+      display: grid; place-items: center;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid white;
+      box-shadow: 0 4px 10px rgba(99,102,241,0.3);
+    }
+    .presented-by .pb-avatar img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .presented-by .pb-text {
+      display: flex; flex-direction: column; line-height: 1.15;
+    }
+    .presented-by .pb-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .presented-by .pb-name {
+      font-size: 1rem;
+      background: var(--gradient-hero);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .presented-by .pb-arrow {
+      color: var(--muted);
+      transition: transform 0.25s ease, color 0.25s ease;
+    }
+    .presented-by a:hover .pb-arrow {
+      color: var(--secondary);
+      transform: translateX(3px);
     }
 
     /* ───────── Loading / error message (used by event-detail.js) ───────── */
@@ -500,6 +570,10 @@
       overflow-x: auto;
       overflow-y: hidden;
       padding: 0.5rem 0.25rem 1.25rem;
+      /* "safe center" → center the tiles when they fit the strip (1, 2, or 3
+         small galleries), but fall back to flex-start once content overflows
+         so the leftmost items stay reachable via scroll. */
+      justify-content: safe center;
       /* Fade-mask the edges so the strip blends into the page. */
       mask-image: linear-gradient(90deg, transparent 0, black 28px, black calc(100% - 28px), transparent 100%);
       -webkit-mask-image: linear-gradient(90deg, transparent 0, black 28px, black calc(100% - 28px), transparent 100%);
@@ -739,6 +813,18 @@
   <div id="event-details" class="page" style="display:none;">
     <div class="container">
 
+      <!-- Presented-by ribbon — populated once the event payload arrives. -->
+      <div class="presented-by" id="presented-by" style="display:none;">
+        <a id="presented-by-link" href="#" aria-label="View organizer">
+          <span class="pb-avatar" id="pb-avatar"><span id="pb-initial">O</span></span>
+          <span class="pb-text">
+            <span class="pb-eyebrow">Presented by</span>
+            <span class="pb-name" id="pb-name">Organizer</span>
+          </span>
+          <i class="fas fa-arrow-right pb-arrow"></i>
+        </a>
+      </div>
+
       <!-- Hero header -->
       <div class="event-header" id="event-header">
         <span class="event-badge" id="detail-category">Category</span>
@@ -902,6 +988,29 @@
           if (!res.ok) return;
           const event = await res.json();
 
+          // Presented-by ribbon — only show when we know who the organizer is.
+          const orgWrap   = document.getElementById('presented-by');
+          const orgLink   = document.getElementById('presented-by-link');
+          const orgName   = document.getElementById('pb-name');
+          const orgInitial= document.getElementById('pb-initial');
+          const orgAvatar = document.getElementById('pb-avatar');
+          if (orgWrap && event.organizer_id) {
+            const displayName =
+              (event.organizer_organization_name && event.organizer_organization_name.trim()) ||
+              (event.organizer_name             && event.organizer_name.trim()) ||
+              'Event Organizer';
+            orgName.textContent = displayName;
+            orgInitial.textContent = displayName.trim().charAt(0).toUpperCase();
+            const avatarUrl = resolveUrl(event.organizer_profile_image);
+            if (avatarUrl) {
+              orgAvatar.innerHTML =
+                `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(displayName)}">`;
+            }
+            orgLink.href = `organizer.html?id=${encodeURIComponent(event.organizer_id)}`;
+            orgLink.title = `View ${displayName}'s page`;
+            orgWrap.style.display = 'flex';
+          }
+
           // Prefer image_url (organizer's chosen cover) over images[0]
           const coverImg = document.getElementById('detail-image');
           const cover = resolveUrl(event.image_url) || (event.images && event.images.length > 0 ? resolveUrl(event.images[0]) : null);
@@ -983,23 +1092,37 @@
             return;
           }
 
-          // Render the urls TWICE so the strip can loop seamlessly: when the
-          // user (or auto-scroll) reaches the end of the first half, we silently
-          // jump back to the matching offset in the duplicate, creating an
-          // infinite circular feel. data-index uses the original index so the
-          // lightbox always opens the right photo.
-          const loopList = urls.length > 1 ? [...urls, ...urls] : urls.slice();
-          gallery.innerHTML = loopList.map((u, i) => {
-            const original = i % urls.length;
-            return `
-              <div class="gallery-item ${original === 0 && event.image_url ? 'cover-pill' : ''}" data-index="${original}">
-                <img src="${escapeHtml(u)}" alt="Event photo ${original + 1}" loading="lazy">
-              </div>
-            `;
-          }).join('');
+          // Helper: render N copies of `urls` into the gallery. Used twice
+          // below — first to measure the natural width, then (if needed)
+          // duplicated for the seamless loop. data-index always refers to
+          // the original photo so the lightbox opens the correct one.
+          function renderTiles(list) {
+            gallery.innerHTML = list.map((u, i) => {
+              const original = i % urls.length;
+              return `
+                <div class="gallery-item ${original === 0 && event.image_url ? 'cover-pill' : ''}" data-index="${original}">
+                  <img src="${escapeHtml(u)}" alt="Event photo ${original + 1}" loading="lazy">
+                </div>
+              `;
+            }).join('');
+          }
+
+          // First render the natural list and measure whether it overflows
+          // the strip. If everything fits (e.g. 1–3 photos on a wide screen),
+          // we keep it as-is and let `justify-content: safe center` center the
+          // tiles — and we skip duplication + looping + nav buttons because
+          // there's nothing to scroll through.
+          renderTiles(urls);
+          const fits = gallery.scrollWidth <= gallery.clientWidth + 4;
+
+          // Render the urls TWICE for the seamless loop only when the natural
+          // strip overflows. When it fits, we leave the single set in place.
+          if (!fits && urls.length > 1) {
+            renderTiles([...urls, ...urls]);
+          }
 
           // ───────── Circular auto-scroll ─────────
-          const canLoop = urls.length > 1;
+          const canLoop = !fits && urls.length > 1;
           let halfWidth = 0;             // width of the first (original) set of items
           let paused = false;
           let resumeTimer = null;
@@ -1053,13 +1176,20 @@
             gallery.scrollBy({ left: dir * step * 1.4, behavior: 'smooth' });
             pauseAutoScroll(3000);
           }
-          if (prevBtn) {
-            prevBtn.addEventListener('click', () => scrollByCard(-1));
-            prevBtn.disabled = false;
-          }
-          if (nextBtn) {
-            nextBtn.addEventListener('click', () => scrollByCard(+1));
-            nextBtn.disabled = false;
+          // Nav arrows only make sense when the strip overflows. Hide them
+          // entirely for the centered, fits-on-screen case.
+          if (fits) {
+            if (prevBtn) prevBtn.style.display = 'none';
+            if (nextBtn) nextBtn.style.display = 'none';
+          } else {
+            if (prevBtn) {
+              prevBtn.addEventListener('click', () => scrollByCard(-1));
+              prevBtn.disabled = false;
+            }
+            if (nextBtn) {
+              nextBtn.addEventListener('click', () => scrollByCard(+1));
+              nextBtn.disabled = false;
+            }
           }
           // With circular looping there's no real "edge", so don't toggle disabled
           // states based on scrollLeft — keep the buttons always enabled.
