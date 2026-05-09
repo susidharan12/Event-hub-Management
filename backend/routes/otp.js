@@ -149,6 +149,10 @@ router.post('/send', optionalAuth, async (req, res) => {
       [trimmedTarget, target_type, code, purpose, expiresAt]
     );
 
+    // Honor the channel the user picked: mobile → SMS only, email → email only.
+    // No silent cross-channel fallback — if the chosen channel fails, return
+    // a real error so the user can either correct the input or pick the
+    // other channel themselves.
     let result, channel, deliveredToMasked;
     if (useSms) {
       result = await sendOTPSms(trimmedTarget, code, purpose);
@@ -160,14 +164,31 @@ router.post('/send', optionalAuth, async (req, res) => {
       deliveredToMasked = maskEmail(deliveryEmail);
     }
 
+    // Provider was configured but the send failed — return a real error
+    // (e.g. unverified Twilio trial number, SMTP auth issue) instead of
+    // silently exposing the OTP to the client.
+    if (result.sent === false) {
+      // Best-effort cleanup: discard the OTP we just inserted since it
+      // never reached the user.
+      await pool.query(
+        `DELETE FROM otps WHERE target = $1 AND purpose = $2 AND code = $3 AND verified = FALSE`,
+        [trimmedTarget, purpose, code]
+      );
+      return res.status(502).json({
+        error: result.error || 'OTP delivery failed. Please try again in a moment.'
+      });
+    }
+
     return res.json({
       success: true,
       delivered_to: deliveredToMasked,
       via: channel,
       target_type,
       expires_in_min: OTP_TTL_MIN,
-      // In dev mode (no provider creds, or provider failure) we surface the
-      // OTP in the response so the user can paste it from the API/console.
+      // devMode=true only when NO provider is configured at all (true local
+      // dev). In that case, and only that case, we surface the OTP in the
+      // response so a developer can paste it. Production senders never set
+      // this flag — failures are now returned as 502 above.
       devMode: !!result.devMode,
       ...(result.devMode ? { otp: code } : {})
     });

@@ -476,7 +476,7 @@
               <i class="fas fa-key"></i>
             </div>
             <h3 style="font-family:'Space Grotesk',Inter,sans-serif;font-size:1.25rem;font-weight:800;margin:0 0 4px;">Reset your password</h3>
-            <p style="opacity:0.95;font-size:0.85rem;margin:0;" id="fp-sub">Enter your registered mobile number — we'll send a code to your email.</p>
+            <p style="opacity:0.95;font-size:0.85rem;margin:0;" id="fp-sub">Enter your registered mobile number — we'll send a 6-digit code via SMS.</p>
           </div>
           <div style="padding:1.4rem 1.5rem;">
             <div class="fp-error" style="margin-bottom:8px;color:#ef4444;font-size:0.86rem;text-align:center;min-height:18px;"></div>
@@ -575,7 +575,7 @@
         if (name === 'mobile') {
           lblMobile.style.display = 'block'; mobileInp.style.display = 'block';
           lblEmail.style.display  = 'none';  emailInp.style.display  = 'none';
-          sub.textContent = "Enter your registered mobile number — we'll send a code to your email.";
+          sub.textContent = "Enter your registered mobile number — we'll send a 6-digit code via SMS.";
           setTimeout(() => mobileInp.focus(), 30);
         } else {
           lblMobile.style.display = 'none'; mobileInp.style.display = 'none';
@@ -632,10 +632,11 @@
           const d = await r.json();
           if (!r.ok) { setErr(d.error || 'Failed to send OTP.'); return; }
           wrap.querySelector('.fp-delivered').textContent = d.delivered_to || ld.delivered_to || '';
-          if (d.devMode) {
+          if (d.devMode && d.otp) {
             const dev = wrap.querySelector('.fp-dev-banner');
             dev.style.display = '';
-            dev.innerHTML = `<b>DEV mode:</b> SMTP not configured — your code is <b style="font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;">${escForgot(d.otp)}</b>`;
+            const channelLabel = d.via === 'sms' ? 'SMS' : 'email';
+            dev.innerHTML = `<b>DEV mode:</b> ${channelLabel} provider not configured — your code is <b style="font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;">${escForgot(d.otp)}</b>`;
           }
           setStep('otp'); setTimeout(() => wrap.querySelector('.fp-code').focus(), 50);
         } catch (e) {

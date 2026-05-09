@@ -208,10 +208,17 @@ async function sendOTPEmail(email, otp, userName = 'User', purpose = 'verificati
     return { sent: true, devMode: false };
 
   } catch (error) {
+    // SMTP is configured but the send failed (auth, network, recipient
+    // bounce, etc.). Surface a real error to the caller instead of silently
+    // exposing the OTP — only TRUE dev mode (no SMTP configured at all)
+    // should ever leak the code.
     console.error('Failed to send OTP email:', error.message);
-    // SMTP failure — fall back to dev mode so the caller still gets the OTP.
-    devLogOtp(email, otp, purpose);
-    return { sent: true, devMode: true };
+    devLogOtp(email, otp, purpose);   // still log to server console
+    return {
+      sent: false,
+      devMode: false,
+      error: 'We couldn\'t deliver the verification email. Please try again in a moment.'
+    };
   }
 }
 

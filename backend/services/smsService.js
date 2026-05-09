@@ -105,10 +105,20 @@ async function sendOTPSms(mobile, otp, purpose = 'verification') {
     console.log(`[sms] OTP sent to ${to} (sid=${msg.sid}, status=${msg.status})`);
     return { sent: true, devMode: false, deliveredTo: to };
   } catch (err) {
+    // SMS provider is configured but the send failed (unverified trial number,
+    // insufficient funds, geo-permission, etc.). Surface the failure to the
+    // caller — DO NOT fall back to dev mode here, because that would expose
+    // the OTP in the API response to a real end user.
     console.error('[sms] Twilio send failed:', err.message);
-    // Fall back so the OTP is still recoverable in dev / when provider hiccups.
-    devLogOtpSms(to, otp, purpose);
-    return { sent: true, devMode: true, deliveredTo: to };
+    devLogOtpSms(to, otp, purpose);   // still log to server console for debugging
+    const friendly = err.code === 21608
+        ? 'This number isn\'t verified for trial sending. Add it to your Twilio Verified Caller IDs and try again.'
+      : err.code === 21211
+        ? 'That phone number doesn\'t look valid. Please double-check and try again.'
+      : err.code === 21610
+        ? 'This number has opted out of SMS messages.'
+      : 'We couldn\'t deliver the OTP. Please try again or use email instead.';
+    return { sent: false, devMode: false, deliveredTo: to, error: friendly };
   }
 }
 

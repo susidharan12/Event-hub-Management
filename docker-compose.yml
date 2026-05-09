@@ -92,7 +92,11 @@ services:
       - "3000:3000"
 
   # ── Spring Boot AI service ───────────────────────────────────
+  # Tagged with the "java" profile so it's skipped by default — start it
+  # explicitly with `docker compose --profile java up` when you need the
+  # AI chat features and the source folder is present locally.
   ai:
+    profiles: ["java"]
     build:
       context: ${AI_CONTEXT:-C:/Users/softsuave/Downloads/Services-EventHub/ai-service-final}
       dockerfile: Dockerfile
@@ -110,7 +114,9 @@ services:
       - "8080:8080"
 
   # ── Spring Boot Razorpay payment service ─────────────────────
+  # Same "java" profile — only starts when you opt in.
   payment:
+    profiles: ["java"]
     build:
       context: ${PAYMENT_CONTEXT:-C:/Users/softsuave/Downloads/Services-EventHub/razorpay-payment-service-final}
       dockerfile: Dockerfile
