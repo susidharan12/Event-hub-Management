@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Razorpay test — EventHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #fdf2f8 100%);
+      min-height: 100vh;
+      display: grid; place-items: center;
+      margin: 0; padding: 2rem;
+    }
+    .card {
+      background: white;
+      padding: 2.5rem;
+      border-radius: 22px;
+      box-shadow: 0 25px 50px rgba(15,23,42,0.12);
+      max-width: 460px; width: 100%;
+    }
+    h1 {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      margin: 0 0 0.4rem; font-size: 1.6rem;
+      background: linear-gradient(135deg,#6366f1,#ec4899);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p { color: #64748b; margin-top: 0; line-height: 1.55; }
+    label { display: block; margin-top: 1.2rem; font-size: 0.78rem; font-weight: 700; color: #94a3b8; letter-spacing: 0.08em; text-transform: uppercase; }
+    input {
+      width: 100%; box-sizing: border-box;
+      padding: 0.85rem 1rem; margin-top: 6px;
+      border: 2px solid #eef2ff; border-radius: 12px; background: #fafbff;
+      font-size: 1rem; font-family: inherit; color: #1f2937;
+    }
+    input:focus { outline: none; border-color: #6366f1; background: white; }
+    .btn {
+      width: 100%; margin-top: 1.4rem;
+      padding: 1rem; border: none; border-radius: 14px;
+      background: linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899);
+      color: white; font-size: 1rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; box-shadow: 0 12px 28px rgba(99,102,241,0.4);
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .out {
+      margin-top: 1.4rem; padding: 1rem; border-radius: 12px;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 0.84rem;
+      background: #0f172a; color: #e2e8f0; white-space: pre-wrap;
+      max-height: 240px; overflow-y: auto;
+    }
+    .out.ok    { background: #064e3b; color: #d1fae5; }
+    .out.err   { background: #7f1d1d; color: #fee2e2; }
+    .help {
+      margin-top: 1.5rem; padding: 1rem; border-radius: 12px;
+      background: #fef3c7; border-left: 4px solid #f59e0b;
+      font-size: 0.84rem; color: #78350f; line-height: 1.5;
+    }
+    .help b { color: #92400e; }
+    code {
+      background: rgba(99,102,241,0.1); color: #4338ca;
+      padding: 1px 6px; border-radius: 5px; font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Razorpay test payment</h1>
+    <p>End-to-end test of the payment service. In test mode no real money moves.</p>
+
+    <label for="amt">Amount (₹)</label>
+    <input id="amt" type="number" min="1" step="1" value="1">
+
+    <label for="ref">Reference (booking id)</label>
+    <input id="ref" type="text" value="TEST-001">
+
+    <button class="btn" id="payBtn" type="button">
+      <i class="fas fa-credit-card"></i> Pay with Razorpay
+    </button>
+
+    <div class="out" id="out" style="display:none;"></div>
+
+    <div class="help">
+      <b>Razorpay test cards / UPI</b>
+      <ul style="margin: 0.4rem 0 0; padding-left: 1.1rem;">
+        <li>Card: <code>4111 1111 1111 1111</code> · any future expiry · any CVV</li>
+        <li>OTP on the test 3DS page: <code>1234</code></li>
+        <li>UPI ID success: <code>success@razorpay</code></li>
+        <li>UPI ID failure: <code>failure@razorpay</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8081/api/payment';
+    const out = document.getElementById('out');
+
+    function log(msg, kind) {
+      out.style.display = 'block';
+      out.className = 'out' + (kind ? ' ' + kind : '');
+      out.textContent = (typeof msg === 'string') ? msg : JSON.stringify(msg, null, 2);
+    }
+
+    document.getElementById('payBtn').addEventListener('click', async () => {
+      const amount    = parseFloat(document.getElementById('amt').value || '1');
+      const reference = document.getElementById('ref').value.trim() || 'TEST';
+      const btn       = document.getElementById('payBtn');
+      btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating order...';
+
+      try {
+        // 1. Ask the Spring Boot service to create an order on Razorpay
+        const orderRes = await fetch(`${API}/create-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount, currency: 'INR', receipt: reference })
+        });
+        if (!orderRes.ok) throw new Error('Order create failed: ' + orderRes.status);
+        const order = await orderRes.json();
+        log({ step: 'order-created', order }, 'ok');
+
+        // 2. Launch the Razorpay Checkout widget
+        const rzp = new Razorpay({
+          key:       order.keyId,
+          amount:    order.amount,        // already in paise
+          currency:  order.currency,
+          name:      'EventHub',
+          description: 'Test transaction · ' + reference,
+          order_id:  order.orderId,
+          theme:     { color: '#6366f1' },
+          handler: async (response) => {
+            // 3. The checkout fired its success callback — verify on server
+            log({ step: 'checkout-callback', response }, 'ok');
+            const verifyRes = await fetch(`${API}/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(response)
+            });
+            const verify = await verifyRes.json();
+            if (verify.success) {
+              log({ step: 'verified', verify }, 'ok');
+            } else {
+              log({ step: 'verification-failed', verify }, 'err');
+            }
+          },
+          modal: {
+            ondismiss: () => log('Checkout closed without paying.', 'err')
+          }
+        });
+        rzp.on('payment.failed', (e) => log({ step: 'payment.failed', error: e.error }, 'err'));
+        rzp.open();
+      } catch (e) {
+        log('ERROR: ' + e.message, 'err');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-credit-card"></i> Pay with Razorpay';
+      }
+    });
+  </script>
+</body>
+</html>
