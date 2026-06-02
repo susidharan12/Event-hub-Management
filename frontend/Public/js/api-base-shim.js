@@ -7,8 +7,9 @@
  * Why: many files across the frontend hardcode the local backend URL.
  * When the site is served via ngrok / cloudflare tunnel, those calls
  * would otherwise hit the visitor's own machine. This shim rewrites
- * them transparently — local dev (when served from :3000) is a no-op
- * because the origin is the same.
+ * them transparently. Local development on localhost / 127.0.0.1 should
+ * stay pointed at the real backend on :3000 even when the static frontend
+ * is served from another local port such as :5050.
  */
 (function () {
   if (typeof window === 'undefined') return;
@@ -16,8 +17,12 @@
   window.__API_BASE_SHIMMED__ = true;
 
   const ORIGIN = window.location.origin;
-  // Only rewrite when we're not actually served from one of the local backends.
-  const NEED_REWRITE = !/^https?:\/\/(127\.0\.0\.1|localhost):3000$/i.test(ORIGIN);
+  // Only rewrite for non-local origins such as ngrok / deployed domains.
+  // When the page is served from localhost or 127.0.0.1 on any port
+  // (for example live-server on :5050), keep API calls pointed at the
+  // actual backend on :3000 instead of rewriting them to the static host.
+  const IS_LOCAL_ORIGIN = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(ORIGIN);
+  const NEED_REWRITE = !IS_LOCAL_ORIGIN;
 
   function rewrite(url) {
     if (typeof url !== 'string' || !NEED_REWRITE) return url;
