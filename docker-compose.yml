@@ -92,36 +92,40 @@ services:
       - "3000:3000"
 
   # ── Spring Boot AI service ───────────────────────────────────
-  # Tagged with the "java" profile so it's skipped by default — start it
-  # explicitly with `docker compose --profile java up` when you need the
-  # AI chat features and the source folder is present locally.
   ai:
-    profiles: ["java"]
     build:
-      context: ./ai-service-final
+      context: ./backend/ai-service-final
       dockerfile: Dockerfile
     container_name: eventhub-ai
     restart: unless-stopped
+    depends_on:
+      - backend
     environment:
       SERVER_PORT:     "8080"
       # Configure the LLM provider via env vars (don't commit keys).
       # Pick one: GROQ or ANTHROPIC depending on which your service uses.
-      GROQ_API_KEY:        ${GROQ_API_KEY:-}
+      GROQ_API_KEY:        ${GROQ_API_KEY}
       ANTHROPIC_API_KEY:   ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL:     ${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
       GROQ_MODEL:          ${GROQ_MODEL:-llama-3.3-70b-versatile}
     ports:
       - "8080:8080"
+    healthcheck:
+      test:    ["CMD", "curl", "-f", "http://localhost:8080/api/ai/health"]
+      interval: 10s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
 
   # ── Spring Boot Razorpay payment service ─────────────────────
-  # Same "java" profile — only starts when you opt in.
   payment:
-    profiles: ["java"]
     build:
-      context: ./razorpay-payment-service-final
+      context: ./backend/razorpay-payment-service-final
       dockerfile: Dockerfile
     container_name: eventhub-payment
     restart: unless-stopped
+    depends_on:
+      - backend
     environment:
       SERVER_PORT:           "8081"
       RAZORPAY_KEY_ID:       ${RAZORPAY_KEY_ID:-}
@@ -130,6 +134,12 @@ services:
       UPI_PAYEE:             ${UPI_PAYEE:-EventHub}
     ports:
       - "8081:8081"
+    healthcheck:
+      test:    ["CMD", "curl", "-f", "http://localhost:8081/api/payment/health"]
+      interval: 10s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
 
   # ── Frontend (nginx serving the static site + /api proxy) ────
   frontend:

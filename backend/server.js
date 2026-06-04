@@ -22,13 +22,35 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 // 2. GLOBAL MIDDLEWARE
+// Build allowed origins list dynamically to support ngrok URLs
+const allowedOrigins = [
+  "http://127.0.0.1:5050",
+  "http://localhost:5050",
+  "http://127.0.0.1:5500", // Common Live Server port
+  "http://localhost:5500"
+];
+
+// Add ngrok URL from environment if provided
+if (process.env.NGROK_URL) {
+  allowedOrigins.push(process.env.NGROK_URL);
+  console.log('NGROK_URL configured:', process.env.NGROK_URL);
+}
+
 app.use(cors({
-    origin: [
-      "http://127.0.0.1:5050",
-      "http://localhost:5050",
-      "http://127.0.0.1:5500", // Common Live Server port
-      "http://localhost:5500"
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      // Check if origin is in allowed list or matches ngrok pattern
+      const isAllowed = allowedOrigins.includes(origin) ||
+                       /^https?:\/\/[a-zA-Z0-9-]+\.ngrok(?:-free)?\.io$/.test(origin);
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
