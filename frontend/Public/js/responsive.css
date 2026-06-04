@@ -567,11 +567,37 @@
   }
   .navbar.scrolled { box-shadow: 0 12px 34px rgba(99,102,241,0.18) !important; }
 
-  .logo { font-size: 1.18rem !important; gap: 8px !important; }
+  .logo, .logo-wrap { font-size: 1.12rem !important; gap: 8px !important; min-width: 0 !important; }
   .logo-mark, .logo-icon-box {
     width: 32px !important; height: 32px !important;
     border-radius: 10px !important;
     flex: 0 0 auto !important;
+  }
+  /* The brand wordmark may be long ("EventHub") — let it shrink/ellipsis so
+     it never pushes the right-hand avatar off the edge of the bar. */
+  .logo-text { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; min-width: 0 !important; }
+
+  /* ── Organizer/admin navbar avatar was getting clipped by the rounded
+        right edge. Keep it a fixed, fully-contained circle that sits inside
+        the bar with breathing room, and never let the user-menu overflow. */
+  .navbar { overflow: visible !important; }
+  .header-nav { gap: 0 !important; flex: 0 0 auto !important; min-width: 0 !important; }
+  .user-menu {
+    flex: 0 0 auto !important;
+    padding: 3px !important;
+    gap: 6px !important;
+    margin-right: 0 !important;
+    max-width: none !important;
+  }
+  .user-avatar {
+    width: 36px !important; height: 36px !important;
+    flex: 0 0 36px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    font-size: 0.85rem !important;     /* keep clean initials, clip long fallback text */
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
   }
 
   /* Compact, touch-sized action buttons in the bar */
@@ -590,14 +616,22 @@
    4. HERO — centered, animated, app-style intro on every page.
    ────────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+  /* The hero uses `display:flex; align-items:center` which vertically centres
+     its content — on a tall mobile hero that pulls the eyebrow/heading UP
+     behind the fixed navbar. Switch to a normal top-down block flow so the
+     content always starts cleanly below the bar. */
   .hero {
+    display: block !important;
     min-height: auto !important;
     text-align: center !important;
   }
   /* Only the site heroes sit under the fixed floating navbar and need top
      clearance — the admin page's `main.hero` is in normal flow, so leave it. */
-  header.hero { padding: 96px 1.1rem 2.4rem !important; }
-  .hero-content { animation: rcFadeUp .7s cubic-bezier(.2,.8,.3,1) both; }
+  header.hero { padding: 90px 1.1rem 2.6rem !important; }
+  .hero-content {
+    max-width: 100% !important;
+    animation: rcFadeUp .7s cubic-bezier(.2,.8,.3,1) both;
+  }
   .hero-eyebrow {
     margin: 0 auto 1rem !important;
     animation: rcPop .6s ease both;
@@ -999,7 +1033,30 @@
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
-  .events-table { min-width: 640px !important; }
+
+  /* The JS injects <table class="events-table"> straight into
+     #events-list-container (NO wrapper), and the .section card clips
+     overflow:hidden — so the table was being CUT OFF instead of scrolling.
+     Make the container the single horizontal scroller and let the table
+     size to its content inside it. */
+  #events-list-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    /* gentle hint that there's more to the right */
+    scrollbar-width: thin !important;
+  }
+  #events-list-container .events-table {
+    display: table !important;       /* undo PART A's display:block */
+    width: max-content !important;   /* as wide as the columns need… */
+    min-width: 100% !important;      /* …but never narrower than the screen */
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    table-layout: auto !important;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -1326,13 +1383,31 @@
     box-sizing: border-box !important;
   }
 
-  /* b) One consistent 16px side gutter on the primary page wrappers so
-        content clears the screen edges everywhere. Cards inside keep their
-        own padding — these wrappers only provide the outer breathing room. */
+  /* b) Minimal outer gutter so content runs (almost) FULL WIDTH of the
+        screen — the side space is intentionally tiny. Cards keep their own
+        inner padding, so text still never touches the edges. */
   .container, main.container, .dashboard-content {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
   }
+
+  /* b2) App-style pages wrapped in `.page` (organizer dashboard, profile,
+        event-detail) go FULL-BLEED — zero outer gutter so their cards run
+        edge-to-edge across the whole screen. */
+  .page > .container { padding-left: 0 !important; padding-right: 0 !important; }
+  .main-content { padding-left: 0 !important; padding-right: 0 !important; }
+
+  /* b3) The dashboard's white `.section` card carried a heavy 2rem inner
+        padding (the wasted "center container" space). Slim it right down and
+        square the side radius so the card fills the page width cleanly. */
+  .page .section {
+    padding: 1rem 0.85rem !important;
+    border-radius: 14px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .page .section-header { padding-bottom: 0.8rem !important; margin-bottom: 1rem !important; }
+  .page .profile-upload-section { margin-bottom: 1.2rem !important; }
 
   /* c) Direct text children of a wrapper get a hair of inline padding too,
         catching pages where a heading/paragraph sits outside any card. */
@@ -1352,12 +1427,11 @@
   }
 }
 
-/* On the very smallest screens trim the gutter slightly so content gets a
-   touch more room while still never touching the edge. */
+/* On the very smallest screens trim the gutter even further. */
 @media (max-width: 360px) {
   .container, main.container, .dashboard-content {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
   }
 }
 

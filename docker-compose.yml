@@ -152,6 +152,13 @@ services:
       - backend
     ports:
       - "5050:80"     # browse to http://localhost:5050
+    # Serve the local static files LIVE (overlay the baked-in copies) so
+    # HTML/CSS/JS edits show up on refresh without rebuilding the image.
+    # Read-only; the image still contains a full copy as a fallback.
+    volumes:
+      - ./frontend/Public:/usr/share/nginx/html/Public:ro
+      - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
 # ── Persistent volumes ─────────────────────────────────────────
 volumes:
