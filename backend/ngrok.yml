@@ -1,0 +1,25 @@
+version: 3
+authtoken: ${NGROK_AUTHTOKEN}
+
+tunnels:
+  eventhub-backend:
+    proto: http
+    addr: 3000
+    domain: ${NGROK_DOMAIN}
+    bind_tls: true
+    oauth:
+      provider: google
+      allow_emails: ${NGROK_ALLOWED_EMAILS}
+    on_startup:
+      - "bash"
+      - "-c"
+      - 'echo "EventHub Backend tunnel started at $(curl -s localhost:4040/api/tunnels | jq -r ".tunnels[0].public_url")"'
+
+  eventhub-frontend:
+    proto: http
+    addr: 5050
+    domain: ${NGROK_FRONTEND_DOMAIN}
+    bind_tls: true
+    oauth:
+      provider: google
+      allow_emails: ${NGROK_ALLOWED_EMAILS}
