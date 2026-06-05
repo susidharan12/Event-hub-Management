@@ -1684,6 +1684,46 @@
                 <div class="form-group"><label>Price (₹)</label><input type="number" id="ev-price" required></div>
                 <div class="form-group"><label>Seats</label><input type="number" id="ev-seats" required></div>
               </div>
+
+              <!-- ── Reserved seating (live seat map) ───────────────── -->
+              <div class="form-group" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:14px;padding:1rem 1.1rem;">
+                <label style="display:flex;align-items:center;gap:12px;cursor:pointer;margin:0;">
+                  <input type="checkbox" id="ev-reserved" style="width:18px;height:18px;cursor:pointer;flex:0 0 auto;">
+                  <span style="font-weight:700;">
+                    Reserved seating
+                    <span style="display:block;font-weight:400;color:var(--muted);font-size:0.8rem;">Let attendees pick specific seats on a live, real-time map. Enter your rows &amp; columns, then set each row's seat count and price below.</span>
+                  </span>
+                </label>
+
+                <div id="seating-builder" style="display:none;margin-top:1rem;">
+                  <!-- Step 1: grid size -->
+                  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:0.9rem;">
+                    <div style="flex:1 1 110px;">
+                      <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:4px;">Number of rows</label>
+                      <input type="number" id="sb-num-rows" min="1" max="60" placeholder="e.g. 8" style="width:100%;min-width:0;padding:9px;border:1px solid #e5e7eb;border-radius:8px;">
+                    </div>
+                    <div style="flex:1 1 110px;">
+                      <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:4px;">Seats per row</label>
+                      <input type="number" id="sb-num-cols" min="1" max="60" placeholder="e.g. 12" style="width:100%;min-width:0;padding:9px;border:1px solid #e5e7eb;border-radius:8px;">
+                    </div>
+                    <div style="flex:1 1 110px;">
+                      <label style="display:block;font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:4px;">Default price ₹</label>
+                      <input type="number" id="sb-default-price" min="0" placeholder="e.g. 300" style="width:100%;min-width:0;padding:9px;border:1px solid #e5e7eb;border-radius:8px;">
+                    </div>
+                    <button type="button" id="sb-build" style="flex:0 0 auto;border:none;background:var(--gradient-hero);color:#fff;font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;">
+                      <i class="fas fa-table-cells"></i> Build rows
+                    </button>
+                  </div>
+
+                  <!-- Step 2: per-row configuration -->
+                  <div id="sb-rows-head" style="display:none;grid-template-columns:44px 1fr 1fr 1.3fr;gap:8px;padding:0 4px 6px;font-size:0.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:0.03em;">
+                    <span>Row</span><span>Seats</span><span>Price ₹</span><span>Section (optional)</span>
+                  </div>
+                  <div id="sb-rows" style="display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;"></div>
+                  <p id="seating-summary" style="margin:0.8rem 0 0;font-size:0.85rem;color:var(--muted);"></p>
+                </div>
+              </div>
+
               <div class="form-group"><label>Description</label><textarea id="ev-desc" rows="3"></textarea></div>
 
               <!-- Additional images -->
@@ -2157,5 +2197,123 @@
   <script src="dashboard.js"></script>
   <script src="/Public/js/chat-widget.js"></script>
   <script src="/Public/js/ai-chat-widget.js"></script>
+
+  <!-- ── Reserved-seating layout builder (create-event form) ───────── -->
+  <script>
+  (function () {
+    const reservedEl = document.getElementById('ev-reserved');
+    const builder    = document.getElementById('seating-builder');
+    const rowsWrap   = document.getElementById('sb-rows');
+    const rowsHead   = document.getElementById('sb-rows-head');
+    const buildBtn   = document.getElementById('sb-build');
+    const numRowsEl  = document.getElementById('sb-num-rows');
+    const numColsEl  = document.getElementById('sb-num-cols');
+    const defPriceEl = document.getElementById('sb-default-price');
+    const summaryEl  = document.getElementById('seating-summary');
+    const priceEl    = document.getElementById('ev-price');
+    const seatsEl    = document.getElementById('ev-seats');
+    if (!reservedEl || !builder || !rowsWrap || !buildBtn) return;
+
+    // A, B … Z, AA, AB … for row labels.
+    function rowLetter(i) { let s = '', n = i; do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0); return s; }
+
+    const inp = 'min-width:0;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font-size:0.9rem;';
+    function rowCfg(label, seats, price, section) {
+      const row = document.createElement('div');
+      row.className = 'sb-rowcfg';
+      row.style.cssText = 'display:grid;grid-template-columns:44px 1fr 1fr 1.3fr;gap:8px;align-items:center;';
+      row.innerHTML =
+        '<span class="sb-rl" style="font-weight:800;text-align:center;color:var(--ink);">' + label + '</span>' +
+        '<input type="number" class="sb-seats" min="1" value="' + seats + '" style="' + inp + '">' +
+        '<input type="number" class="sb-price" min="0" value="' + price + '" style="' + inp + '">' +
+        '<input type="text" class="sb-section" placeholder="e.g. VIP" value="' + (section || '') + '" style="' + inp + '">';
+      row.querySelectorAll('input').forEach(function (i) { i.addEventListener('input', updateSummary); });
+      return row;
+    }
+
+    // Build the per-row table from the rows × seats-per-row grid size.
+    function build() {
+      const nRows = Math.min(60, Math.max(1, parseInt(numRowsEl.value, 10) || 0));
+      const nCols = Math.min(60, Math.max(1, parseInt(numColsEl.value, 10) || 0));
+      if (!nRows || !nCols) { summaryEl.textContent = 'Enter the number of rows and seats per row, then click “Build rows”.'; return; }
+      const defPrice = Math.max(0, Number(defPriceEl.value) || 0);
+      rowsWrap.innerHTML = '';
+      for (let i = 0; i < nRows; i++) rowsWrap.appendChild(rowCfg(rowLetter(i), nCols, defPrice, ''));
+      rowsHead.style.display = 'grid';
+      updateSummary();
+    }
+
+    function getLayout() {
+      const rows = [];
+      rowsWrap.querySelectorAll('.sb-rowcfg').forEach(function (r) {
+        const label   = r.querySelector('.sb-rl').textContent.trim();
+        const seats   = Math.max(0, parseInt(r.querySelector('.sb-seats').value, 10) || 0);
+        const price   = Math.max(0, Number(r.querySelector('.sb-price').value) || 0);
+        const section = r.querySelector('.sb-section').value.trim();
+        if (seats > 0) rows.push({ label: label, seats: seats, price: price, section: section || undefined });
+      });
+      const cols = Math.min(60, Math.max(1, parseInt(numColsEl.value, 10) || 1));
+      return { columns: cols, rows: rows };
+    }
+
+    function updateSummary() {
+      const layout = getLayout();
+      const rows = layout.rows;
+      if (!rows.length) { summaryEl.textContent = 'No rows configured yet — set rows & seats per row, then “Build rows”.'; }
+      else {
+        const total = rows.reduce(function (s, r) { return s + r.seats; }, 0);
+        const prices = rows.map(function (r) { return r.price; });
+        const min = Math.min.apply(null, prices), max = Math.max.apply(null, prices);
+        const priceTxt = (min === max) ? (min > 0 ? ('₹' + min) : 'Free') : ('₹' + min + '–₹' + max);
+        summaryEl.textContent = total + ' seats across ' + rows.length + ' row(s) · ' + priceTxt;
+        if (reservedEl.checked) { if (priceEl) priceEl.value = min; if (seatsEl) seatsEl.value = total; }
+      }
+      window.__getSeatingLayout = getLayout;
+      window.__isReservedSeating = function () { return reservedEl.checked; };
+    }
+
+    reservedEl.addEventListener('change', function () {
+      builder.style.display = reservedEl.checked ? 'block' : 'none';
+      // Reserved seating derives capacity/price from the row layout, so the
+      // flat Price/Seats inputs become read-only (kept in sync automatically).
+      if (priceEl) { priceEl.required = !reservedEl.checked; priceEl.readOnly = reservedEl.checked; }
+      if (seatsEl) { seatsEl.required = !reservedEl.checked; seatsEl.readOnly = reservedEl.checked; }
+      updateSummary();
+    });
+    buildBtn.addEventListener('click', build);
+
+    // Populate the builder from a saved layout (used when EDITING an event so
+    // the organizer sees and can adjust the existing rows). Handles both the
+    // row-wise format and the legacy zone format.
+    window.__loadSeatingLayout = function (layout) {
+      if (!layout) return;
+      let rows = [];
+      if (Array.isArray(layout.rows) && layout.rows.length) {
+        rows = layout.rows.map(function (r, i) {
+          return { label: r.label || rowLetter(i), seats: r.seats, price: r.price, section: r.section || r.category || '' };
+        });
+      } else if (Array.isArray(layout.zones) && layout.zones.length) {
+        let idx = 0;
+        layout.zones.forEach(function (z) {
+          const nrows = Math.max(1, parseInt(z.rows, 10) || 1);
+          const ncols = Math.max(1, parseInt(z.cols, 10) || 1);
+          for (let r = 0; r < nrows; r++) rows.push({ label: rowLetter(idx++), seats: ncols, price: z.price || 0, section: z.name || '' });
+        });
+      }
+      if (!rows.length) return;
+      numRowsEl.value = rows.length;
+      numColsEl.value = Math.max.apply(null, rows.map(function (r) { return parseInt(r.seats, 10) || 0; }));
+      if (defPriceEl && !defPriceEl.value) defPriceEl.value = rows[0].price || '';
+      rowsWrap.innerHTML = '';
+      rows.forEach(function (r) { rowsWrap.appendChild(rowCfg(r.label, r.seats, r.price, r.section)); });
+      rowsHead.style.display = 'grid';
+      updateSummary();
+    };
+
+    // Defaults so the submit handler always has something to read.
+    window.__getSeatingLayout = getLayout;
+    window.__isReservedSeating = function () { return reservedEl.checked; };
+  })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,50 @@
+{
+  "name": "EventHub — Discover Live Experiences",
+  "short_name": "EventHub",
+  "description": "Discover, book and manage live events — concerts, summits, workshops and more.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#f5f3ff",
+  "theme_color": "#6366f1",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["events", "entertainment", "lifestyle"],
+  "icons": [
+    {
+      "src": "/Public/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/Public/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Discover events",
+      "short_name": "Discover",
+      "url": "/Public/User/pages/dashboard.html",
+      "description": "Browse and book events"
+    },
+    {
+      "name": "My bookings",
+      "short_name": "Tickets",
+      "url": "/Public/User/pages/booking-history.html",
+      "description": "View your tickets and booking history"
+    },
+    {
+      "name": "Organizer dashboard",
+      "short_name": "Organize",
+      "url": "/Public/organizer/pages/dashboard.html",
+      "description": "Manage your events"
+    }
+  ]
+}

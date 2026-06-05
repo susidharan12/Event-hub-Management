@@ -149,6 +149,26 @@
     return card;
   }
 
+  // Export a single golden ticket element to a PNG the user can save/print.
+  async function downloadTicketImage(el, btn, eventTitle, seat) {
+    if (typeof html2canvas === 'undefined') { alert('Image library not loaded — please refresh.'); return; }
+    const orig = btn.innerHTML; btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+    try {
+      const canvas = await html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true, logging: false });
+      const safe = String(eventTitle || 'ticket').replace(/[^a-z0-9]+/gi, '-').slice(0, 40);
+      const link = document.createElement('a');
+      link.download = `${safe}-${seat || 'ticket'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (e) {
+      console.error('ticket image failed', e);
+      alert('Could not generate the ticket image.');
+    } finally {
+      btn.disabled = false; btn.innerHTML = orig;
+    }
+  }
+
   async function render() {
     const params = new URLSearchParams(window.location.search);
     const bookingId = params.get('bookingId') || params.get('id');
@@ -192,11 +212,40 @@
         : `${codes.length} tickets — show any QR at the entrance.`;
     }
 
+    const category = b.event_category || b.category || (b.event && b.event.category) || 'Event';
+
     grid.innerHTML = '';
     const cards = codes.map((code, idx) => {
-      const card = buildCard({ idx, total: codes.length, code, holderName, eventTitle, when, location, place, mapUrl });
-      grid.appendChild(card);
-      return card;
+      // Reserved bookings expose per-seat info (label + zone + price); GA does not.
+      const seatInfo  = (Array.isArray(b.seats) && b.seats[idx]) ? b.seats[idx] : null;
+      const seatLabel = seatInfo ? seatInfo.label
+                       : (b.is_reserved ? String(code).split('-').pop() : 'GA');
+      const zone = seatInfo ? (seatInfo.zone || '') : '';
+      const vip  = /vip/i.test(zone) || /vip/i.test(category);
+
+      const ticket = window.GoldenTicket.build({
+        eventTitle, when, venue: location, place,
+        seat: seatLabel, holder: holderName, code, category, vip,
+        price: seatInfo ? seatInfo.price : undefined
+      });
+
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'margin:0 auto 1.6rem;max-width:640px;';
+      wrap.appendChild(ticket);
+
+      const dlWrap = document.createElement('div');
+      dlWrap.style.cssText = 'text-align:center;';
+      const dl = document.createElement('button');
+      dl.type = 'button';
+      dl.className = 'btn btn-primary';
+      dl.style.cssText = 'margin:.8rem auto 0;display:inline-flex;align-items:center;gap:8px;';
+      dl.innerHTML = '<i class="fas fa-download"></i> Download this ticket';
+      dl.addEventListener('click', () => downloadTicketImage(ticket, dl, eventTitle, seatLabel));
+      dlWrap.appendChild(dl);
+      wrap.appendChild(dlWrap);
+
+      grid.appendChild(wrap);
+      return ticket; // returned so QR feeding (querySelector('img')) still works
     });
 
     // Generate QR codes as data URLs and feed them into each card's <img>.

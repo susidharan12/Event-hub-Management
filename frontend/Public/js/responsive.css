@@ -478,3 +478,963 @@
     white-space: nowrap !important;
   }
 }
+
+
+/* ════════════════════════════════════════════════════════════════════
+   ▓▓▓  MOBILE APP UI LAYER  ▓▓▓
+   ────────────────────────────────────────────────────────────────────
+   An attractive, animated, app-like redesign for phones & tablets.
+   Everything below is scoped to ≤1024px media queries so the desktop
+   experience (>1024px) is NEVER touched. It is purely presentational —
+   no markup or behaviour is changed, it only restyles the real class
+   names already rendered by every page (which all link this file).
+
+   Reuses the site design tokens: --primary #6366f1, --primary-2 #8b5cf6,
+   --secondary #ec4899, --accent #f59e0b, --teal #06b6d4, the hero
+   gradient, Inter / Space Grotesk fonts and Font Awesome icons.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ──────────────────────────────────────────────────────────────────
+   1. MOTION SYSTEM — shared keyframes used across the mobile layer.
+   ────────────────────────────────────────────────────────────────── */
+@keyframes rcFadeUp   { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes rcFadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rcSlideL   { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+@keyframes rcSlideR   { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes rcPop      { 0% { opacity: 0; transform: scale(.82); } 60% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes rcFloat    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes rcShimmer  { 0% { background-position: -160% 0; } 100% { background-position: 260% 0; } }
+@keyframes rcGradient { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes rcGlow     { 0%,100% { box-shadow: 0 10px 26px rgba(99,102,241,.30); } 50% { box-shadow: 0 14px 38px rgba(236,72,153,.42); } }
+@keyframes rcBarGrow  { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* SAFETY: if the OS asks for reduced motion, kill every animation in this
+   layer so nothing is ever left mid-transition or invisible. Because all
+   entrance animations use fill-mode `both`, removing them leaves elements
+   at their natural (fully visible) state. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   2. GLOBAL MOBILE FEEL (≤1024px) — app-grade scrolling & touch.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body {
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+  /* Kill the desktop hover-lift transforms that "stick" on touch (no
+     mouse-leave on phones) — replaced by crisp :active feedback below. */
+  .feature-card:hover,
+  .event-card:hover,
+  .stat-card:hover,
+  .perf-card:hover,
+  .contact-card:hover,
+  .number-cell:hover,
+  .step:hover { transform: none !important; }
+
+  /* Universal tactile press feedback for anything clickable. */
+  a.btn:active, .btn:active, button:active,
+  .qf-chip:active, .sidebar-menu a:active,
+  .event-card:active, .feature-card:active,
+  .stat-card:active, .role-option:active {
+    transform: scale(0.97) !important;
+    transition: transform .12s ease !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   3. NAVBAR — slimmer floating glass bar, animated mark, neat actions.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .navbar {
+    top: 10px !important;
+    width: calc(100% - 20px) !important;
+    height: 60px !important;
+    padding: 0 0.85rem !important;
+    border-radius: 18px !important;
+    background: rgba(255,255,255,0.82) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+    backdrop-filter: blur(20px) saturate(160%) !important;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.12) !important;
+  }
+  .navbar.scrolled { box-shadow: 0 12px 34px rgba(99,102,241,0.18) !important; }
+
+  .logo, .logo-wrap { font-size: 1.12rem !important; gap: 8px !important; min-width: 0 !important; }
+  .logo-mark, .logo-icon-box {
+    width: 32px !important; height: 32px !important;
+    border-radius: 10px !important;
+    flex: 0 0 auto !important;
+  }
+  /* The brand wordmark may be long ("EventHub") — let it shrink/ellipsis so
+     it never pushes the right-hand avatar off the edge of the bar. */
+  .logo-text { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; min-width: 0 !important; }
+
+  /* ── Organizer/admin navbar avatar was getting clipped by the rounded
+        right edge. Keep it a fixed, fully-contained circle that sits inside
+        the bar with breathing room, and never let the user-menu overflow. */
+  .navbar { overflow: visible !important; }
+  .header-nav { gap: 0 !important; flex: 0 0 auto !important; min-width: 0 !important; }
+  .user-menu {
+    flex: 0 0 auto !important;
+    padding: 3px !important;
+    gap: 6px !important;
+    margin-right: 0 !important;
+    max-width: none !important;
+  }
+  .user-avatar {
+    width: 36px !important; height: 36px !important;
+    flex: 0 0 36px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    font-size: 0.85rem !important;     /* keep clean initials, clip long fallback text */
+    line-height: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  /* Compact, touch-sized action buttons in the bar */
+  .nav-actions, .nav-auth, .header-nav, .admin-nav {
+    gap: 0.4rem !important;
+    align-items: center !important;
+  }
+  .nav-actions .btn, .nav-auth .btn, .admin-nav .btn {
+    padding: 0.5rem 0.85rem !important;
+    font-size: 0.82rem !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   4. HERO — centered, animated, app-style intro on every page.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* The hero uses `display:flex; align-items:center` which vertically centres
+     its content — on a tall mobile hero that pulls the eyebrow/heading UP
+     behind the fixed navbar. Switch to a normal top-down block flow so the
+     content always starts cleanly below the bar. */
+  .hero {
+    display: block !important;
+    min-height: auto !important;
+    text-align: center !important;
+  }
+  /* Only the site heroes sit under the fixed floating navbar and need top
+     clearance — the admin page's `main.hero` is in normal flow, so leave it. */
+  header.hero { padding: 90px 1.1rem 2.6rem !important; }
+  .hero-content {
+    max-width: 100% !important;
+    animation: rcFadeUp .7s cubic-bezier(.2,.8,.3,1) both;
+  }
+  .hero-eyebrow {
+    margin: 0 auto 1rem !important;
+    animation: rcPop .6s ease both;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 9vw, 3rem) !important;
+    line-height: 1.08 !important;
+  }
+  .hero p {
+    font-size: 1rem !important;
+    margin-left: auto !important; margin-right: auto !important;
+    max-width: 34ch !important;
+  }
+  .hero-actions {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 0.7rem !important;
+  }
+  .hero-actions .btn { flex: 1 1 auto !important; min-width: 140px !important; justify-content: center !important; }
+
+  .hero-stats {
+    margin-top: 1.8rem !important;
+    gap: 0.7rem !important;
+  }
+  .hero-stat {
+    background: rgba(255,255,255,0.55) !important;
+    border: 1px solid rgba(99,102,241,0.12) !important;
+    border-radius: 16px !important;
+    padding: 0.8rem 0.5rem !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+    animation: rcFadeUp .6s ease both;
+  }
+  .hero-stat:nth-child(2) { animation-delay: .08s; }
+  .hero-stat:nth-child(3) { animation-delay: .16s; }
+  .hero-stat:nth-child(4) { animation-delay: .24s; }
+
+  /* Decorative orbs: keep them lively but softer & contained */
+  .orb, .orb-1, .orb-2, .orb-3 {
+    animation: rcFloat 9s ease-in-out infinite !important;
+    opacity: 0.5 !important;
+  }
+  .orb-2 { animation-delay: -3s !important; }
+  .orb-3 { animation-delay: -6s !important; }
+
+  /* Bouncing scroll cue */
+  .scroll-down { animation: rcFloat 2.2s ease-in-out infinite !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   5. BUTTONS — gradient primaries with an animated shimmer sweep.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .btn, .login-btn, .signup-btn, .save-btn, .btn-save,
+  .book-btn, .view-all-btn, .help-btn, .upload-btn {
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+  }
+  /* Primary CTAs get a moving sheen + soft glow */
+  .btn-primary, .login-btn, .signup-btn, .btn-save, .save-btn {
+    position: relative !important;
+    overflow: hidden !important;
+    background: linear-gradient(120deg,#6366f1,#8b5cf6,#ec4899) !important;
+    background-size: 200% 200% !important;
+    animation: rcGradient 6s ease infinite !important;
+    color: #fff !important;
+    border: none !important;
+  }
+  .btn-primary::after, .login-btn::after, .signup-btn::after,
+  .btn-save::after, .save-btn::after {
+    content: '' !important;
+    position: absolute !important; inset: 0 !important;
+    background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%) !important;
+    background-size: 220% 100% !important;
+    animation: rcShimmer 3.2s ease-in-out infinite !important;
+    pointer-events: none !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   6. FLOATING ELEMENTS — chat fab & back button get gentle life.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #chat-widget-fab, .chat-widget-fab, .floating-chat-btn {
+    animation: rcFloat 3.4s ease-in-out infinite, rcGlow 4s ease-in-out infinite !important;
+    border-radius: 50% !important;
+  }
+  #floating-back-btn, .home-link {
+    -webkit-backdrop-filter: blur(10px) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 999px !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   7. SECTION HEADINGS — consistent, animated centered headers.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .section { padding: 2.4rem 0 !important; }
+  .section-head, .section-header {
+    text-align: center !important;
+    margin-bottom: 1.4rem !important;
+    animation: rcFadeUp .6s ease both;
+  }
+  .section-head .eyebrow, .eyebrow {
+    display: inline-flex !important;
+    align-items: center !important;
+  }
+  .section-head h2, .section-header h2 {
+    font-size: clamp(1.5rem, 6.5vw, 2rem) !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   8. FEATURE / CONTACT / STEP / NUMBER cards — home & user dash.
+   Single-column, rounded, with a staggered fade-up entrance.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .features-grid, .feature-cards, .contact-grid, .steps {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  .feature-card, .contact-card, .step {
+    border-radius: 20px !important;
+    padding: 1.5rem !important;
+    background: rgba(255,255,255,0.92) !important;
+    box-shadow: 0 12px 30px rgba(15,23,42,0.07) !important;
+    animation: rcFadeUp .6s ease both;
+  }
+  .feature-card:nth-child(2),
+  .contact-card:nth-child(2), .step:nth-child(2) { animation-delay: .07s; }
+  .feature-card:nth-child(3),
+  .contact-card:nth-child(3), .step:nth-child(3) { animation-delay: .14s; }
+  .feature-card:nth-child(4) { animation-delay: .21s; }
+  .feature-card:nth-child(5) { animation-delay: .28s; }
+  .feature-card:nth-child(6) { animation-delay: .35s; }
+
+  .feature-icon, .contact-icon {
+    animation: rcFloat 5s ease-in-out infinite !important;
+  }
+
+  /* Numbers band → 2-up tiles */
+  .numbers-band { padding: 1.4rem !important; border-radius: 22px !important; }
+  .numbers-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 1rem !important; }
+
+  /* Marquee a touch smaller so it reads on phones */
+  .marquee-item { font-size: 0.95rem !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   9. EVENT CARDS GRID — the heart of the catalogue. Big, tappable,
+   image-forward cards in a single clean column with entrance motion.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .events-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.1rem !important;
+  }
+  .event-card {
+    border-radius: 22px !important;
+    overflow: hidden !important;
+    background: #fff !important;
+    box-shadow: 0 14px 34px rgba(15,23,42,0.10) !important;
+    animation: rcFadeUp .55s ease both !important;
+  }
+  .event-card:nth-child(even) { animation-delay: .06s !important; }
+
+  /* Cover image gets a fixed, photo-friendly aspect ratio */
+  .event-img-placeholder, .event-card .event-img-placeholder {
+    aspect-ratio: 16 / 10 !important;
+    height: auto !important;
+    min-height: 170px !important;
+  }
+  .event-card .cover-img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+
+  .event-info { padding: 1.1rem 1.15rem 1.2rem !important; }
+  .event-info h3 { font-size: 1.15rem !important; margin-bottom: 0.5rem !important; }
+  .event-info .meta { font-size: 0.88rem !important; }
+
+  /* Price + actions row: price left, full-width tappable book button */
+  .event-row {
+    flex-wrap: wrap !important;
+    gap: 0.7rem !important;
+    align-items: center !important;
+    margin-top: 0.7rem !important;
+  }
+  .event-actions { margin-left: auto !important; }
+  .book-btn {
+    padding: 0.7rem 1.2rem !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+  }
+  .price { font-size: 1.15rem !important; font-weight: 800 !important; }
+
+  /* Date chip & badge stay crisp */
+  .event-date-chip { border-radius: 14px !important; }
+  .event-badge { border-radius: 999px !important; }
+
+  /* Skeleton loaders shimmer instead of sitting flat */
+  .skeleton-img, .skeleton-line, .skeleton-card {
+    background: linear-gradient(100deg,#eef2f7 30%,#f8fafc 50%,#eef2f7 70%) !important;
+    background-size: 220% 100% !important;
+    animation: rcShimmer 1.4s ease-in-out infinite !important;
+  }
+
+  /* Empty state breathes */
+  .empty-state { padding: 2.4rem 1rem !important; }
+  .empty-state i { animation: rcFloat 4s ease-in-out infinite !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   10. QUICK-FILTER CHIPS + FILTER BAR — horizontal snap-scroll pills.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .quick-filters {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 0.55rem !important;
+    overflow-x: auto !important;
+    padding: 0.25rem 0.1rem 0.7rem !important;
+    margin: 0 -0.2rem !important;
+    scroll-snap-type: x proximity !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .quick-filters::-webkit-scrollbar { display: none !important; }
+  .qf-chip {
+    flex: 0 0 auto !important;
+    scroll-snap-align: start !important;
+    border-radius: 999px !important;
+    padding: 0.55rem 1rem !important;
+    font-size: 0.86rem !important;
+    white-space: nowrap !important;
+  }
+  .qf-chip.active {
+    background: linear-gradient(120deg,#6366f1,#8b5cf6,#ec4899) !important;
+    background-size: 200% 200% !important;
+    animation: rcGradient 5s ease infinite !important;
+    color: #fff !important;
+    border-color: transparent !important;
+  }
+
+  /* Search + category filter stack into a clean card */
+  .filter-bar {
+    grid-template-columns: 1fr !important;
+    gap: 0.7rem !important;
+    padding: 0.9rem !important;
+    border-radius: 18px !important;
+  }
+  .search-wrap, .cat-select-wrap { width: 100% !important; }
+  .search-input, .cat-select {
+    width: 100% !important;
+    border-radius: 12px !important;
+    padding: 0.85rem 0.9rem 0.85rem 2.4rem !important;
+  }
+  .filter-status { flex-wrap: wrap !important; gap: 0.6rem !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   11. ORGANIZER DASHBOARD — turn the sidebar into a sticky app tab bar
+   and give every panel a polished, animated mobile treatment.
+   (PART A already stacks the grid & makes the menu horizontal — here we
+   make it beautiful.)
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .container { padding-left: 1rem !important; padding-right: 1rem !important; }
+
+  /* Sticky frosted tab strip just under the floating navbar */
+  .sidebar {
+    position: sticky !important;
+    top: 72px !important;
+    z-index: 50 !important;
+    background: rgba(255,255,255,0.86) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(99,102,241,0.12) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 22px rgba(15,23,42,0.08) !important;
+    padding: 0.45rem !important;
+  }
+  .sidebar-menu a {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    border-radius: 12px !important;
+    transform: none !important;
+  }
+  .sidebar-menu a.active {
+    background: linear-gradient(120deg,#6366f1,#8b5cf6,#ec4899) !important;
+    background-size: 200% 200% !important;
+    animation: rcGradient 5s ease infinite !important;
+    color: #fff !important;
+    box-shadow: 0 6px 16px rgba(99,102,241,0.35) !important;
+  }
+  .sidebar-menu a.active i { color: #fff !important; }
+}
+
+@media (max-width: 768px) {
+  /* Tighten the oversized navbar gap (.page reserves ~126px for the desktop
+     navbar; the mobile bar is only ~70px tall, so reclaim that space). */
+  .page { padding-top: 76px !important; }
+
+  /* When a dashboard section becomes visible (JS sets display), fade it in */
+  .section { animation: rcFadeIn .45s ease both; }
+
+  .section-header h2 { font-size: 1.4rem !important; }
+
+  /* Stat cards: 2-up grid, rounded, popping in one after another */
+  .stats-grid, .stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.8rem !important;
+  }
+  .stat-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    border-radius: 20px !important;
+    padding: 1rem !important;
+    background: #fff !important;
+    box-shadow: 0 10px 26px rgba(15,23,42,0.08) !important;
+    animation: rcPop .5s ease both !important;
+  }
+  .stat-card:nth-child(2) { animation-delay: .06s !important; }
+  .stat-card:nth-child(3) { animation-delay: .12s !important; }
+  .stat-card:nth-child(4) { animation-delay: .18s !important; }
+  .stat-card .stat-icon, .stat-card .icon {
+    width: 42px !important; height: 42px !important;
+    border-radius: 12px !important;
+    margin-bottom: 0.3rem !important;
+  }
+  .stat-card h3 { font-size: 1.5rem !important; }
+
+  /* Performance cards: single column, animated bars & floating donut */
+  .events-perf-grid { grid-template-columns: 1fr !important; gap: 1rem !important; }
+  .perf-card {
+    border-radius: 20px !important;
+    padding: 1.2rem !important;
+    animation: rcFadeUp .55s ease both !important;
+  }
+  .perf-mini-row { grid-template-columns: repeat(3, 1fr) !important; gap: 0.5rem !important; }
+  .perf-bar-fill {
+    transform-origin: left !important;
+    animation: rcBarGrow 1s cubic-bezier(.2,.8,.3,1) both !important;
+  }
+
+  /* Earnings KPIs: 2-up tiles */
+  .earn-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.8rem !important; }
+  .earn-kpi {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    border-radius: 18px !important;
+    padding: 1rem !important;
+    animation: rcPop .5s ease both !important;
+  }
+  .earn-kpi:nth-child(2) { animation-delay: .06s !important; }
+  .earn-kpi:nth-child(3) { animation-delay: .12s !important; }
+  .earn-kpi:nth-child(4) { animation-delay: .18s !important; }
+  .earn-block { border-radius: 18px !important; padding: 1rem !important; }
+  .earn-top-row { border-radius: 14px !important; }
+  .earn-tx-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+  .earn-tx-table { white-space: nowrap !important; min-width: 520px !important; }
+
+  /* Ticket scanner: full-width camera with a pulsing frame */
+  .scn-stats { grid-template-columns: 1fr !important; gap: 0.7rem !important; }
+  .scn-stat { border-radius: 16px !important; }
+  .scn-picker, .scn-picker-wrap { width: 100% !important; }
+  .scn-picker { border-radius: 12px !important; padding: 0.8rem !important; }
+  .scn-camera-wrap { width: 100% !important; }
+  .scn-camera {
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    border-radius: 22px !important;
+  }
+  .scn-camera #scn-video, .scn-camera video {
+    width: 100% !important; height: 100% !important; object-fit: cover !important;
+  }
+  .scn-camera-controls .btn-camera { width: 100% !important; justify-content: center !important; }
+  .scn-recent-row { border-radius: 14px !important; }
+
+  /* Create-event form: single column, comfy inputs */
+  .form-grid { grid-template-columns: 1fr !important; gap: 0.9rem !important; }
+  .form-group label, .form-row label, .label { font-size: 0.88rem !important; }
+  .form-group input, .form-group select, .form-group textarea,
+  .form-row input, .form-row select, .form-row textarea {
+    border-radius: 12px !important;
+    padding: 0.85rem 0.9rem !important;
+  }
+  .profile-upload-container { flex-direction: column !important; align-items: flex-start !important; gap: 1rem !important; }
+  .btn-save, .btn-preview { width: 100% !important; justify-content: center !important; }
+
+  /* Event preview card spans full width */
+  .event-preview-card { border-radius: 18px !important; }
+  .preview-details { grid-template-columns: 1fr !important; }
+
+  /* My-events table: keep it scrollable but make it feel intentional */
+  .events-table-wrap {
+    border-radius: 16px !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* The JS injects <table class="events-table"> straight into
+     #events-list-container (NO wrapper), and the .section card clips
+     overflow:hidden — so the table was being CUT OFF instead of scrolling.
+     Make the container the single horizontal scroller and let the table
+     size to its content inside it. */
+  #events-list-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch !important;
+    /* gentle hint that there's more to the right */
+    scrollbar-width: thin !important;
+  }
+  #events-list-container .events-table {
+    display: table !important;       /* undo PART A's display:block */
+    width: max-content !important;   /* as wide as the columns need… */
+    min-width: 100% !important;      /* …but never narrower than the screen */
+    max-width: none !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    table-layout: auto !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   12. AUTH (login / signup) — these pages center a WHITE CARD on a soft
+   gradient (body: display:grid; place-items:center). There is NO navbar.
+   On phones: give the body a small uniform gutter, hide the decorative
+   side panel, and let the form fill a clean full-width card. Do NOT add
+   internal top padding to the card — that just pushes the form down.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* The card's own body wrapper — both pages share this exact pattern.
+     A tiny, even gutter keeps the card off the screen edges. */
+  body.auth-body,
+  body:has(> .login-container),
+  body:has(> .signup-shell) {
+    padding: 1rem !important;
+    place-items: center !important;
+    align-content: center !important;
+  }
+
+  /* The white card: single column, full width, no forced height/padding. */
+  .login-container, .signup-shell {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    max-width: 460px !important;
+    min-height: auto !important;
+    border-radius: 22px !important;
+    box-shadow: 0 22px 50px rgba(15,23,42,0.16) !important;
+    overflow: hidden !important;
+    animation: rcFadeUp .6s cubic-bezier(.2,.8,.3,1) both !important;
+  }
+
+  /* Decorative branded panels are hidden on phones to keep the form front
+     and centre (login uses .login-left; signup uses .signup-side). */
+  .login-left, .signup-left, .signup-side { display: none !important; }
+
+  /* The form side fills the card with comfortable, even padding. */
+  .login-right, .signup-right, .signup-form-wrap {
+    padding: 1.7rem 1.4rem !important;
+    max-height: none !important;
+    width: 100% !important;
+  }
+  .login-right .header, .form-head { text-align: left !important; margin-bottom: 1.3rem !important; }
+  .login-right .header h2, .form-head h2 { font-size: 1.55rem !important; }
+
+  /* Role selector: two big tappable tiles */
+  .role-selector { grid-template-columns: 1fr 1fr !important; gap: 0.6rem !important; }
+  .role-option {
+    border-radius: 16px !important;
+    padding: 0.95rem 0.6rem !important;
+    flex-direction: column !important;
+    gap: 0.45rem !important;
+    text-align: center !important;
+    background: #fafbff !important;
+    color: var(--ink) !important;
+  }
+  .role-option i { color: var(--primary) !important; }
+  /* SELECTED tile: keep the page's strong gradient + WHITE text so it's
+     clearly readable (a light tint left the white label invisible). */
+  .role-option.active {
+    border-color: transparent !important;
+    background: var(--gradient-hero) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 20px rgba(99,102,241,0.35) !important;
+  }
+  .role-option.active i,
+  .role-option.active span { color: #fff !important; }
+
+  /* Inputs: full width, comfy, no iOS zoom (font-size handled globally). */
+  .form-group, .form-row { margin-bottom: 1rem !important; }
+  .input-wrap, .select-wrap { width: 100% !important; }
+  .input-wrap input, .input-wrap select, .input-wrap textarea,
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100% !important;
+    border-radius: 12px !important;
+    padding: 0.9rem 0.95rem !important;
+  }
+  /* Keep room for the leading icon only where the markup actually has one. */
+  .input-wrap input { padding-left: 2.6rem !important; }
+
+  .login-btn, .signup-btn, form .btn, form .btn-primary {
+    width: 100% !important;
+    padding: 0.95rem !important;
+    justify-content: center !important;
+  }
+
+  /* Forgot-password modal steps slide in */
+  .fp-step { animation: rcFadeIn .35s ease both !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   13. PROFILE — single column, animated cards, tidy info rows.
+   (PART A handles avatar circle + camera button.)
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .profile-grid { grid-template-columns: 1fr !important; gap: 1rem !important; }
+}
+@media (max-width: 768px) {
+  .page-head { text-align: center !important; }
+  .card, .card.with-stripe {
+    border-radius: 22px !important;
+    padding: 1.3rem !important;
+    box-shadow: 0 14px 34px rgba(15,23,42,0.09) !important;
+  }
+  .card.reveal-1 { animation: rcFadeUp .5s ease both !important; }
+  .card.reveal-2 { animation: rcFadeUp .5s ease .08s both !important; }
+  .card.reveal-3 { animation: rcFadeUp .5s ease .16s both !important; }
+  .help-card { border-radius: 20px !important; }
+  .info-list { gap: 0.7rem !important; }
+  .info-row { border-radius: 14px !important; padding: 0.8rem !important; }
+  .role-pill { border-radius: 999px !important; }
+  .help-btn, .save-btn { width: 100% !important; justify-content: center !important; }
+
+  /* Confirmation modal pops */
+  .modal-card { border-radius: 22px !important; animation: rcPop .4s ease both !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   14. BOOKING / CHECKOUT (Tailwind page) — single column, rounded,
+   full-width submit, wrapping payment options. Targeted by IDs so we
+   don't fight Tailwind's own utilities.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #booking-form { border-radius: 22px !important; padding: 1.2rem !important; animation: rcFadeUp .5s ease both !important; }
+  .payment-radio { flex: 1 1 100% !important; }
+  #card-details, #upi-details, #qr-details { animation: rcFadeIn .3s ease both !important; }
+  #submit-btn { width: 100% !important; border-radius: 14px !important; padding: 0.95rem !important; }
+  #qr-canvas { margin: 0 auto !important; }
+
+  /* Booking success modal */
+  .bm-card { border-radius: 24px !important; animation: rcPop .45s ease both !important; }
+  .bm-qr-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.7rem !important; }
+  .bm-actions { flex-direction: column !important; gap: 0.6rem !important; }
+  .bm-view, .bm-secondary { width: 100% !important; justify-content: center !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   15. MY TICKETS — clean stacked ticket cards.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #tickets-list { display: flex !important; flex-direction: column !important; gap: 1rem !important; }
+  .ticket {
+    flex-direction: column !important;
+    text-align: center !important;
+    border-radius: 20px !important;
+    padding: 1.2rem !important;
+    box-shadow: 0 12px 30px rgba(15,23,42,0.09) !important;
+    animation: rcFadeUp .5s ease both !important;
+  }
+  .ticket .qr-box { margin: 0 auto !important; }
+  .ticket .meta { width: 100% !important; }
+  .ticket .actions { width: 100% !important; display: flex !important; gap: 0.6rem !important; }
+  .ticket .actions button { flex: 1 1 0 !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   16. EVENT DETAIL — stacked hero, meta cards, sticky booking card
+   becomes a normal full-width card; gallery scrolls horizontally.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .event-content { grid-template-columns: 1fr !important; gap: 1.2rem !important; }
+}
+@media (max-width: 768px) {
+  .event-header { border-radius: 22px !important; min-height: 220px !important; }
+  .event-header #detail-image { border-radius: 22px !important; }
+  .header-overlay-text h1 { font-size: clamp(1.4rem, 6vw, 2rem) !important; }
+
+  .meta-row { grid-template-columns: 1fr !important; gap: 0.7rem !important; }
+  .meta-item {
+    border-radius: 16px !important;
+    padding: 0.9rem !important;
+    animation: rcFadeUp .45s ease both !important;
+  }
+  .meta-item:nth-child(2) { animation-delay: .05s !important; }
+  .meta-item:nth-child(3) { animation-delay: .10s !important; }
+  .meta-item:nth-child(4) { animation-delay: .15s !important; }
+
+  .description { border-radius: 18px !important; }
+
+  /* Booking card: drop the sticky, make it a full-width primary panel */
+  .booking-card {
+    position: static !important;
+    border-radius: 22px !important;
+    padding: 1.3rem !important;
+    box-shadow: 0 16px 38px rgba(99,102,241,0.16) !important;
+  }
+  .booking-card #book-btn { width: 100% !important; justify-content: center !important; }
+
+  .presented-by { border-radius: 16px !important; }
+
+  /* Gallery: swipeable strip */
+  .gallery {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 0.7rem !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+  .gallery::-webkit-scrollbar { display: none !important; }
+  .gallery-item {
+    flex: 0 0 80% !important;
+    scroll-snap-align: center !important;
+    border-radius: 16px !important;
+  }
+  .gallery-nav { display: none !important; }
+
+  /* Lightbox controls sized for thumbs */
+  .lb-btn { width: 44px !important; height: 44px !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   17. ADMIN — responsive header, hero & stacked action buttons.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .admin-header-inner { flex-wrap: wrap !important; gap: 0.6rem !important; padding: 0.7rem 1rem !important; }
+  .admin-logo { font-size: 1.15rem !important; }
+  .admin-nav { gap: 0.4rem !important; }
+
+  .admin-home { text-align: center !important; }
+  .admin-home h1 { font-size: clamp(1.6rem, 7vw, 2.2rem) !important; }
+  .admin-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.7rem !important;
+    align-items: stretch !important;
+  }
+  .admin-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+    animation: rcFadeUp .5s ease both !important;
+  }
+  .admin-actions .btn:nth-child(2) { animation-delay: .07s !important; }
+  .admin-actions .btn:nth-child(3) { animation-delay: .14s !important; }
+
+  /* Create-event panel (admin header is in normal flow, so no navbar gap) */
+  .admin-center-layout { padding: 1.5rem 1rem 2.5rem !important; }
+  .panel {
+    border-radius: 22px !important;
+    padding: 1.3rem !important;
+    animation: rcFadeUp .55s ease both !important;
+  }
+  .panel input, .panel select, .panel textarea {
+    border-radius: 12px !important;
+    padding: 0.85rem 0.9rem !important;
+  }
+  .form-actions { flex-direction: column !important; gap: 0.7rem !important; }
+  .form-actions .btn { width: 100% !important; justify-content: center !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   18. FOOTER — centered & stacked on phones.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .footer-inner {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 1rem !important;
+  }
+  .footer-socials { justify-content: center !important; }
+  .footer-socials a { animation: rcFloat 4s ease-in-out infinite !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   19. TABLET (769px–1024px) — roomier than phones, but not desktop.
+   Two-column grids read well at this width; keep generous spacing.
+   ────────────────────────────────────────────────────────────────── */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .container { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+
+  /* Tablet keeps the full-size navbar, so clear it generously and drop the
+     sticky tab strip below it. */
+  .page { padding-top: calc(var(--nav-height) + 28px) !important; }
+  .sidebar { top: 100px !important; }
+
+  /* Catalogue & feature grids: comfortable 2-up */
+  .events-grid, .features-grid, .feature-cards,
+  .events-perf-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 1.2rem !important; }
+
+  /* Dashboard stats / earnings: 2-up on tablet, gentle entrance */
+  .stats-grid, .stat-grid, .earn-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Auth keeps its hero panel but balances the split */
+  .login-container, .signup-container { grid-template-columns: 1fr 1fr !important; }
+  .signup-shell { grid-template-columns: 5fr 6fr !important; }
+
+  /* Profile & event-detail two-column reads fine on tablet */
+  .profile-grid { grid-template-columns: 5fr 7fr !important; }
+  .event-content { grid-template-columns: 3fr 2fr !important; }
+
+  /* Hero a touch tighter than desktop */
+  .hero h1 { font-size: clamp(2.4rem, 6vw, 3.4rem) !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   20. TINY PHONES (≤380px) — final squeeze so nothing clips.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .stats-grid, .stat-grid, .earn-kpi-grid,
+  .numbers-grid, .bm-qr-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hero-stats { grid-template-columns: repeat(2, 1fr) !important; }
+  .hero h1 { font-size: 1.85rem !important; }
+  .navbar { height: 56px !important; }
+  .logo { font-size: 1.05rem !important; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   21. INNER-PAGE FIT & GUTTERS — safety net so EVERY page (including
+   ones not individually styled above) uses the full screen width with a
+   consistent edge gutter, and no text/card ever touches the corners.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* a) Hard stop on horizontal overflow + full-width content wrappers. */
+  html, body { max-width: 100% !important; overflow-x: hidden !important; }
+
+  .container, main.container,
+  .dashboard-content, .main-info,
+  .page-head, .section-head, .section-header,
+  .events-section, .filter-status {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* b) Minimal outer gutter so content runs (almost) FULL WIDTH of the
+        screen — the side space is intentionally tiny. Cards keep their own
+        inner padding, so text still never touches the edges. */
+  .container, main.container, .dashboard-content {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  /* b2) App-style pages wrapped in `.page` (organizer dashboard, profile,
+        event-detail) go FULL-BLEED — zero outer gutter so their cards run
+        edge-to-edge across the whole screen. */
+  .page > .container { padding-left: 0 !important; padding-right: 0 !important; }
+  .main-content { padding-left: 0 !important; padding-right: 0 !important; }
+
+  /* b3) The dashboard's white `.section` card carried a heavy 2rem inner
+        padding (the wasted "center container" space). Slim it right down and
+        square the side radius so the card fills the page width cleanly. */
+  .page .section {
+    padding: 1rem 0.85rem !important;
+    border-radius: 14px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .page .section-header { padding-bottom: 0.8rem !important; margin-bottom: 1rem !important; }
+  .page .profile-upload-section { margin-bottom: 1.2rem !important; }
+
+  /* c) Direct text children of a wrapper get a hair of inline padding too,
+        catching pages where a heading/paragraph sits outside any card. */
+  .container > h1, .container > h2, .container > p,
+  .dashboard-content > h1, .dashboard-content > h2, .dashboard-content > p {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  /* d) Anything that tries to break out wider than the viewport is reined in. */
+  .card, .section, .perf-card, .stat-card, .event-card, .feature-card,
+  .booking-card, .ticket, .panel, .form-card, .earn-block, .scn-camera,
+  .login-container, .signup-shell, .event-preview-card, .modal-card {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* On the very smallest screens trim the gutter even further. */
+@media (max-width: 360px) {
+  .container, main.container, .dashboard-content {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   END MOBILE APP UI LAYER
+   ════════════════════════════════════════════════════════════════════ */

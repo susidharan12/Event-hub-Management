@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../db');
 const { authenticateToken } = require('../middleware/authMiddleware');
+const seats = require('../services/seats');
 
 const router = express.Router();
 
@@ -58,12 +59,19 @@ router.post('/', authenticateToken, async (req, res) => {
     await client.query('BEGIN');
     const { event_id, seats_booked, ticket_holder_name, ticket_holder_email, ticket_holder_mobile, transaction_id } = req.body;
 
-    if (!event_id || !seats_booked) {
+    // Reserved-seating bookings send specific seat labels (e.g. ["A1","A2"])
+    // instead of a plain count. GA bookings keep sending seats_booked.
+    let seatLabels = Array.isArray(req.body.seat_labels)
+      ? req.body.seat_labels.map((s) => String(s).trim()).filter(Boolean)
+      : null;
+    const hasSeatLabels = !!(seatLabels && seatLabels.length);
+
+    if (!event_id || (!seats_booked && !hasSeatLabels)) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const seatsRequested = Number(seats_booked);
+    const seatsRequested = hasSeatLabels ? seatLabels.length : Number(seats_booked);
     if (!Number.isInteger(seatsRequested) || seatsRequested < 1) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'seats_booked must be a positive integer' });
@@ -91,7 +99,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // Lock the event row for the seat count check.
     const eventResult = await client.query(
-      'SELECT id, ticket_price, available_seats, total_seats FROM events WHERE id = $1 FOR UPDATE',
+      'SELECT id, ticket_price, available_seats, total_seats, reserved_seating FROM events WHERE id = $1 FOR UPDATE',
       [event_id]
     );
     if (eventResult.rows.length === 0) {
@@ -99,6 +107,16 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
     const event = eventResult.rows[0];
+
+    // Reserved-seating events MUST book specific seats; GA events ignore labels.
+    if (event.reserved_seating) {
+      if (!hasSeatLabels) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Please select your seat(s) before booking.' });
+      }
+    } else {
+      seatLabels = null;
+    }
 
     const availableSeats = (event.available_seats !== null && event.available_seats !== undefined)
       ? event.available_seats
@@ -109,7 +127,8 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: `Not enough seats available. Available: ${availableSeats}` });
     }
 
-    const totalPrice = (Number(event.ticket_price) || 0) * seatsRequested;
+    // `let` because reserved-seating bookings re-price from the chosen seats.
+    let totalPrice = (Number(event.ticket_price) || 0) * seatsRequested;
 
     // Fall back to the user's profile for ticket-holder details when missing.
     let holderName = ticket_holder_name || null;
@@ -144,7 +163,30 @@ router.post('/', authenticateToken, async (req, res) => {
       [userId, event_id, seatsRequested, totalPrice, holderName, holderEmail, holderMobile, transaction_id || null, baseTicketId]
     );
 
-    // Decrement available seats.
+    const booking = bookingResult.rows[0];
+    let ticketCodes;
+
+    if (seatLabels) {
+      // Reserved seating: claim the specific seats inside this transaction.
+      // bookSeats validates each seat is still bookable (not booked / not held
+      // by someone else) and returns the zone-priced total.
+      const claim = await seats.bookSeats(client, event_id, userId, seatLabels, booking.id);
+      if (!claim.ok) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: claim.reason || 'Selected seat(s) are no longer available.' });
+      }
+      // Price comes from the seats' zones, not the flat ticket price.
+      totalPrice = claim.total;
+      await client.query('UPDATE bookings SET total_price = $1 WHERE id = $2', [totalPrice, booking.id]);
+      booking.total_price = totalPrice;
+      booking.seat_labels = seatLabels;
+      // Globally-unique per-seat codes embed the chosen seat (e.g. TKT-XYZ-A1).
+      ticketCodes = seatLabels.map((l) => `${baseTicketId}-${l}`);
+    } else {
+      ticketCodes = makeSeatTicketIds(baseTicketId, seatsRequested);
+    }
+
+    // Decrement available seats (keeps the aggregate count in sync for both flows).
     await client.query(
       `UPDATE events
          SET available_seats = (CASE
@@ -157,9 +199,12 @@ router.post('/', authenticateToken, async (req, res) => {
 
     await client.query('COMMIT');
 
-    const booking = bookingResult.rows[0];
-    booking.ticket_codes = makeSeatTicketIds(baseTicketId, seatsRequested);
+    // Tell everyone watching the seat map that these seats are now taken.
+    if (seatLabels) {
+      try { seats.emitBooked(event_id, seatLabels); } catch (_) {}
+    }
 
+    booking.ticket_codes = ticketCodes;
     res.status(201).json({ message: 'Booking created successfully', booking });
   } catch (error) {
     await client.query('ROLLBACK');
@@ -213,7 +258,25 @@ router.get('/:id', authenticateToken, async (req, res) => {
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Booking not found' });
     const booking = result.rows[0];
-    booking.ticket_codes = makeSeatTicketIds(booking.ticket_id || `BK-${booking.id}`, Number(booking.number_of_seats) || 1);
+
+    // Reserved-seating bookings: return the ACTUAL seats (label + zone + price)
+    // so the ticket can show real seat numbers and detect VIP by zone. The
+    // per-seat codes embed the seat label (TKT-xxx-A1). Falls back to index
+    // codes for general-admission bookings.
+    const base = booking.ticket_id || `BK-${booking.id}`;
+    const seatRows = await pool.query(
+      `SELECT seat_label, zone, price FROM event_seats
+        WHERE booking_id = $1 ORDER BY row_label, seat_num`,
+      [id]
+    );
+    if (seatRows.rows.length) {
+      booking.seats = seatRows.rows.map(s => ({ label: s.seat_label, zone: s.zone, price: Number(s.price) }));
+      booking.ticket_codes = seatRows.rows.map(s => `${base}-${s.seat_label}`);
+      booking.is_reserved = true;
+    } else {
+      booking.ticket_codes = makeSeatTicketIds(base, Number(booking.number_of_seats) || 1);
+      booking.is_reserved = false;
+    }
     res.json({ booking });
   } catch (error) {
     console.error('Fetch booking error:', error);
@@ -305,6 +368,10 @@ router.put('/:id/cancel', authenticateToken, async (req, res) => {
     );
 
     await client.query('COMMIT');
+
+    // Reserved-seating events: release the specific seats back to the live map.
+    try { await seats.freeSeatsForBooking(booking.event_id, id); } catch (_) {}
+
     res.json({
       message: 'Booking cancelled successfully',
       refund: quote.refund,
