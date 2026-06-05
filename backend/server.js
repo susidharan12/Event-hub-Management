@@ -41,9 +41,11 @@ app.use(cors({
       // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) return callback(null, true);
 
-      // Check if origin is in allowed list or matches ngrok pattern
+      // Check if origin is in allowed list or matches an ngrok host.
+      // ngrok issues URLs on several TLDs: ngrok.io, ngrok-free.io,
+      // ngrok-free.app, ngrok-free.dev, ngrok.app, ngrok.dev — allow all.
       const isAllowed = allowedOrigins.includes(origin) ||
-                       /^https?:\/\/[a-zA-Z0-9-]+\.ngrok(?:-free)?\.io$/.test(origin);
+                       /^https?:\/\/[a-zA-Z0-9-]+\.ngrok(?:-free)?\.(io|app|dev)$/.test(origin);
 
       if (isAllowed) {
         callback(null, true);
