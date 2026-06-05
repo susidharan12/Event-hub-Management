@@ -116,8 +116,10 @@ services:
       ANTHROPIC_API_KEY:   ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL:     ${ANTHROPIC_MODEL:-claude-3-5-sonnet-20241022}
       GROQ_MODEL:          ${GROQ_MODEL:-llama-3.3-70b-versatile}
-    ports:
-      - "8080:8080"
+    # No host port publish — the backend reaches it over the Docker network at
+    # http://ai:8080. (Avoids clashing with anything bound to host :8080.)
+    expose:
+      - "8080"
     healthcheck:
       test:    ["CMD", "curl", "-f", "http://localhost:8080/api/ai/health"]
       interval: 10s
