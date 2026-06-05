@@ -166,13 +166,30 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
 
-        const numTickets = parseInt(document.getElementById('num-tickets').value) || 1;
+        let numTickets = parseInt(document.getElementById('num-tickets').value) || 1;
+
+        // Reserved-seating events: the seat map drives quantity + price.
+        const reserved = window.__reservedSeating === true;
+        const seatLabels = (typeof window.__getSeatLabels === 'function') ? window.__getSeatLabels() : [];
+        if (reserved) {
+          if (!seatLabels || !seatLabels.length) {
+            alert('Please select at least one seat from the map.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            return;
+          }
+          numTickets = seatLabels.length;
+        }
+
         // Ensure ticket holder name is not empty
         const ticketHolderInput = document.getElementById('ticket-holder');
         const ticketHolder = ticketHolderInput.value.trim() || 'Demo User';
-        
+
         const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value || 'card';
-        const totalAmount = numTickets * currentTicketPrice;
+        // For reserved seating the backend re-prices from zones; this is display only.
+        const totalAmount = reserved
+          ? (Number(window.__seatTotal) || 0)
+          : numTickets * currentTicketPrice;
 
         // Get user ID from local storage
         const userJSON = localStorage.getItem('user') || localStorage.getItem('auth_user');
@@ -193,6 +210,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const apiPayload = {
           event_id: !isNaN(Number(eventId)) ? Number(eventId) : eventId,
           seats_booked: Number(numTickets),
+          // Reserved seating: send the specific seats so the backend books them.
+          ...(reserved ? { seat_labels: seatLabels } : {}),
           total_price: Number(totalAmount),
           payment_method: paymentMethod,
           transaction_id: 'TXN-' + Math.random().toString(36).substr(2, 9).toUpperCase(),

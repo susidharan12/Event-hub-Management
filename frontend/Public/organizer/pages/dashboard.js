@@ -1011,6 +1011,16 @@ function setEditMode(event) {
     setVal('ev-seats', event.total_seats);
     setVal('ev-desc', event.description);
 
+    // Reserved seating: restore the toggle + saved row layout when editing.
+    const reservedEl = document.getElementById('ev-reserved');
+    if (reservedEl) {
+        reservedEl.checked = !!event.reserved_seating;
+        reservedEl.dispatchEvent(new Event('change'));
+        if (event.reserved_seating && event.seating_layout && typeof window.__loadSeatingLayout === 'function') {
+            window.__loadSeatingLayout(event.seating_layout);
+        }
+    }
+
     // Show existing cover image as preview (without re-uploading).
     const cover = event.image_url ? resolveAssetUrl(event.image_url) : null;
     if (cover) {
@@ -1075,6 +1085,25 @@ async function createEvent() {
     const mapEl   = document.getElementById('ev-map');
     if (placeEl && placeEl.value.trim()) formData.append('place',   placeEl.value.trim());
     if (mapEl   && mapEl.value.trim())   formData.append('map_url', mapEl.value.trim());
+
+    // Reserved seating (live seat map). When enabled, capacity + price are
+    // derived from the row layout on the backend.
+    const reserved = (typeof window.__isReservedSeating === 'function') && window.__isReservedSeating();
+    if (reserved) {
+      const layout = window.__getSeatingLayout ? window.__getSeatingLayout() : { rows: [] };
+      const hasRows  = layout && Array.isArray(layout.rows)  && layout.rows.length  > 0;
+      const hasZones = layout && Array.isArray(layout.zones) && layout.zones.length > 0; // legacy
+      if (!hasRows && !hasZones) {
+        const msg = 'Reserved seating is on — enter the rows & seats per row, click “Build rows”, then set each row before saving.';
+        (window.Popup && window.Popup.error) ? window.Popup.error(msg) : alert(msg);
+        btn.disabled = false; btn.innerHTML = isEdit ? 'Save Event' : 'Save Event';
+        return;
+      }
+      formData.append('reserved_seating', 'true');
+      formData.append('seating_layout', JSON.stringify(layout));
+    } else {
+      formData.append('reserved_seating', 'false');
+    }
 
     const profileImage = document.getElementById('profile-image').files[0];
     if (profileImage) formData.append('image', profileImage);

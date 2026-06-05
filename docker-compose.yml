@@ -88,6 +88,14 @@ services:
     volumes:
       # Persist user uploads (event covers, avatars) outside the image
       - uploads:/app/uploads
+      # DEV: live-mount the Node source so backend edits apply after a quick
+      # `supervisorctl restart node-backend` (no full image rebuild). Only the
+      # source dirs are mounted — the image's node_modules stays intact.
+      - ./backend/server.js:/app/node-backend/server.js
+      - ./backend/routes:/app/node-backend/routes
+      - ./backend/controllers:/app/node-backend/controllers
+      - ./backend/services:/app/node-backend/services
+      - ./backend/middleware:/app/node-backend/middleware
     ports:
       - "3000:3000"
 
@@ -159,6 +167,9 @@ services:
       - ./frontend/Public:/usr/share/nginx/html/Public:ro
       - ./frontend/index.html:/usr/share/nginx/html/index.html:ro
       - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # PWA files served from the site root (service-worker scope '/')
+      - ./frontend/sw.js:/usr/share/nginx/html/sw.js:ro
+      - ./frontend/manifest.json:/usr/share/nginx/html/manifest.json:ro
 
 # ── Persistent volumes ─────────────────────────────────────────
 volumes:

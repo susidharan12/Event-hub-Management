@@ -154,3 +154,16 @@
     get() { return undefined; }
   });
 })();
+
+/* ── PWA bootstrap loader ───────────────────────────────────────────
+   This shim is included on every page, so we use it to load the PWA
+   bootstrap (installable app + offline + push) site-wide without editing
+   each HTML file. Fully isolated from the API shim above. */
+(function () {
+  try {
+    var s = document.createElement('script');
+    s.src = '/Public/js/pwa.js';
+    s.defer = true;
+    (document.head || document.documentElement).appendChild(s);
+  } catch (_) { /* never let PWA setup break the page */ }
+})();

@@ -128,6 +128,12 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS place VARCHAR(255)`);
     await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS map_url TEXT`);
     await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+    // --- SCHEMA MIGRATION: live reserved-seating (opt-in per event) ---
+    // reserved_seating = true makes the booking page show an interactive seat
+    // map instead of the quantity picker. seating_layout stores the organizer's
+    // zone/row design as JSON, e.g. { zones:[{ name, price, rows, cols }] }.
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS reserved_seating BOOLEAN DEFAULT false`);
+    await client.query(`ALTER TABLE events ADD COLUMN IF NOT EXISTS seating_layout JSONB`);
     
     // Create bookings table
     await client.query(`
@@ -265,7 +271,32 @@ async function initializeDatabase() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_otps_target ON otps (target, purpose)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_otps_token ON otps (verification_token)`);
-    
+
+    // --- LIVE SEAT MAP: one row per physical seat of a reserved-seating event ---
+    // status: 'available' | 'booked'. A seat is effectively HELD (not bookable
+    // by others) when held_by is set AND hold_expires is in the future; expired
+    // holds are swept back to available. seat_label (e.g. 'A1') is reused as the
+    // per-seat ticket/QR code so the existing scanner (check_ins.seat_code) works.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS event_seats (
+        id SERIAL PRIMARY KEY,
+        event_id     INTEGER NOT NULL REFERENCES events(id)   ON DELETE CASCADE,
+        seat_label   VARCHAR(20)  NOT NULL,
+        row_label    VARCHAR(10),
+        seat_num     INTEGER,
+        zone         VARCHAR(60)  DEFAULT 'Standard',
+        price        DECIMAL(10,2) DEFAULT 0,
+        status       VARCHAR(20)  DEFAULT 'available',
+        booking_id   INTEGER REFERENCES bookings(id) ON DELETE SET NULL,
+        held_by      INTEGER REFERENCES users(id)    ON DELETE SET NULL,
+        hold_expires TIMESTAMP,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_event_seats_label ON event_seats (event_id, seat_label)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_event_seats_event ON event_seats (event_id, status)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_event_seats_hold ON event_seats (hold_expires) WHERE held_by IS NOT NULL`);
+
     console.log('Database initialization complete!');
     return true;
   } catch (error) {
@@ -295,17 +326,22 @@ const startServer = async () => {
       const messagesRouter = require('./routes/messages');
       const { router: otpRouter } = require('./routes/otp');
       const aiRouter = require('./routes/ai');
+      const seatsRouter = require('./routes/seats');
 
       // Mount routers to specific paths
       // This enables /api/auth/signup, /api/auth/profile, /api/auth/update-profile etc.
       app.use('/api/auth', authRouter);
       app.use('/api/events', eventsRouter);
+      // Seat-map endpoints share the /api/events base (e.g. /api/events/:id/seats).
+      // Mounted AFTER eventsRouter so the more-specific /:id/seats paths resolve
+      // here without clashing with eventsRouter's /:id handlers.
+      app.use('/api/events', seatsRouter);
       app.use('/api/bookings', bookingsRouter);
       app.use('/api/payments', paymentsRouter);
       app.use('/api/messages', messagesRouter);
       app.use('/api/otp', otpRouter);
       app.use('/api/ai', aiRouter);
-      
+
       console.log('Mounted real API routes (PostgreSQL)');
     } catch (err) {
       console.error('Failed to mount real routes:', err.message);
@@ -332,8 +368,26 @@ const startServer = async () => {
     });
   });
 
-  // Start Listening
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  // Start Listening — wrap Express in an HTTP server so socket.io can share
+  // the same port for live seat-map updates.
+  const http = require('http');
+  const server = http.createServer(app);
+
+  // Attach socket.io (live seat availability). Safe no-op if the package is
+  // missing — the REST seat API still works, just without live broadcasts.
+  try {
+    require('./services/realtime').init(server);
+  } catch (e) {
+    console.warn('Realtime (socket.io) not started:', e.message);
+  }
+
+  // Periodically release expired seat holds and notify watchers.
+  if (dbReady) {
+    const seatsSvc = require('./services/seats');
+    setInterval(() => { seatsSvc.sweepExpiredHolds().catch(() => {}); }, 30 * 1000);
+  }
+
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${PORT}`);
     console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
     console.log(`Profile Endpoint: http://localhost:${PORT}/api/auth/profile`);

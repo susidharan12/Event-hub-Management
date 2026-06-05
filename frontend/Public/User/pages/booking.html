@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
   <title>Book Tickets - EventHub</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/Public/js/vendor/tailwind.css">
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- QR code generator for the UPI QR payment option (v1.5.0 — proven stable) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
@@ -114,7 +114,7 @@
               Attendee Information
             </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-2">
+              <div class="space-y-2" id="num-tickets-field">
                 <label for="num-tickets" class="text-sm font-bold text-slate-700">Number of Tickets</label>
                 <input type="number" id="num-tickets" min="1" max="10" value="1" required
                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
@@ -125,6 +125,17 @@
                   class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
               </div>
             </div>
+          </section>
+
+          <!-- Step 1b: Live seat selection (shown only for reserved-seating events) -->
+          <section id="seatmap-section" style="display:none;">
+            <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <span class="w-7 h-7 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center text-sm">2</span>
+              Choose your seats
+            </h2>
+            <p class="text-sm text-slate-500 mb-4">Tap to select. Held seats turn grey for everyone in real time and are reserved for you for 5 minutes.</p>
+            <div id="seatmap"></div>
+            <div id="seat-selection-summary" class="mt-4 text-sm font-semibold text-slate-700"></div>
           </section>
 
           <!-- Step 2: Payment (hidden automatically for free events) -->
@@ -426,6 +437,9 @@
       document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.0/qrcode.min.js"><\/script>');
     }
   </script>
+  <!-- Live seat map: socket.io client + component -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="../js/components/SeatMap.js"></script>
   <script src="../js/pages/booking.js"></script>
   <script>
     lucide.createIcons();
@@ -433,6 +447,21 @@
     // UI Logic
     const numTicketsInput = document.getElementById('num-tickets');
     let ticketPrice = 0; // Will be updated by booking.js
+
+    // Single source of truth for the amount to charge. For reserved-seating
+    // events it is the SUM of the selected seats' prices (zones differ);
+    // for general admission it is quantity × flat ticket price.
+    function payableQty() {
+      if (window.__reservedSeating && typeof window.__getSeatLabels === 'function') {
+        return window.__getSeatLabels().length;
+      }
+      return parseInt(numTicketsInput.value) || 0;
+    }
+    function payableTotal() {
+      if (window.__reservedSeating) return Number(window.__seatTotal) || 0;
+      return (parseInt(numTicketsInput.value) || 0) * ticketPrice;
+    }
+
     const totalDisplay = document.getElementById('total-amount');
     const btnTotal = document.getElementById('btn-total');
     const summaryQty = document.getElementById('summary-qty');
@@ -460,8 +489,7 @@
     function refreshQr() {
       const host = document.getElementById('qr-canvas');
       if (!host) return;
-      const qty   = parseInt(numTicketsInput.value) || 0;
-      const total = qty * ticketPrice;
+      const total = payableTotal();
       const ref   = 'EVT-' + (new URLSearchParams(window.location.search).get('id') || '');
       const url   = buildUpiUrl(total, ref);
       // Replace any previous QR with a fresh canvas, then draw into it.
@@ -508,8 +536,8 @@
     };
 
     function updateTotals() {
-      const qty = parseInt(numTicketsInput.value) || 0;
-      const total = qty * ticketPrice;
+      const qty = payableQty();
+      const total = payableTotal();
       totalDisplay.textContent = total;
       summaryQty.textContent = qty;
       summarySubtotal.textContent = total;
@@ -571,7 +599,7 @@
     // user through:  enter UTR  →  verifying spinner  →  success / pending.
     async function runQrVerification() {
       return new Promise(resolve => {
-        const total = (parseInt(numTicketsInput.value) || 0) * ticketPrice;
+        const total = payableTotal();
         const ref   = 'EVT-' + (new URLSearchParams(window.location.search).get('id') || '');
         const wrap = document.createElement('div');
         wrap.className = 'fixed inset-0 z-[99000] flex items-center justify-center p-4';
@@ -682,5 +710,85 @@
     }
   </script>
   <script src="/Public/js/ai-chat-widget.js"></script>
+
+  <!-- ── Live seat-map integration (reserved-seating events only) ───── -->
+  <script>
+  (function () {
+    const params  = new URLSearchParams(window.location.search);
+    const eventId = params.get('id') || params.get('eventId');
+    if (!eventId) return;
+
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken') ||
+                  localStorage.getItem('eventhub_token') || localStorage.getItem('auth_token') || '';
+
+    window.__reservedSeating = false;
+    window.__getSeatLabels = () => [];
+
+    // Probe the seat map; only reserved-seating events have seats.
+    fetch(`/api/events/${eventId}/seats`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data || !data.reserved_seating || !(data.seats && data.seats.length)) return;
+        if (typeof SeatMap === 'undefined') return;
+
+        window.__reservedSeating = true;
+
+        // Reserved events are priced per selected seat, not a flat per-person
+        // rate — relabel the event card's price line accordingly.
+        const priceLabel = document.getElementById('ticket-price');
+        if (priceLabel && priceLabel.parentElement) {
+          const mins = (data.zones || []).map(function (z) { return (z.priceMin !== undefined) ? z.priceMin : z.price; });
+          const minP = mins.length ? Math.min.apply(null, mins) : (data.ticket_price || 0);
+          priceLabel.parentElement.innerHTML = (minP > 0)
+            ? ('From ₹' + minP + ' · choose your seats')
+            : 'Free · choose your seats';
+        }
+
+        // Hide the manual quantity input — seats drive the count now.
+        const numField = document.getElementById('num-tickets-field');
+        if (numField) numField.style.display = 'none';
+        const numInput = document.getElementById('num-tickets');
+        const section  = document.getElementById('seatmap-section');
+        if (section) section.style.display = '';
+
+        const summaryQty = document.getElementById('summary-qty');
+        const summarySub = document.getElementById('summary-subtotal');
+        const totalAmt   = document.getElementById('total-amount');
+        const selSummary = document.getElementById('seat-selection-summary');
+        const submitLabel = document.getElementById('submit-label');
+
+        const map = new SeatMap({
+          container: document.getElementById('seatmap'),
+          eventId: eventId,
+          token: token,
+          maxSeats: 10,
+          apiBase: '',           // same-origin → nginx proxies /api + /socket.io
+          onChange: (sel) => {
+            const count = sel.length;
+            const total = sel.reduce((s, x) => s + Number(x.price || 0), 0);
+            if (numInput) numInput.value = count || 1;
+            if (summaryQty) summaryQty.textContent = count;
+            if (summarySub) summarySub.textContent = total;
+            if (totalAmt)   totalAmt.textContent   = total;
+            if (selSummary) {
+              selSummary.textContent = count
+                ? `Selected: ${sel.map((s) => s.label).join(', ')}  ·  ₹${total}`
+                : 'No seats selected yet.';
+            }
+            if (submitLabel) {
+              submitLabel.innerHTML = total > 0
+                ? `Confirm &amp; Pay ₹${total}`
+                : `Confirm Registration · ${count} seat${count === 1 ? '' : 's'}`;
+            }
+            window.__seatTotal = total;
+          }
+        });
+
+        window.__getSeatLabels = () => map.getSelectedLabels();
+        window.addEventListener('beforeunload', () => { try { map.destroy(); } catch (e) {} });
+      })
+      .catch(() => {});
+  })();
+  </script>
 </body>
 </html>

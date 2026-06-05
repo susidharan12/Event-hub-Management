@@ -1,4 +1,42 @@
 const pool = require('../db');
+const seats = require('../services/seats');
+
+// Parse the reserved-seating layout sent as a JSON string form-field.
+// Returns { layout, totalSeats, minPrice } or null when not reserved/invalid.
+function parseSeatingLayout(reservedRaw, layoutRaw) {
+  const reserved = reservedRaw === true || reservedRaw === 'true' || reservedRaw === 'on' || reservedRaw === '1';
+  if (!reserved) return null;
+  let layout = layoutRaw;
+  if (typeof layoutRaw === 'string') {
+    try { layout = JSON.parse(layoutRaw); } catch (_) { return null; }
+  }
+  if (!layout) return null;
+
+  let totalSeats = 0;
+  let minPrice = Infinity;
+
+  if (Array.isArray(layout.rows) && layout.rows.length) {
+    // Row-wise: each row has its own seat count + price.
+    for (const r of layout.rows) {
+      const seats = Math.max(1, parseInt(r.seats, 10) || 1);
+      totalSeats += seats;
+      minPrice = Math.min(minPrice, Math.max(0, Number(r.price) || 0));
+    }
+  } else if (Array.isArray(layout.zones) && layout.zones.length) {
+    // Zone-wise (legacy): uniform rows × cols.
+    for (const z of layout.zones) {
+      const rows = Math.max(1, parseInt(z.rows, 10) || 1);
+      const cols = Math.max(1, parseInt(z.cols, 10) || 1);
+      totalSeats += rows * cols;
+      minPrice = Math.min(minPrice, Math.max(0, Number(z.price) || 0));
+    }
+  } else {
+    return null;
+  }
+
+  if (!isFinite(minPrice)) minPrice = 0;
+  return { layout, totalSeats, minPrice };
+}
 
 // Create a new event
 const createEvent = async (req, res) => {
@@ -9,15 +47,25 @@ const createEvent = async (req, res) => {
     
     const { title, category, event_date, location, ticket_price, total_seats, description, place, map_url } = req.body;
 
+    // Reserved seating (opt-in): when enabled, capacity + price are DERIVED
+    // from the zone/row layout rather than the flat total_seats/ticket_price.
+    const seating = parseSeatingLayout(req.body.reserved_seating, req.body.seating_layout);
+
     // Validate required fields
     const missingFields = [];
     if (!title?.trim()) missingFields.push('title');
     if (!category?.trim()) missingFields.push('category');
     if (!event_date) missingFields.push('event_date');
     if (!location?.trim()) missingFields.push('location');
-    if (!ticket_price) missingFields.push('ticket_price');
-    if (!total_seats) missingFields.push('total_seats');
+    if (!seating) {
+      if (!ticket_price) missingFields.push('ticket_price');
+      if (!total_seats) missingFields.push('total_seats');
+    }
     if (!description?.trim()) missingFields.push('description');
+    // If the organizer ticked reserved seating but the layout is empty/invalid:
+    if ((req.body.reserved_seating === 'true' || req.body.reserved_seating === true) && !seating) {
+      return res.status(400).json({ error: 'Reserved seating is on but the seat layout is empty. Add at least one zone with rows and seats.' });
+    }
     
     // Check for profile image
     if (!req.files || !req.files['image'] || req.files['image'].length === 0) {
@@ -41,9 +89,10 @@ const createEvent = async (req, res) => {
       organizer_id = orgResult.rows[0].id;
     }
 
-    const priceVal = parseFloat(ticket_price);
-    const seatsVal = parseInt(total_seats, 10);
-    
+    // For reserved seating, capacity/price come from the layout.
+    const priceVal = seating ? seating.minPrice : parseFloat(ticket_price);
+    const seatsVal = seating ? seating.totalSeats : parseInt(total_seats, 10);
+
     // Handle profile image (single image field)
     const image_url = req.files['image'][0]
       ? `/uploads/${req.files['image'][0].filename}`
@@ -55,8 +104,8 @@ const createEvent = async (req, res) => {
       : [];
 
     const query = `
-      INSERT INTO events (organizer_id, title, description, location, event_date, ticket_price, total_seats, available_seats, image_url, images, category, place, map_url)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *;
+      INSERT INTO events (organizer_id, title, description, location, event_date, ticket_price, total_seats, available_seats, image_url, images, category, place, map_url, reserved_seating, seating_layout)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *;
     `;
     const values = [
       organizer_id,
@@ -71,19 +120,31 @@ const createEvent = async (req, res) => {
       images,
       category.trim(),
       (place && String(place).trim()) || null,
-      (map_url && String(map_url).trim()) || null
+      (map_url && String(map_url).trim()) || null,
+      !!seating,
+      seating ? JSON.stringify(seating.layout) : null
     ];
 
     const result = await pool.query(query, values);
     const event = result.rows[0];
-    
-    res.status(201).json({ 
-      message: 'Event created successfully', 
+
+    // Generate the physical seats for a reserved-seating event.
+    if (seating) {
+      try {
+        await seats.generateSeats(pool, event.id, seating.layout);
+      } catch (seatErr) {
+        console.error('Seat generation failed for event', event.id, seatErr.message);
+      }
+    }
+
+    res.status(201).json({
+      message: 'Event created successfully',
       title: event.title,
       id: event.id,
       event_date: event.event_date,
       location: event.location,
-      ticket_price: event.ticket_price
+      ticket_price: event.ticket_price,
+      reserved_seating: event.reserved_seating
     });
   } catch (error) {
     console.error('Error creating event:', error);
@@ -171,18 +232,33 @@ const updateEvent = async (req, res) => {
     push('place',       b.place);
     push('map_url',     b.map_url);
     push('event_date',  b.event_date);
-    if (b.ticket_price !== undefined) push('ticket_price', parseFloat(b.ticket_price));
+    // Reserved seating (opt-in). When enabled, capacity + price are DERIVED
+    // from the row layout and the physical seats are (re)generated after the
+    // update. When the layout is present we ignore the flat price/seats fields.
+    const seating = parseSeatingLayout(b.reserved_seating, b.seating_layout);
+    const reservedProvided = (b.reserved_seating !== undefined);
 
-    // Updating total_seats also bumps available_seats by the delta so an
-    // organizer can grow capacity (or shrink, never below already-booked).
-    if (b.total_seats !== undefined) {
-      const newTotal = parseInt(b.total_seats, 10);
-      const cur = await pool.query('SELECT total_seats, available_seats FROM events WHERE id = $1', [id]);
-      const oldTotal = parseInt(cur.rows[0].total_seats, 10) || 0;
-      const oldAvail = parseInt(cur.rows[0].available_seats, 10) || 0;
-      const newAvail = Math.max(0, oldAvail + (newTotal - oldTotal));
-      push('total_seats',     newTotal);
-      push('available_seats', newAvail);
+    if (seating) {
+      push('reserved_seating', true);
+      push('seating_layout', JSON.stringify(seating.layout));
+      push('ticket_price',    seating.minPrice);
+      push('total_seats',     seating.totalSeats);
+      push('available_seats', seating.totalSeats);
+    } else {
+      if (reservedProvided) push('reserved_seating', false); // toggled off → GA
+      if (b.ticket_price !== undefined) push('ticket_price', parseFloat(b.ticket_price));
+
+      // Updating total_seats also bumps available_seats by the delta so an
+      // organizer can grow capacity (or shrink, never below already-booked).
+      if (b.total_seats !== undefined) {
+        const newTotal = parseInt(b.total_seats, 10);
+        const cur = await pool.query('SELECT total_seats, available_seats FROM events WHERE id = $1', [id]);
+        const oldTotal = parseInt(cur.rows[0].total_seats, 10) || 0;
+        const oldAvail = parseInt(cur.rows[0].available_seats, 10) || 0;
+        const newAvail = Math.max(0, oldAvail + (newTotal - oldTotal));
+        push('total_seats',     newTotal);
+        push('available_seats', newAvail);
+      }
     }
 
     // Handle uploaded files (optional).
@@ -218,6 +294,39 @@ const updateEvent = async (req, res) => {
     values.push(id);
     const sql = `UPDATE events SET ${sets.join(', ')} WHERE id = $${values.length} RETURNING *`;
     const result = await pool.query(sql, values);
+
+    // (Re)generate physical seats to match the new layout. Done after the
+    // events row is updated so the seat map reflects the latest configuration.
+    if (seating) {
+      try {
+        // Remember which seats were already SOLD (by which booking) so a layout
+        // edit never silently un-sells them.
+        const prevBooked = await pool.query(
+          `SELECT booking_id, seat_label FROM event_seats
+            WHERE event_id = $1 AND status = 'booked' AND booking_id IS NOT NULL`,
+          [id]
+        );
+        await pool.query('DELETE FROM event_seats WHERE event_id = $1', [id]);
+        await seats.generateSeats(pool, id, seating.layout);
+        // Re-mark the exact same seats as sold where they still exist.
+        for (const r of prevBooked.rows) {
+          await pool.query(
+            `UPDATE event_seats SET status = 'booked', booking_id = $2
+              WHERE event_id = $1 AND seat_label = $3 AND status = 'available'`,
+            [id, r.booking_id, r.seat_label]
+          );
+        }
+        // Fill any remaining sold-seat shortfall (count-based bookings, or seats
+        // whose labels no longer exist) and sync the capacity counters.
+        await seats.reconcileBookedSeats(id);
+      } catch (seatErr) {
+        console.error('Seat regeneration failed for event', id, seatErr.message);
+      }
+    } else if (reservedProvided) {
+      // Reserved seating turned off → drop any previously generated seats.
+      try { await pool.query('DELETE FROM event_seats WHERE event_id = $1', [id]); } catch (_) {}
+    }
+
     res.json({ message: 'Event updated successfully', event: result.rows[0] });
   } catch (error) {
     console.error('Error updating event:', error);
