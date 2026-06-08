@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="/Public/js/api-base-shim.js"></script>
+  <script src="/Public/js/dark-mode.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -1063,6 +1064,15 @@
             <a id="org-website" class="btn btn-primary" href="#" target="_blank" rel="noopener" style="display:none;">
               <i class="fas fa-globe"></i> Visit website
             </a>
+            <a id="org-instagram" class="btn" href="#" target="_blank" rel="noopener" style="display:none; background: linear-gradient(135deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); color: white; box-shadow: 0 8px 20px rgba(236, 72, 153, 0.35);">
+              <i class="fab fa-instagram"></i> Instagram
+            </a>
+            <a id="org-facebook" class="btn" href="#" target="_blank" rel="noopener" style="display:none; background: #1877f2; color: white; box-shadow: 0 8px 20px rgba(24, 119, 242, 0.35);">
+              <i class="fab fa-facebook"></i> Facebook
+            </a>
+            <a id="org-whatsapp" class="btn" href="#" target="_blank" rel="noopener" style="display:none; background: #25d366; color: white; box-shadow: 0 8px 20px rgba(37, 211, 102, 0.35);">
+              <i class="fab fa-whatsapp"></i> WhatsApp
+            </a>
             <a id="leave-feedback-btn" href="#" class="btn" style="background: linear-gradient(135deg, #10b981, #06b6d4); color: white; box-shadow: 0 8px 20px rgba(16,185,129,0.35);">
               <i class="fas fa-pen-to-square"></i> Leave feedback
             </a>
@@ -1121,6 +1131,57 @@
         </div>
         <div class="events-grid" id="events-grid">
           <!-- filled by JS -->
+        </div>
+      </section>
+
+      <!-- Gallery -->
+      <section class="gallery-section" id="org-gallery-section" style="display:none;">
+        <style>
+          .og-marquee{overflow:hidden;width:100%;}
+          .og-track{display:flex;gap:14px;width:max-content;}
+          .og-track.left{animation:ogLeft 30s linear infinite;}
+          .og-track.right{animation:ogRight 34s linear infinite;}
+          .og-marquee:hover .og-track{animation-play-state:paused;}
+          @keyframes ogLeft{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+          @keyframes ogRight{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+          .og-tile{position:relative;flex:0 0 auto;width:270px;height:165px;border-radius:14px;overflow:hidden;box-shadow:0 10px 22px -14px rgba(15,23,42,.55);display:block;}
+          .og-tile img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;}
+          .og-tile:hover img{transform:scale(1.05);}
+          .og-tile .pl{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:2.6rem;text-shadow:0 2px 12px rgba(0,0,0,.7);}
+          .og-row-title{font-size:.95rem;font-weight:800;color:#475569;margin:0 0 .8rem;display:flex;align-items:center;gap:8px;}
+          /* Lightbox */
+          .og-lb{position:fixed;inset:0;background:rgba(8,11,20,.93);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+          .og-lb.open{display:flex;}
+          .og-lb-inner img{width:75vw;height:78vh;object-fit:contain;border-radius:14px;display:block;box-shadow:0 30px 80px rgba(0,0,0,.6);}
+          .og-lb-inner video{width:75vw;max-height:82vh;border-radius:14px;display:block;box-shadow:0 30px 80px rgba(0,0,0,.6);background:#000;}
+          .og-lb-inner iframe{width:min(85vw,1100px);height:min(82vh,620px);border:0;border-radius:14px;}
+          .og-lb-close{position:absolute;top:18px;right:26px;color:#fff;font-size:2.2rem;line-height:1;cursor:pointer;background:none;border:none;}
+        </style>
+        <div class="section-head">
+          <span class="eyebrow">Photos &amp; videos</span>
+          <h2>Event gallery</h2>
+          <p>Moments from this organizer's events.</p>
+        </div>
+        <div id="og-photos-wrap" style="display:none;margin-bottom:1.8rem;">
+          <h3 class="og-row-title"><i class="fas fa-image" style="color:var(--primary)"></i> Photos</h3>
+          <div class="og-marquee"><div class="og-track left" id="og-photos"></div></div>
+        </div>
+        <div id="og-videos-wrap" style="display:none;">
+          <h3 class="og-row-title"><i class="fas fa-film" style="color:var(--primary)"></i> Videos</h3>
+          <div class="og-marquee"><div class="og-track right" id="og-videos"></div></div>
+        </div>
+      </section>
+
+      <!-- Social Media Section -->
+      <section id="social-media-section" style="display:none; padding: 4rem 2rem; text-align: center;">
+        <div class="section-head">
+          <span class="eyebrow">Connect</span>
+          <h2>Follow organizer</h2>
+          <p>Connect on social media</p>
+        </div>
+
+        <div id="social-media-links" style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem;">
+          <!-- Social links will be inserted here by JavaScript -->
         </div>
       </section>
 
@@ -1195,7 +1256,10 @@
 
   <script>
     (function () {
-      const SERVER_URL = 'http://localhost:3000';
+      // Use current origin for image/upload URLs so nginx proxy works correctly
+      // In Docker: localhost:5050 proxies /uploads → backend:3000
+      // In ngrok: ngrok-url proxies /uploads → backend
+      const SERVER_URL = window.location.origin;
       const API_BASE   = 'http://localhost:3000/api';
 
       const params = new URLSearchParams(window.location.search);
@@ -1317,12 +1381,96 @@
           link.style.display = 'inline-flex';
         }
 
+        // Display Instagram link if available
+        if (org.instagram_url && org.instagram_url.trim()) {
+          const instaLink = document.getElementById('org-instagram');
+          let href = org.instagram_url.trim();
+          if (!/^https?:\/\//i.test(href)) {
+            href = href.startsWith('@') ? 'https://instagram.com/' + href.substring(1) : 'https://instagram.com/' + href;
+          }
+          instaLink.href = href;
+          instaLink.style.display = 'inline-flex';
+        }
+
+        // Display Facebook link if available
+        if (org.facebook_url && org.facebook_url.trim()) {
+          const fbLink = document.getElementById('org-facebook');
+          let href = org.facebook_url.trim();
+          if (!/^https?:\/\//i.test(href)) {
+            href = 'https://facebook.com/' + href;
+          }
+          fbLink.href = href;
+          fbLink.style.display = 'inline-flex';
+        }
+
+        // Display WhatsApp link if available
+        if (org.whatsapp_link && org.whatsapp_link.trim()) {
+          const waLink = document.getElementById('org-whatsapp');
+          let phoneNum = org.whatsapp_link.trim().replace(/[^\d+]/g, '');
+          waLink.href = `https://wa.me/${phoneNum}`;
+          waLink.style.display = 'inline-flex';
+        }
+
         // Wire the "Leave feedback" CTA to the dedicated feedback page so
         // the URL carries the organizer id and the page knows whose reviews
         // to show.
         const feedbackBtn = document.getElementById('leave-feedback-btn');
         if (feedbackBtn) {
           feedbackBtn.href = `feedback.html?organizer=${encodeURIComponent(org.id)}`;
+        }
+
+        // Populate social media section below
+        renderSocialMediaSection(org);
+      }
+
+      function renderSocialMediaSection(org) {
+        const socialContainer = document.getElementById('social-media-links');
+        const socialSection = document.getElementById('social-media-section');
+
+        if (!socialContainer || !socialSection) return;
+
+        let hasLinks = false;
+        let linksHTML = '';
+
+        // Instagram
+        if (org.instagram_url && org.instagram_url.trim()) {
+          hasLinks = true;
+          let href = org.instagram_url.trim();
+          if (!/^https?:\/\//i.test(href)) {
+            href = href.startsWith('@') ? 'https://instagram.com/' + href.substring(1) : 'https://instagram.com/' + href;
+          }
+          linksHTML += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #f09433 0%,#e6683c 25%,#dc2743 50%,#cc2366 75%,#bc1888 100%); color: white; box-shadow: 0 8px 20px rgba(236, 72, 153, 0.35); text-decoration: none; font-size: 28px; transition: transform 0.3s ease;"><i class="fab fa-instagram"></i></a>`;
+        }
+
+        // Facebook
+        if (org.facebook_url && org.facebook_url.trim()) {
+          hasLinks = true;
+          let href = org.facebook_url.trim();
+          if (!/^https?:\/\//i.test(href)) {
+            href = 'https://facebook.com/' + href;
+          }
+          linksHTML += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background: #1877f2; color: white; box-shadow: 0 8px 20px rgba(24, 119, 242, 0.35); text-decoration: none; font-size: 28px; transition: transform 0.3s ease;"><i class="fab fa-facebook"></i></a>`;
+        }
+
+        // WhatsApp
+        if (org.whatsapp_link && org.whatsapp_link.trim()) {
+          hasLinks = true;
+          let phoneNum = org.whatsapp_link.trim().replace(/[^\d+]/g, '');
+          linksHTML += `<a href="https://wa.me/${escapeHtml(phoneNum)}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background: #25d366; color: white; box-shadow: 0 8px 20px rgba(37, 211, 102, 0.35); text-decoration: none; font-size: 28px; transition: transform 0.3s ease;"><i class="fab fa-whatsapp"></i></a>`;
+        }
+
+        if (hasLinks) {
+          socialContainer.innerHTML = linksHTML;
+          socialSection.style.display = 'block';
+
+          // Add hover effect
+          const links = socialContainer.querySelectorAll('a');
+          links.forEach(link => {
+            link.addEventListener('mouseenter', () => link.style.transform = 'scale(1.1)');
+            link.addEventListener('mouseleave', () => link.style.transform = 'scale(1)');
+          });
+        } else {
+          socialSection.style.display = 'none';
         }
       }
 
@@ -1671,6 +1819,83 @@
 
       document.addEventListener('DOMContentLoaded', loadOrganizer);
     })();
+  </script>
+  <!-- Gallery lightbox -->
+  <div class="og-lb" id="og-lb"><button class="og-lb-close" id="og-lb-close">&times;</button><div class="og-lb-inner" id="og-lb-inner"></div></div>
+
+  <!-- ── Organizer profile gallery strip ───────────────────────────── -->
+  <script>
+  (function () {
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (!id) return;
+    const section = document.getElementById('org-gallery-section');
+    const allLink = document.getElementById('org-gallery-all');
+    if (!section) return;
+    const galleryUrl = '/Public/User/pages/gallery.html?organizer_id=' + encodeURIComponent(id);
+    if (allLink) allLink.href = galleryUrl;
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const ytId = (u) => { const m = String(u).match(/embed\/([A-Za-z0-9_-]{11})/); return m ? m[1] : null; };
+
+    function resolveMediaUrl(url) {
+      if (!url) return url;
+      if (url.startsWith('http')) return url;  // Already absolute (YouTube, etc)
+      if (url.startsWith('/')) return window.location.origin + url;  // Relative path
+      return url;
+    }
+
+    function tile(m) {
+      let inner;
+      const resolvedUrl = resolveMediaUrl(m.url);
+      if (m.type === 'image') inner = `<img src="${esc(resolvedUrl)}" loading="lazy" alt="">`;
+      else {
+        const yt = m.source === 'embed' ? ytId(m.url) : null;
+        inner = (yt ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" loading="lazy" alt="">`
+                    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1e293b,#334155);"></div>`)
+              + `<div class="pl"><i class="fas fa-circle-play"></i></div>`;
+      }
+      return `<div class="og-tile" data-type="${esc(m.type)}" data-source="${esc(m.source)}" data-url="${esc(resolvedUrl)}" title="Click to view">${inner}</div>`;
+    }
+
+    // Lightbox: show the image/video large & centered instead of navigating.
+    const lb = document.getElementById('og-lb');
+    const lbInner = document.getElementById('og-lb-inner');
+    function openLB(m) {
+      const resolvedUrl = resolveMediaUrl(m.url);
+      if (m.type === 'image') lbInner.innerHTML = `<img src="${esc(resolvedUrl)}" alt="">`;
+      else if (m.source === 'embed') lbInner.innerHTML = `<iframe src="${esc(resolvedUrl)}?autoplay=1" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>`;
+      else lbInner.innerHTML = `<video src="${esc(resolvedUrl)}" controls autoplay></video>`;
+      lb.classList.add('open');
+    }
+    function closeLB() { lbInner.innerHTML = ''; lb.classList.remove('open'); }
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest && e.target.closest('.og-tile');
+      if (t) { openLB({ type: t.dataset.type, source: t.dataset.source, url: t.dataset.url }); return; }
+      if (e.target === lb || (e.target.id === 'og-lb-close')) closeLB();
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLB(); });
+    // Repeat to fill the strip, then duplicate the whole set so the marquee loops seamlessly (-50%).
+    function buildTrack(el, items) {
+      if (!items.length) return false;
+      const filled = [];
+      while (filled.length < 6) filled.push(...items);
+      const set = filled.map(tile).join('');
+      el.innerHTML = set + set;
+      return true;
+    }
+
+    (async function () {
+      try {
+        const d = await (await fetch('/api/media?organizer_id=' + encodeURIComponent(id))).json();
+        const media = (d && d.media) || [];
+        const photos = media.filter((m) => m.type === 'image');
+        const videos = media.filter((m) => m.type === 'video');
+        if (!photos.length && !videos.length) return;
+        section.style.display = '';
+        if (buildTrack(document.getElementById('og-photos'), photos)) document.getElementById('og-photos-wrap').style.display = '';
+        if (buildTrack(document.getElementById('og-videos'), videos)) document.getElementById('og-videos-wrap').style.display = '';
+      } catch (e) {}
+    })();
+  })();
   </script>
 </body>
 </html>

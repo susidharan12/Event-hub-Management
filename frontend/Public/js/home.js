@@ -24,13 +24,13 @@ const signupBtn = document.getElementById('signup-btn');
 
 if (loginBtn) {
   loginBtn.addEventListener('click', () => {
-    window.location.href = 'Public/auth/pages/login.html';
+    window.location.href = '/Public/auth/pages/login.html';
   });
 }
 
 if (signupBtn) {
   signupBtn.addEventListener('click', () => {
-    window.location.href = 'Public/auth/pages/signup.html';
+    window.location.href = '/Public/auth/pages/signup.html';
   });
 }
 
@@ -40,13 +40,13 @@ const navSignupBtn = document.getElementById('nav-signup');
 
 if (navLoginBtn) {
   navLoginBtn.addEventListener('click', () => {
-    window.location.href = 'Public/auth/pages/login.html';
+    window.location.href = '/Public/auth/pages/login.html';
   });
 }
 
 if (navSignupBtn) {
   navSignupBtn.addEventListener('click', () => {
-    window.location.href = 'Public/auth/pages/signup.html';
+    window.location.href = '/Public/auth/pages/signup.html';
   });
 }
 

@@ -1,14 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
+const fs = require('fs');
 const multer = require('multer');
 const pool = require('../db');
 const authController = require('../controllers/authController');
 const { authenticateToken, authorizeRoles } = require('../middleware/authMiddleware');
 
+// Determine correct uploads directory path
+// In Docker: /app/uploads (volume mount)
+// In local dev: backend/uploads (relative to project root)
+const uploadsDir = process.env.NODE_ENV === 'production'
+  ? '/app/uploads'
+  : path.join(__dirname, '../uploads');
+
+// Ensure uploads directory exists
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Avatar uploads — same /uploads dir used by event images.
 const avatarStorage = multer.diskStorage({
-  destination: function (req, file, cb) { cb(null, 'uploads/'); },
+  destination: function (req, file, cb) { cb(null, uploadsDir); },
   filename: function (req, file, cb) {
     cb(null, 'avatar-' + Date.now() + path.extname(file.originalname));
   }
@@ -170,6 +183,7 @@ router.get('/organizer/:id', async (req, res) => {
       `SELECT id, name, role,
               organization_name, organization_address, organization_phone,
               organization_website, organization_description,
+              instagram_url, facebook_url, whatsapp_link,
               profile_image, address, created_at
          FROM users
         WHERE id = $1 AND role = 'organizer'`,

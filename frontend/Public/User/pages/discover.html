@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/Public/js/api-base-shim.js"></script>
+  <script src="/Public/js/dark-mode.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discover Events — EventHub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6366f1;
+      --secondary: #ec4899;
+      --bg: #f8fafc;
+      --ink: #1f2937;
+      --muted: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    .navbar {
+      background: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+
+    .navbar-menu {
+      display: flex;
+      gap: 30px;
+      align-items: center;
+    }
+
+    .navbar-menu a {
+      color: var(--ink);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .navbar-menu a:hover {
+      color: var(--primary);
+    }
+
+    .navbar-menu a.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 3px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid #e5e7eb;
+    }
+
+    .btn-ghost:hover {
+      background: #f3f4f6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      margin-bottom: 20px;
+      color: var(--ink);
+    }
+
+    .filters {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .filter-group label {
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 0;
+    }
+
+    .tab {
+      padding: 15px 0;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab:hover {
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .event-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+
+    .event-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+
+    .event-card-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+      position: relative;
+    }
+
+    .event-card-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--secondary);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .event-card-content {
+      padding: 15px;
+    }
+
+    .event-card-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    .event-card-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .event-card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .event-card-price {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+
+    .event-card-rating {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.9rem;
+    }
+
+    .star {
+      color: #fbbf24;
+    }
+
+    .watchlist-btn {
+      background: transparent;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #d1d5db;
+      transition: color 0.3s;
+    }
+
+    .watchlist-btn.active {
+      color: var(--secondary);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      color: #d1d5db;
+      margin-bottom: 20px;
+    }
+
+    .empty-state-title {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+      color: var(--ink);
+    }
+
+    .empty-state-text {
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+      .navbar-menu {
+        gap: 15px;
+      }
+
+      .grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      }
+
+      .filters {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <i class="fas fa-bolt"></i>
+      <span>Event<strong style="color: var(--primary)">Hub</strong></span>
+    </div>
+    <div class="navbar-menu">
+      <a href="dashboard.html">My Bookings</a>
+      <a href="discover.html" class="active">Discover</a>
+      <a href="profile.html">Profile</a>
+      <button class="btn btn-primary" onclick="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('recommendations')">Recommended For You</button>
+      <button class="tab" onclick="switchTab('trending')">Trending Events</button>
+      <button class="tab" onclick="switchTab('watchlist')">My Watchlist</button>
+      <button class="tab" onclick="switchTab('search')">Smart Search</button>
+    </div>
+
+    <!-- Recommendations Tab -->
+    <div id="tab-recommendations" class="tab-content">
+      <h2 class="section-title">Recommended For You</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Events based on your booking history and interests</p>
+      <div id="recommendations-grid" class="grid"></div>
+    </div>
+
+    <!-- Trending Tab -->
+    <div id="tab-trending" class="tab-content" style="display: none;">
+      <h2 class="section-title">Trending Events</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Most popular events this month</p>
+      <div id="trending-grid" class="grid"></div>
+    </div>
+
+    <!-- Watchlist Tab -->
+    <div id="tab-watchlist" class="tab-content" style="display: none;">
+      <h2 class="section-title">My Watchlist</h2>
+      <p style="color: var(--muted); margin-bottom: 20px;">Events you're interested in</p>
+      <div id="watchlist-grid" class="grid"></div>
+    </div>
+
+    <!-- Search Tab -->
+    <div id="tab-search" class="tab-content" style="display: none;">
+      <h2 class="section-title">Smart Search</h2>
+
+      <div class="filters">
+        <div class="filter-group">
+          <label>Category:</label>
+          <select id="filter-category">
+            <option value="">All Categories</option>
+            <option value="music">Music</option>
+            <option value="sports">Sports</option>
+            <option value="tech">Tech</option>
+            <option value="business">Business</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Location:</label>
+          <input type="text" id="filter-location" placeholder="Enter city or location">
+        </div>
+        <div class="filter-group">
+          <label>Price Range:</label>
+          <input type="number" id="filter-min-price" placeholder="Min" style="width: 80px;">
+          <span>-</span>
+          <input type="number" id="filter-max-price" placeholder="Max" style="width: 80px;">
+        </div>
+        <div class="filter-group">
+          <label>Min Rating:</label>
+          <select id="filter-rating">
+            <option value="">All Ratings</option>
+            <option value="4">4+ Stars</option>
+            <option value="3.5">3.5+ Stars</option>
+            <option value="3">3+ Stars</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Sort By:</label>
+          <select id="filter-sort">
+            <option value="trending">Trending</option>
+            <option value="rating">Rating</option>
+            <option value="price_low">Price: Low to High</option>
+            <option value="price_high">Price: High to Low</option>
+            <option value="date">Nearest Events</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="performSearch()">Search</button>
+      </div>
+
+      <div id="search-grid" class="grid"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin + '/api';
+
+    // Tab switching
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+
+      document.getElementById(`tab-${tabName}`).style.display = 'block';
+      event.target.classList.add('active');
+
+      if (tabName === 'recommendations') loadRecommendations();
+      else if (tabName === 'trending') loadTrending();
+      else if (tabName === 'watchlist') loadWatchlist();
+    }
+
+    // Load recommendations
+    async function loadRecommendations() {
+      try {
+        const response = await fetch(`${API_BASE}/recommendations/recommendations`);
+        const data = await response.json();
+        renderEvents(data.recommendations, 'recommendations-grid');
+      } catch (err) {
+        console.error('Error loading recommendations:', err);
+        document.getElementById('recommendations-grid').innerHTML = '<div class="empty-state"><div class="empty-state-text">Failed to load recommendations</div></div>';
+      }
+    }
+
+    // Load trending
+    async function loadTrending() {
+      try {
+        const response = await fetch(`${API_BASE}/recommendations/trending`);
+        const data = await response.json();
+        renderEvents(data.trending_events, 'trending-grid');
+      } catch (err) {
+        console.error('Error loading trending:', err);
+        document.getElementById('trending-grid').innerHTML = '<div class="empty-state"><div class="empty-state-text">Failed to load trending events</div></div>';
+      }
+    }
+
+    // Load watchlist
+    async function loadWatchlist() {
+      try {
+        const response = await fetch(`${API_BASE}/recommendations/watchlist`);
+        const data = await response.json();
+        if (data.watchlist.length === 0) {
+          document.getElementById('watchlist-grid').innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="fas fa-heart"></i></div><div class="empty-state-title">No items in watchlist</div><div class="empty-state-text">Start adding events to your watchlist to keep track of your favorites</div></div>';
+        } else {
+          renderEvents(data.watchlist, 'watchlist-grid');
+        }
+      } catch (err) {
+        console.error('Error loading watchlist:', err);
+        document.getElementById('watchlist-grid').innerHTML = '<div class="empty-state"><div class="empty-state-text">Failed to load watchlist</div></div>';
+      }
+    }
+
+    // Perform search
+    async function performSearch() {
+      const params = new URLSearchParams({
+        category: document.getElementById('filter-category').value,
+        location: document.getElementById('filter-location').value,
+        minPrice: document.getElementById('filter-min-price').value,
+        maxPrice: document.getElementById('filter-max-price').value,
+        minRating: document.getElementById('filter-rating').value,
+        sortBy: document.getElementById('filter-sort').value
+      });
+
+      try {
+        const response = await fetch(`${API_BASE}/recommendations/search?${params}`);
+        const data = await response.json();
+        renderEvents(data.events, 'search-grid');
+      } catch (err) {
+        console.error('Error searching:', err);
+        document.getElementById('search-grid').innerHTML = '<div class="empty-state"><div class="empty-state-text">Failed to search events</div></div>';
+      }
+    }
+
+    // Render events
+    function renderEvents(events, gridId) {
+      const grid = document.getElementById(gridId);
+      if (!events || events.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon"><i class="fas fa-search"></i></div><div class="empty-state-title">No events found</div><div class="empty-state-text">Try adjusting your filters or search criteria</div></div>';
+        return;
+      }
+
+      grid.innerHTML = events.map(event => `
+        <div class="event-card">
+          <div style="position: relative;">
+            <img src="${event.image_url || '/Public/assets/placeholder.png'}" alt="${event.title}" class="event-card-image">
+            ${event.avg_rating ? `<div class="event-card-badge">⭐ ${parseFloat(event.avg_rating).toFixed(1)}</div>` : ''}
+          </div>
+          <div class="event-card-content">
+            <h3 class="event-card-title">${event.title}</h3>
+            <div class="event-card-meta">
+              <i class="fas fa-map-marker-alt"></i> ${event.location}
+            </div>
+            <div class="event-card-meta">
+              <i class="fas fa-calendar"></i> ${new Date(event.event_date).toLocaleDateString()}
+            </div>
+            <div class="event-card-footer">
+              <span class="event-card-price">₹${event.ticket_price}</span>
+              <button class="watchlist-btn" onclick="toggleWatchlist(${event.id})">
+                <i class="fas fa-heart"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Toggle watchlist
+    async function toggleWatchlist(eventId) {
+      try {
+        const response = await fetch(`${API_BASE}/recommendations/watchlist/${eventId}`, {
+          method: 'POST'
+        });
+        if (response.ok) {
+          // Reload current tab
+          const activeTab = document.querySelector('.tab.active').textContent;
+          if (activeTab.includes('Recommended')) loadRecommendations();
+          else if (activeTab.includes('Trending')) loadTrending();
+          else if (activeTab.includes('Watchlist')) loadWatchlist();
+        }
+      } catch (err) {
+        console.error('Error toggling watchlist:', err);
+      }
+    }
+
+    // Logout
+    function logout() {
+      fetch(`${API_BASE}/auth/logout`, { method: 'POST' }).then(() => {
+        localStorage.clear();
+        window.location.href = '/Public/auth/pages/login.html';
+      });
+    }
+
+    // Load initial recommendations
+    window.addEventListener('load', loadRecommendations);
+  </script>
+</body>
+</html>

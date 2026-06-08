@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="/Public/js/api-base-shim.js"></script>
+  <script src="/Public/js/dark-mode.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -31,6 +32,35 @@
       --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
       --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
       --nav-height: 76px;
+    }
+
+    /* DARK MODE SIDEBAR FIX - Override text colors in dark mode */
+    html.dark-mode .sidebar-menu a {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode .sidebar-menu a i {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode .sidebar-menu li {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode .sidebar-menu span {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode .sidebar {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode .sidebar * {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode body {
+      color: #f1f5f9 !important;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1113,8 +1143,10 @@
       overflow: visible;
       position: relative;
     }
-    /* Image rounds itself — the parent no longer clips overflow. */
-    .avatar-big img { width: 100%; height: 100%; object-fit: cover; border-radius: 24px; display: block; }
+    /* Image absolutely fills the fixed 96×96 box (object-fit:cover keeps aspect,
+       crops overflow). Absolute positioning avoids the grid centering sizing the
+       replaced <img> to its intrinsic dimensions and overflowing. */
+    .avatar-big img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 24px; display: block; }
     .avatar-edit-btn {
       position: absolute;
       bottom: -6px; right: -6px;
@@ -1546,6 +1578,7 @@
     <div class="header-nav">
       <a onclick="showSection('events')">My Events</a>
       <a onclick="showSection('create')">Create Event</a>
+      <button id="dark-mode-toggle" class="btn btn-icon" title="Toggle dark mode" style="background: none; border: none; padding: 8px 10px; font-size: 18px; cursor: pointer; color: var(--ink); transition: all 0.3s ease; border-radius: 8px;"><i class="fas fa-moon"></i></button>
       <div class="user-menu" onclick="toggleDropdown()">
         <div class="user-info-top">
           <span class="name" id="top-username">Loading…</span>
@@ -1576,6 +1609,8 @@
             <li><a onclick="showSection('create')" id="nav-create"><i class="fas fa-plus-circle"></i> Create Event</a></li>
             <li><a onclick="showSection('bookings')" id="nav-bookings"><i class="fas fa-ticket"></i> Bookings</a></li>
             <li><a onclick="showSection('earnings')" id="nav-earnings"><i class="fas fa-indian-rupee-sign"></i> Earnings</a></li>
+            <li><a onclick="showSection('promos')" id="nav-promos"><i class="fas fa-tags"></i> Promotions</a></li>
+            <li><a onclick="showSection('gallery')" id="nav-gallery"><i class="fas fa-images"></i> Gallery</a></li>
             <li><a onclick="showSection('scanner')"  id="nav-scanner"><i class="fas fa-qrcode"></i> Scanner</a></li>
             <li><a onclick="showSection('messages')" id="nav-messages"><i class="fas fa-comment"></i> Messages <span class="nav-badge" id="nav-messages-badge">0</span></a></li>
             <li><a onclick="showSection('profile')" id="nav-profile"><i class="fas fa-user"></i> Profile</a></li>
@@ -1813,6 +1848,21 @@
                 </div>
                 <div class="form-group"><label>Organization Address</label><textarea id="prof-org-address" placeholder="Street, City, State, PIN"></textarea></div>
                 <div class="form-group"><label>Website</label><input type="url" id="prof-org-website" placeholder="https://example.com"></div>
+                <h4 style="margin-top: 1.5rem; margin-bottom: 0.75rem; color: var(--ink); font-weight: 600;">Social Media Links (Optional)</h4>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label><i class="fab fa-instagram" style="color: #e1306c; margin-right: 0.5rem;"></i>Instagram</label>
+                    <input type="text" id="prof-org-instagram" placeholder="@yourhandle or https://instagram.com/yourhandle">
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fab fa-facebook" style="color: #1877f2; margin-right: 0.5rem;"></i>Facebook</label>
+                    <input type="text" id="prof-org-facebook" placeholder="yourpage or https://facebook.com/yourpage">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label><i class="fab fa-whatsapp" style="color: #25d366; margin-right: 0.5rem;"></i>WhatsApp Number</label>
+                  <input type="text" id="prof-org-whatsapp" placeholder="+91 98765 43210 or 9876543210">
+                </div>
                 <div class="form-group"><label>About the Organization</label><textarea id="prof-org-description" placeholder="What attendees should know about you"></textarea></div>
               </div>
 
@@ -1932,6 +1982,124 @@
               </div>
             </div>
           </section>
+
+          <section id="promos-section" class="section">
+            <span class="eyebrow">Growth</span>
+            <h2>Promotions</h2>
+            <p style="color:var(--muted); margin:0.4rem 0 1.6rem;">Create discount codes for your events, and share your referral code to bring in new attendees.</p>
+
+            <style>
+              #promos-section input, #promos-section select{ padding:10px 12px !important; border:1px solid #e5e7eb !important; border-radius:10px !important; font-size:.9rem; outline:none; transition:border-color .15s, box-shadow .15s; background:#fff; }
+              #promos-section input:focus, #promos-section select:focus{ border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+              #promos-section table th{ padding:12px 10px; }
+              #promos-section table td{ padding:13px 10px; border-top:1px solid #f1f5f9; }
+              #promos-section tbody tr:hover{ background:#fafbff; }
+              .pc-badge{ display:inline-block; padding:4px 12px; border-radius:999px; font-weight:700; font-size:.76rem; }
+              .pc-badge.on{ background:#dcfce7; color:#059669; }
+              .pc-badge.off{ background:#fee2e2; color:#dc2626; }
+              .pc-codepill{ font-weight:800; letter-spacing:.03em; background:#eef0fb; color:#4f46e5; padding:4px 10px; border-radius:8px; }
+              .pc-del{ border:none; background:#fee2e2; color:#dc2626; border-radius:9px; width:34px; height:34px; cursor:pointer; font-size:.9rem; transition:background .15s; }
+              .pc-del:hover{ background:#fecaca; }
+              /* Create-promo form */
+              .pc-form-card{ background:#fff; border:1px solid #eceefb; border-radius:18px; padding:1.5rem 1.7rem; margin-bottom:1.6rem; box-shadow:0 12px 34px -24px rgba(15,23,42,.55); }
+              .pc-form-card h3{ margin:0 0 1.3rem; font-size:1.1rem; display:flex; align-items:center; gap:9px; }
+              .pc-form-card h3 .ic{ width:30px; height:30px; border-radius:9px; background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; display:grid; place-items:center; font-size:.85rem; }
+              .pc-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:1.05rem 1.1rem; align-items:end; }
+              .pc-field label{ display:block; font-size:.68rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:.07em; margin-bottom:7px; }
+              .pc-field input, .pc-field select{ width:100%; }
+              #promos-section #pc-create{ width:100%; justify-content:center; padding:11px 18px; font-weight:700; }
+            </style>
+
+            <!-- Refer & Earn -->
+            <div style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:16px;padding:1.2rem 1.4rem;margin-bottom:1.6rem;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;">
+              <div>
+                <div style="font-weight:800;font-size:1.05rem;"><i class="fas fa-gift"></i> Refer &amp; Earn</div>
+                <div style="opacity:.9;font-size:.85rem;margin-top:2px;">Friends get <b>10% off</b> their first booking when they use your code.</div>
+                <div style="margin-top:.7rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+                  <code id="ref-code" style="background:rgba(255,255,255,.22);padding:7px 14px;border-radius:8px;font-weight:800;letter-spacing:.06em;font-size:1rem;">…</code>
+                  <button type="button" id="ref-copy" style="border:none;background:#fff;color:#4f46e5;font-weight:700;border-radius:8px;padding:8px 14px;cursor:pointer;">Copy link</button>
+                </div>
+              </div>
+              <div style="text-align:right;font-size:.9rem;opacity:.95;line-height:1.6;">
+                <div><b id="ref-uses" style="font-size:1.3rem;">0</b> uses</div>
+                <div>₹<b id="ref-saved">0</b> saved for friends</div>
+              </div>
+            </div>
+
+            <!-- Create promo -->
+            <div class="pc-form-card">
+              <h3><span class="ic"><i class="fas fa-ticket"></i></span> Create a promo code</h3>
+              <div class="pc-grid">
+                <div class="pc-field"><label>Code</label><input id="pc-code" placeholder="SAVE20" style="text-transform:uppercase;"></div>
+                <div class="pc-field"><label>Type</label><select id="pc-type"><option value="percent">Percent (%)</option><option value="flat">Flat (₹)</option></select></div>
+                <div class="pc-field"><label>Value</label><input id="pc-value" type="number" min="1" placeholder="20"></div>
+                <div class="pc-field"><label>Event</label><select id="pc-event"><option value="">All my events</option></select></div>
+                <div class="pc-field"><label>Max uses</label><input id="pc-maxuses" type="number" min="1" placeholder="Unlimited"></div>
+                <div class="pc-field"><label>Expires</label><input id="pc-expiry" type="date"></div>
+                <div class="pc-field"><label>&nbsp;</label><button type="button" id="pc-create" class="btn btn-primary"><i class="fas fa-plus"></i> Create</button></div>
+              </div>
+              <p id="pc-msg" style="margin:.9rem 0 0;font-size:.85rem;"></p>
+            </div>
+
+            <!-- List -->
+            <div style="background:#fff;border:1px solid #eceefb;border-radius:16px;padding:1rem 1.2rem;overflow-x:auto;">
+              <h3 style="margin:0 0 .8rem;">Your codes</h3>
+              <table style="width:100%;border-collapse:collapse;font-size:.9rem;">
+                <thead><tr style="text-align:left;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;">
+                  <th>Code</th><th>Discount</th><th>Scope</th><th>Used</th><th>Saved</th><th>Status</th><th style="text-align:right;">Action</th>
+                </tr></thead>
+                <tbody id="pc-list"><tr><td colspan="7" style="padding:1rem;color:var(--muted);">Loading…</td></tr></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="gallery-section" class="section">
+            <span class="eyebrow">Showcase</span>
+            <h2>Photos &amp; Videos Gallery</h2>
+            <p style="color:var(--muted); margin:0.4rem 0 1.2rem;">Upload photos and videos — they appear on the public Gallery and your organizer profile.</p>
+
+            <style>
+              .gl-tab{border:none;background:#eef0fb;color:#475569;font-weight:700;border-radius:10px;padding:10px 24px;cursor:pointer;font-size:.95rem;display:inline-flex;align-items:center;gap:8px;}
+              .gl-tab.active{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 8px 18px -10px rgba(99,102,241,.7);}
+              .gl-up{background:#fff;border:1px solid #eceefb;border-radius:16px;padding:1.2rem 1.4rem;margin-bottom:1.4rem;display:flex;flex-wrap:wrap;gap:1rem;align-items:end;}
+              .gl-up label{display:block;font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:5px;}
+              .gl-up input[type=text]{padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;min-width:240px;}
+              /* Attractive native file picker */
+              .gl-up input[type=file]{font-size:.85rem;color:#64748b;border:1px solid #e5e7eb;border-radius:10px;padding:7px 10px;background:#fafbff;max-width:300px;}
+              .gl-up input[type=file]::file-selector-button{border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;margin-right:12px;transition:filter .15s;}
+              .gl-up input[type=file]::file-selector-button:hover{filter:brightness(1.08);}
+              /* Bigger cards, exactly 3 per row */
+              .gl-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;}
+            </style>
+
+            <div style="display:flex;gap:10px;margin-bottom:1.4rem;justify-content:center;">
+              <button type="button" class="gl-tab active" data-tab="photo"><i class="fas fa-image"></i> Photos</button>
+              <button type="button" class="gl-tab" data-tab="video"><i class="fas fa-film"></i> Videos</button>
+            </div>
+
+            <!-- Photos tab -->
+            <div id="gl-panel-photo">
+              <div class="gl-up">
+                <div><label>Choose a photo</label><input id="gl-photo-file" type="file" accept="image/*" style="font-size:.85rem;"></div>
+                <button type="button" id="gl-photo-add" class="btn btn-primary"><i class="fas fa-upload"></i> Upload photo</button>
+                <p id="gl-photo-msg" style="width:100%;margin:0;font-size:.85rem;"></p>
+              </div>
+              <div id="gl-photo-grid" class="gl-grid"></div>
+            </div>
+
+            <!-- Videos tab -->
+            <div id="gl-panel-video" style="display:none;">
+              <div class="gl-up">
+                <div><label>Upload a clip <span style="font-weight:400;">(≤30 MB)</span></label><input id="gl-video-file" type="file" accept="video/*" style="font-size:.85rem;"></div>
+                <div style="color:var(--muted);font-size:.85rem;padding-bottom:9px;">— or —</div>
+                <div><label>Paste a video link (YouTube/Vimeo)</label><input id="gl-video-link" type="text" placeholder="https://youtu.be/…"></div>
+                <button type="button" id="gl-video-add" class="btn btn-primary"><i class="fas fa-plus"></i> Add video</button>
+                <p id="gl-video-msg" style="width:100%;margin:0;font-size:.85rem;"></p>
+              </div>
+              <div id="gl-video-grid" class="gl-grid"></div>
+            </div>
+          </section>
+
           <section id="scanner-section" class="section">
             <span class="eyebrow">At the gate</span>
             <h2>Ticket Scanner</h2>
@@ -2313,6 +2481,192 @@
     // Defaults so the submit handler always has something to read.
     window.__getSeatingLayout = getLayout;
     window.__isReservedSeating = function () { return reservedEl.checked; };
+  })();
+  </script>
+
+  <!-- ── Promotions: promo codes + referral ────────────────────────── -->
+  <script>
+  (function () {
+    function token() { return localStorage.getItem('token') || localStorage.getItem('authToken') || localStorage.getItem('eventhub_token') || localStorage.getItem('auth_token') || ''; }
+    function authHeaders() { return { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() }; }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+    async function loadReferral() {
+      try {
+        const d = await (await fetch('/api/referrals/me', { headers: authHeaders() })).json();
+        if (!d || !d.code) return;
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        set('ref-code', d.code); set('ref-uses', d.uses || 0); set('ref-saved', d.friends_saved || 0);
+        const copyBtn = document.getElementById('ref-copy');
+        if (copyBtn) copyBtn.onclick = () => {
+          const link = location.origin + '/Public/User/pages/events.html?ref=' + d.code;
+          const text = `Use my code ${d.code} for 10% off your first booking on EventHub! ${link}`;
+          navigator.clipboard.writeText(text)
+            .then(() => { copyBtn.textContent = 'Copied!'; setTimeout(() => copyBtn.textContent = 'Copy link', 1500); })
+            .catch(() => prompt('Copy your referral link:', text));
+        };
+      } catch (e) {}
+    }
+
+    async function loadEventsDropdown() {
+      const sel = document.getElementById('pc-event'); if (!sel) return;
+      try {
+        let userId = null;
+        try { const u = JSON.parse(localStorage.getItem('user') || localStorage.getItem('auth_user') || 'null'); userId = u && (u.id || u.userId); } catch (_) {}
+        const data = await (await fetch('/api/events')).json();
+        const list = Array.isArray(data) ? data : (data.events || []);
+        const mine = userId ? list.filter((e) => Number(e.organizer_id) === Number(userId)) : list;
+        sel.innerHTML = '<option value="">All my events</option>' + mine.map((e) => `<option value="${e.id}">${esc(e.title)}</option>`).join('');
+      } catch (e) {}
+    }
+
+    async function loadList() {
+      const body = document.getElementById('pc-list'); if (!body) return;
+      try {
+        const d = await (await fetch('/api/promos', { headers: authHeaders() })).json();
+        const promos = (d && d.promos) || [];
+        if (!promos.length) { body.innerHTML = '<tr><td colspan="7" style="padding:1rem;color:var(--muted);">No codes yet — create one above.</td></tr>'; return; }
+        body.innerHTML = promos.map((p) => {
+          const disc = p.discount_type === 'percent' ? (Number(p.discount_value) + '%') : ('₹' + Number(p.discount_value));
+          const scope = p.kind === 'referral' ? 'Referral' : (p.event_title ? esc(p.event_title) : 'All events');
+          const used = p.max_uses ? (p.used_count + '/' + p.max_uses) : p.used_count;
+          const active = p.active && (!p.expires_at || new Date(p.expires_at) > new Date());
+          const status = active ? '<span class="pc-badge on">Active</span>' : '<span class="pc-badge off">Inactive</span>';
+          const del = p.kind === 'referral' ? '' : `<button class="pc-del" data-pcdel="${p.id}" title="Delete code"><i class="fas fa-trash"></i></button>`;
+          return `<tr><td><span class="pc-codepill">${esc(p.code)}</span></td><td>${disc}</td><td>${scope}</td><td>${used}</td><td>₹${Number(p.total_discounted || 0)}</td><td>${status}</td><td style="text-align:right;">${del}</td></tr>`;
+        }).join('');
+      } catch (e) { body.innerHTML = '<tr><td colspan="7" style="padding:1rem;color:#dc2626;">Failed to load codes.</td></tr>'; }
+    }
+
+    window.loadPromos = function () { loadReferral(); loadEventsDropdown(); loadList(); };
+
+    document.addEventListener('click', async (e) => {
+      // Delete a promo code.
+      const del = e.target.closest && e.target.closest('[data-pcdel]');
+      if (del) {
+        const ok = (window.Popup && window.Popup.confirm)
+          ? await window.Popup.confirm('This promo code will be permanently removed and can’t be used again.', { title: 'Delete promo code?', okLabel: 'Delete', cancelLabel: 'Cancel', type: 'warning' })
+          : confirm('Delete this promo code?');
+        if (!ok) return;
+        try {
+          const r = await fetch('/api/promos/' + del.dataset.pcdel, { method: 'DELETE', headers: authHeaders() });
+          if (r.ok) { if (window.Popup) window.Popup.success('Promo code deleted'); loadList(); }
+          else { const d = await r.json(); (window.Popup ? window.Popup.error(d.error || 'Could not delete') : alert(d.error || 'Could not delete')); }
+        } catch (_) {}
+        return;
+      }
+      if (!e.target || e.target.id !== 'pc-create') return;
+      const msg = document.getElementById('pc-msg');
+      const setMsg = (t, ok) => { if (msg) { msg.textContent = t; msg.style.color = ok ? '#059669' : '#dc2626'; } };
+      const code = (document.getElementById('pc-code').value || '').trim().toUpperCase();
+      const discount_type = document.getElementById('pc-type').value;
+      const discount_value = document.getElementById('pc-value').value;
+      const event_id = document.getElementById('pc-event').value || null;
+      const max_uses = document.getElementById('pc-maxuses').value || null;
+      const expires_at = document.getElementById('pc-expiry').value || null;
+      if (!code || !discount_value) { setMsg('Enter a code and a discount value.', false); return; }
+      e.target.disabled = true;
+      try {
+        const r = await fetch('/api/promos', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ code, discount_type, discount_value, event_id, max_uses, expires_at }) });
+        const d = await r.json();
+        if (r.ok) { setMsg('✓ Created ' + code, true); document.getElementById('pc-code').value = ''; document.getElementById('pc-value').value = ''; loadList(); }
+        else setMsg(d.error || 'Failed to create.', false);
+      } catch (err) { setMsg('Network error — try again.', false); }
+      finally { e.target.disabled = false; }
+    });
+  })();
+  </script>
+  <!-- ── Gallery manager (organizer) — Photo / Video tabs ──────────── -->
+  <script>
+  (function () {
+    function token() { return localStorage.getItem('token') || localStorage.getItem('authToken') || localStorage.getItem('eventhub_token') || localStorage.getItem('auth_token') || ''; }
+    function myId() { try { const u = JSON.parse(localStorage.getItem('user') || localStorage.getItem('auth_user') || 'null'); return u && (u.id || u.userId); } catch (_) { return null; } }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+    function card(m) {
+      let thumb;
+      if (m.type === 'image') thumb = `<img src="${esc(m.url)}" style="width:100%;height:210px;object-fit:cover;display:block;">`;
+      else if (m.source === 'embed') {
+        const yt = (String(m.url).match(/embed\/([A-Za-z0-9_-]{11})/) || [])[1];
+        thumb = yt
+          ? `<img src="https://img.youtube.com/vi/${yt}/hqdefault.jpg" style="width:100%;height:210px;object-fit:cover;display:block;"><div style="position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:2rem;text-shadow:0 2px 8px rgba(0,0,0,.6);"><i class="fas fa-circle-play"></i></div>`
+          : `<div style="height:210px;background:#0f172a;color:#fff;display:grid;place-items:center;"><i class="fas fa-circle-play" style="font-size:2rem;"></i></div>`;
+      } else thumb = `<video src="${esc(m.url)}" style="width:100%;height:210px;object-fit:cover;display:block;" muted></video>`;
+      return `<div style="border:1px solid #eceefb;border-radius:12px;overflow:hidden;position:relative;background:#fff;">${thumb}
+        <button data-del="${m.id}" title="Delete" style="position:absolute;top:6px;right:6px;border:none;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:26px;height:26px;cursor:pointer;line-height:1;">×</button></div>`;
+    }
+
+    async function loadGrids() {
+      const pg = document.getElementById('gl-photo-grid'), vg = document.getElementById('gl-video-grid');
+      const uid = myId();
+      try {
+        const d = await (await fetch('/api/media' + (uid ? ('?organizer_id=' + encodeURIComponent(uid)) : ''))).json();
+        const media = (d && d.media) || [];
+        const photos = media.filter((m) => m.type === 'image');
+        const videos = media.filter((m) => m.type === 'video');
+        if (pg) pg.innerHTML = photos.length ? photos.map(card).join('') : '<p style="color:var(--muted);">No photos yet.</p>';
+        if (vg) vg.innerHTML = videos.length ? videos.map(card).join('') : '<p style="color:var(--muted);">No videos yet.</p>';
+      } catch (e) {
+        if (pg) pg.innerHTML = '<p style="color:#dc2626;">Failed to load.</p>';
+      }
+    }
+
+    window.loadGallery = function () { loadGrids(); };
+
+    async function upload(file, link, btn, msgEl) {
+      const setMsg = (t, ok) => { if (msgEl) { msgEl.textContent = t; msgEl.style.color = ok ? '#059669' : '#dc2626'; } };
+      if (!file && !link) { setMsg('Choose a file' + (link === '' ? ' or paste a link.' : '.'), false); return; }
+      const fd = new FormData();
+      if (file) fd.append('media', file); else fd.append('video_url', link);
+      btn.disabled = true; setMsg('Uploading…', true);
+      try {
+        const r = await fetch('/api/media', { method: 'POST', headers: { Authorization: 'Bearer ' + token() }, body: fd });
+        const d = await r.json();
+        if (r.ok) { setMsg('✓ Added', true); loadGrids(); }
+        else setMsg(d.error || 'Upload failed.', false);
+      } catch (e) { setMsg('Network error — try again.', false); }
+      finally { btn.disabled = false; }
+    }
+
+    document.addEventListener('click', async (e) => {
+      const t = e.target;
+      // Tab switch
+      const tab = t.closest && t.closest('.gl-tab');
+      if (tab) {
+        document.querySelectorAll('.gl-tab').forEach((b) => b.classList.toggle('active', b === tab));
+        const which = tab.dataset.tab;
+        const pp = document.getElementById('gl-panel-photo'), vp = document.getElementById('gl-panel-video');
+        if (pp) pp.style.display = which === 'photo' ? '' : 'none';
+        if (vp) vp.style.display = which === 'video' ? '' : 'none';
+        return;
+      }
+      // Add photo
+      const pAdd = t.id === 'gl-photo-add' ? t : (t.closest && t.closest('#gl-photo-add'));
+      if (pAdd) {
+        const f = document.getElementById('gl-photo-file');
+        await upload(f.files[0], '', pAdd, document.getElementById('gl-photo-msg'));
+        f.value = '';
+        return;
+      }
+      // Add video
+      const vAdd = t.id === 'gl-video-add' ? t : (t.closest && t.closest('#gl-video-add'));
+      if (vAdd) {
+        const f = document.getElementById('gl-video-file');
+        const linkEl = document.getElementById('gl-video-link');
+        await upload(f.files[0], (linkEl.value || '').trim(), vAdd, document.getElementById('gl-video-msg'));
+        f.value = ''; linkEl.value = '';
+        return;
+      }
+      // Delete
+      if (t.dataset && t.dataset.del) {
+        const ok = (window.Popup && window.Popup.confirm)
+          ? await window.Popup.confirm('This photo/video will be removed from your gallery.', { title: 'Delete media?', okLabel: 'Delete', cancelLabel: 'Cancel', type: 'warning' })
+          : confirm('Delete this item?');
+        if (!ok) return;
+        try { await fetch('/api/media/' + t.dataset.del, { method: 'DELETE', headers: { Authorization: 'Bearer ' + token() } }); if (window.Popup) window.Popup.success('Deleted'); loadGrids(); } catch (_) {}
+      }
+
+    });
   })();
   </script>
 </body>
