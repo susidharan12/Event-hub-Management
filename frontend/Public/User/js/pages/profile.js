@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:3000/api';
+const API_BASE = window.location.origin + '/api';
 
 // Snapshot of the user's CURRENT registered email/mobile, kept in sync by
 // fetchUserProfile() so the form's "did this actually change?" check is

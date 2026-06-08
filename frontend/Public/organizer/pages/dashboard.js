@@ -129,6 +129,8 @@ function showSection(sectionId) {
     if (sectionId === 'bookings') loadOrganizerBookings();
     if (sectionId === 'earnings') loadEarnings();
     if (sectionId === 'scanner')  loadScanner();
+    if (sectionId === 'promos')   loadPromos();
+    if (sectionId === 'gallery')  loadGallery();
     // Stop the camera if the organizer navigates AWAY from the scanner.
     if (sectionId !== 'scanner' && window.__scnHandle) {
         try { window.__scnHandle.stop().catch(() => {}); } catch (_) {}
@@ -1390,6 +1392,10 @@ async function loadProfile() {
             setVal('prof-org-address', u.organization_address);
             setVal('prof-org-website', u.organization_website);
             setVal('prof-org-description', u.organization_description);
+            // Social media fields
+            setVal('prof-org-instagram', u.instagram_url);
+            setVal('prof-org-facebook', u.facebook_url);
+            setVal('prof-org-whatsapp', u.whatsapp_link);
         } else if (orgBlock) {
             orgBlock.style.display = 'none';
         }
@@ -1434,6 +1440,10 @@ async function saveProfile(e) {
         payload.organization_address = document.getElementById('prof-org-address').value.trim();
         payload.organization_website = document.getElementById('prof-org-website').value.trim();
         payload.organization_description = document.getElementById('prof-org-description').value.trim();
+        // Social media fields
+        payload.instagram_url = document.getElementById('prof-org-instagram').value.trim();
+        payload.facebook_url = document.getElementById('prof-org-facebook').value.trim();
+        payload.whatsapp_link = document.getElementById('prof-org-whatsapp').value.trim();
     }
 
     try {

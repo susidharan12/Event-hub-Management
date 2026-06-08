@@ -15,10 +15,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 1. PRE-REQUISITE SETUP
-const uploadsDir = path.join(__dirname, 'uploads');
+// In Docker: uploads volume is mounted at /app/uploads
+// In local dev: use ./uploads in the backend directory
+const uploadsDir = process.env.NODE_ENV === 'production'
+  ? '/app/uploads'
+  : path.join(__dirname, 'uploads');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('Created uploads directory:', uploadsDir);
+} else {
+  console.log('Uploads directory ready:', uploadsDir);
 }
 
 // 2. GLOBAL MIDDLEWARE
@@ -59,7 +66,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
 // 3. DATABASE INITIALIZATION FUNCTION
 async function initializeDatabase() {
@@ -97,6 +104,10 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_phone VARCHAR(20)`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_website VARCHAR(255)`);
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS organization_description TEXT`);
+    // --- SCHEMA MIGRATION: social media links for organizers ---
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS instagram_url VARCHAR(255)`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_url VARCHAR(255)`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_link VARCHAR(255)`);
     // Presence tracking — updated on every authenticated request.
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     // Bookkeeping column carried over from the legacy local DB schema, kept so
@@ -299,6 +310,75 @@ async function initializeDatabase() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_event_seats_event ON event_seats (event_id, status)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_event_seats_hold ON event_seats (hold_expires) WHERE held_by IS NOT NULL`);
 
+    // --- PROMO CODES + REFERRALS ---------------------------------------
+    // Promo codes: organizer- or platform-scoped discounts. discount_type
+    // 'percent' (value = %) or 'flat' (value = ₹ off). kind 'promo' | 'referral'.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS promo_codes (
+        id SERIAL PRIMARY KEY,
+        code           VARCHAR(40)  NOT NULL UNIQUE,
+        kind           VARCHAR(20)  NOT NULL DEFAULT 'promo',     -- 'promo' | 'referral'
+        owner_id       INTEGER REFERENCES users(id)  ON DELETE CASCADE,  -- organizer or referrer
+        event_id       INTEGER REFERENCES events(id) ON DELETE CASCADE,  -- NULL = any event
+        discount_type  VARCHAR(10)  NOT NULL DEFAULT 'percent',   -- 'percent' | 'flat'
+        discount_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+        max_discount   DECIMAL(10,2),                              -- cap for percent codes
+        min_amount     DECIMAL(10,2) DEFAULT 0,
+        max_uses       INTEGER,                                    -- NULL = unlimited
+        per_user_limit INTEGER DEFAULT 1,
+        used_count     INTEGER NOT NULL DEFAULT 0,
+        active         BOOLEAN NOT NULL DEFAULT TRUE,
+        expires_at     TIMESTAMP,
+        created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_promo_code ON promo_codes (UPPER(code))`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_promo_owner ON promo_codes (owner_id)`);
+
+    // Redemptions — one row per applied code (prevents reuse beyond limits).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS promo_redemptions (
+        id SERIAL PRIMARY KEY,
+        promo_id   INTEGER NOT NULL REFERENCES promo_codes(id) ON DELETE CASCADE,
+        user_id    INTEGER REFERENCES users(id)    ON DELETE SET NULL,
+        booking_id INTEGER REFERENCES bookings(id) ON DELETE CASCADE,
+        amount     DECIMAL(10,2) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_promo_redempt ON promo_redemptions (promo_id, user_id)`);
+
+    // Booking: remember the applied discount + code for receipts/analytics.
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS discount_amount DECIMAL(10,2) DEFAULT 0`);
+    await client.query(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS promo_code VARCHAR(40)`);
+
+    // Users: personal referral code + who referred them.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(40)`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users (referral_code) WHERE referral_code IS NOT NULL`);
+
+    // --- PHOTOS & VIDEOS GALLERY ---------------------------------------
+    // One row per media item attached to an event. type: 'image' | 'video'.
+    // source: 'upload' (file in /uploads) | 'embed' (YouTube/Vimeo URL).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS event_media (
+        id SERIAL PRIMARY KEY,
+        event_id     INTEGER REFERENCES events(id) ON DELETE CASCADE,   -- optional: media can be organizer-level
+        organizer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        type         VARCHAR(10)  NOT NULL DEFAULT 'image',   -- 'image' | 'video'
+        source       VARCHAR(10)  NOT NULL DEFAULT 'upload',  -- 'upload' | 'embed'
+        url          TEXT NOT NULL,
+        caption      VARCHAR(300),
+        sort_order   INTEGER DEFAULT 0,
+        featured     BOOLEAN DEFAULT FALSE,
+        created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_event_media_event ON event_media (event_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_event_media_org ON event_media (organizer_id)`);
+    // Existing DBs created event_id NOT NULL — relax it (media may be organizer-level).
+    await client.query(`ALTER TABLE event_media ALTER COLUMN event_id DROP NOT NULL`).catch(() => {});
+
     console.log('Database initialization complete!');
     return true;
   } catch (error) {
@@ -329,6 +409,10 @@ const startServer = async () => {
       const { router: otpRouter } = require('./routes/otp');
       const aiRouter = require('./routes/ai');
       const seatsRouter = require('./routes/seats');
+      const promosRouter = require('./routes/promos');
+      const referralsRouter = require('./routes/referrals');
+      const mediaRouter = require('./routes/media');
+      const recommendationsRouter = require('./routes/recommendations');
 
       // Mount routers to specific paths
       // This enables /api/auth/signup, /api/auth/profile, /api/auth/update-profile etc.
@@ -343,6 +427,10 @@ const startServer = async () => {
       app.use('/api/messages', messagesRouter);
       app.use('/api/otp', otpRouter);
       app.use('/api/ai', aiRouter);
+      app.use('/api/promos', promosRouter);
+      app.use('/api/referrals', referralsRouter);
+      app.use('/api/media', mediaRouter);
+      app.use('/api/recommendations', recommendationsRouter);
 
       console.log('Mounted real API routes (PostgreSQL)');
     } catch (err) {

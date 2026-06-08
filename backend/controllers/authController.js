@@ -12,6 +12,7 @@ exports.signup = async (req, res) => {
     name, mobile, email, password, role, address,
     organization_name, organization_address, organization_phone,
     organization_website, organization_description,
+    instagram_url, facebook_url, whatsapp_link,
     // Optional: a verification_token issued by /api/otp/verify with
     // purpose='signup'. When supplied we consume it and trust the email
     // is verified. When absent we still accept the signup (back-compat).
@@ -73,12 +74,14 @@ exports.signup = async (req, res) => {
       `INSERT INTO users (
          name, mobile, email, password_hash, role, address,
          organization_name, organization_address, organization_phone,
-         organization_website, organization_description
+         organization_website, organization_description,
+         instagram_url, facebook_url, whatsapp_link
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
        RETURNING id, name, email, mobile, role, profile_image, address,
                  organization_name, organization_address, organization_phone,
-                 organization_website, organization_description`,
+                 organization_website, organization_description,
+                 instagram_url, facebook_url, whatsapp_link`,
       [
         name, mobile, email, hashedPassword, role || 'explorer',
         address || null,
@@ -86,7 +89,10 @@ exports.signup = async (req, res) => {
         role === 'organizer' ? (organization_address || null) : null,
         role === 'organizer' ? (organization_phone || null) : null,
         role === 'organizer' ? (organization_website || null) : null,
-        role === 'organizer' ? (organization_description || null) : null
+        role === 'organizer' ? (organization_description || null) : null,
+        role === 'organizer' ? (instagram_url || null) : null,
+        role === 'organizer' ? (facebook_url || null) : null,
+        role === 'organizer' ? (whatsapp_link || null) : null
       ]
     );
 
@@ -196,7 +202,8 @@ exports.getProfile = async (req, res) => {
     const user = await pool.query(
       `SELECT id, name, mobile, email, role, profile_image, address,
               organization_name, organization_address, organization_phone,
-              organization_website, organization_description, created_at
+              organization_website, organization_description,
+              instagram_url, facebook_url, whatsapp_link, created_at
          FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -219,6 +226,9 @@ exports.getProfile = async (req, res) => {
       organization_phone: d.organization_phone,
       organization_website: d.organization_website,
       organization_description: d.organization_description,
+      instagram_url: d.instagram_url,
+      facebook_url: d.facebook_url,
+      whatsapp_link: d.whatsapp_link,
       created_at: d.created_at
     });
   } catch (err) {
@@ -233,6 +243,7 @@ exports.updateProfile = async (req, res) => {
     name, mobile, email, address,
     organization_name, organization_address, organization_phone,
     organization_website, organization_description,
+    instagram_url, facebook_url, whatsapp_link,
     // Optional OTP tokens — required when the corresponding contact field
     // is being changed. Caller obtains them via /api/otp/verify.
     email_verification_token,
@@ -256,6 +267,9 @@ exports.updateProfile = async (req, res) => {
   push('organization_phone', organization_phone);
   push('organization_website', organization_website);
   push('organization_description', organization_description);
+  push('instagram_url', instagram_url);
+  push('facebook_url', facebook_url);
+  push('whatsapp_link', whatsapp_link);
 
   if (sets.length === 0) {
     return res.status(400).json({ message: 'No fields to update' });
@@ -297,7 +311,8 @@ exports.updateProfile = async (req, res) => {
                  WHERE id = $${values.length}
                  RETURNING id, name, mobile, email, role, profile_image, address,
                            organization_name, organization_address, organization_phone,
-                           organization_website, organization_description`;
+                           organization_website, organization_description,
+                           instagram_url, facebook_url, whatsapp_link`;
     const result = await pool.query(sql, values);
     res.json({ message: "Profile updated successfully", user: result.rows[0] });
   } catch (err) {

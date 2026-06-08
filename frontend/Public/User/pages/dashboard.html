@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="/Public/js/api-base-shim.js"></script>
+  <script src="/Public/js/dark-mode.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -32,6 +33,19 @@
       --shadow-card: 0 18px 40px rgba(15, 23, 42, 0.08);
       --shadow-card-hover: 0 30px 60px rgba(99, 102, 241, 0.25);
       --nav-height: 76px;
+    }
+
+    /* DARK MODE TEXT FIX - Force all text to be visible in dark mode */
+    html.dark-mode {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode * {
+      color: #f1f5f9 !important;
+    }
+
+    html.dark-mode body {
+      color: #f1f5f9 !important;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -165,6 +179,38 @@
       border: 1px solid rgba(255,255,255,0.3);
     }
     .btn-secondary:hover { background: rgba(255,255,255,0.28); transform: translateY(-2px); }
+
+    /* Dark mode toggle button */
+    #dark-mode-toggle {
+      position: relative;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 10px !important;
+      background: rgba(99, 102, 241, 0.08) !important;
+      border: 1px solid rgba(99, 102, 241, 0.2) !important;
+      border-radius: 8px !important;
+      color: var(--ink) !important;
+      font-size: 18px !important;
+      cursor: pointer;
+      transition: all 0.3s ease !important;
+      margin-right: 8px;
+    }
+
+    #dark-mode-toggle:hover {
+      background: rgba(99, 102, 241, 0.15) !important;
+      transform: scale(1.15);
+    }
+
+    html.dark-mode #dark-mode-toggle {
+      background: rgba(129, 140, 248, 0.2) !important;
+      border: 1px solid rgba(129, 140, 248, 0.3) !important;
+      color: #e0e7ff !important;
+    }
+
+    html.dark-mode #dark-mode-toggle:hover {
+      background: rgba(129, 140, 248, 0.3) !important;
+    }
 
     /* ───────── Hero ───────── */
     .hero {
@@ -889,6 +935,7 @@
       <li><a href="booking-history.html">My Bookings</a></li>
     </ul>
     <div class="nav-auth">
+      <button id="dark-mode-toggle" class="btn btn-icon" title="Toggle dark mode" style="background: none; border: none; padding: 8px 10px; font-size: 18px; cursor: pointer; color: var(--ink); transition: all 0.3s ease; border-radius: 8px;"><i class="fas fa-moon"></i></button>
       <button onclick="window.location.href='./profile.html'" class="btn btn-ghost"><i class="fas fa-user-circle"></i> Profile</button>
       <button id="logout-btn" class="btn btn-primary"><i class="fas fa-sign-out-alt"></i> Logout</button>
     </div>
@@ -1020,8 +1067,8 @@
     // ───────── Owns event loading + rendering + search + category filter ─────────
     // (The external Dashboard.js was intentionally not included here — this script
     //  provides loading, search, and now category filtering with the redesigned cards.)
-    const API_BASE = 'http://localhost:3000/api';
-    const SERVER_URL = 'http://localhost:3000';
+    const API_BASE = window.location.origin + '/api';
+    const SERVER_URL = window.location.origin;
     let allEvents = [];
     let activeCategory = 'all';
     let activeSearch = '';
@@ -1388,6 +1435,10 @@
       const viewAllBtn = document.getElementById('view-all-btn');
       if (viewAllBtn) viewAllBtn.addEventListener('click', toggleShowAll);
       loadEvents();
+      // Setup dark mode navbar button
+      if (window.DarkMode && window.DarkMode.setupNavbarButton) {
+        window.DarkMode.setupNavbarButton('#dark-mode-toggle');
+      }
     });
   </script>
   <script src="/Public/js/chat-widget.js"></script>

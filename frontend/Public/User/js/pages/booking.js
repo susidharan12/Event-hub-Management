@@ -186,10 +186,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ticketHolder = ticketHolderInput.value.trim() || 'Demo User';
 
         const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value || 'card';
-        // For reserved seating the backend re-prices from zones; this is display only.
-        const totalAmount = reserved
-          ? (Number(window.__seatTotal) || 0)
-          : numTickets * currentTicketPrice;
+        // Amount incl. tiered GST. The backend re-computes this authoritatively;
+        // this value is for display / localStorage fallback.
+        const totalAmount = (typeof window.payableTotal === 'function')
+          ? window.payableTotal()
+          : (reserved ? (Number(window.__seatTotal) || 0) : numTickets * currentTicketPrice);
 
         // Get user ID from local storage
         const userJSON = localStorage.getItem('user') || localStorage.getItem('auth_user');
@@ -212,6 +213,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           seats_booked: Number(numTickets),
           // Reserved seating: send the specific seats so the backend books them.
           ...(reserved ? { seat_labels: seatLabels } : {}),
+          // Promo / referral code (backend re-validates and applies it).
+          ...(window.__promo && window.__promo.code ? { promo_code: window.__promo.code } : {}),
           total_price: Number(totalAmount),
           payment_method: paymentMethod,
           transaction_id: 'TXN-' + Math.random().toString(36).substr(2, 9).toUpperCase(),

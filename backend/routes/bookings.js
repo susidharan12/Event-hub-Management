@@ -2,6 +2,8 @@ const express = require('express');
 const pool = require('../db');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const seats = require('../services/seats');
+const gst = require('../services/gst');
+const promos = require('./promos');
 
 const router = express.Router();
 
@@ -57,7 +59,7 @@ router.post('/', authenticateToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { event_id, seats_booked, ticket_holder_name, ticket_holder_email, ticket_holder_mobile, transaction_id } = req.body;
+    const { event_id, seats_booked, ticket_holder_name, ticket_holder_email, ticket_holder_mobile, transaction_id, promo_code } = req.body;
 
     // Reserved-seating bookings send specific seat labels (e.g. ["A1","A2"])
     // instead of a plain count. GA bookings keep sending seats_booked.
@@ -127,8 +129,11 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: `Not enough seats available. Available: ${availableSeats}` });
     }
 
-    // `let` because reserved-seating bookings re-price from the chosen seats.
-    let totalPrice = (Number(event.ticket_price) || 0) * seatsRequested;
+    // Subtotal + tiered GST (free tickets are GST-free). Reserved-seating
+    // bookings re-price from the chosen seats further below.
+    let subtotal  = (Number(event.ticket_price) || 0) * seatsRequested;
+    let gstAmount = gst.gstForUnit(Number(event.ticket_price) || 0, seatsRequested);
+    let totalPrice = gst.round2(subtotal + gstAmount);
 
     // Fall back to the user's profile for ticket-holder details when missing.
     let holderName = ticket_holder_name || null;
@@ -175,8 +180,10 @@ router.post('/', authenticateToken, async (req, res) => {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: claim.reason || 'Selected seat(s) are no longer available.' });
       }
-      // Price comes from the seats' zones, not the flat ticket price.
-      totalPrice = claim.total;
+      // Price comes from the seats' zones (per-seat), plus per-seat tiered GST.
+      subtotal  = claim.total;
+      gstAmount = gst.gstForSeats(claim.seats);
+      totalPrice = gst.round2(subtotal + gstAmount);
       await client.query('UPDATE bookings SET total_price = $1 WHERE id = $2', [totalPrice, booking.id]);
       booking.total_price = totalPrice;
       booking.seat_labels = seatLabels;
@@ -184,6 +191,28 @@ router.post('/', authenticateToken, async (req, res) => {
       ticketCodes = seatLabels.map((l) => `${baseTicketId}-${l}`);
     } else {
       ticketCodes = makeSeatTicketIds(baseTicketId, seatsRequested);
+    }
+
+    // Apply a promo / referral code (validated server-side; authoritative).
+    let discountAmount = 0;
+    let appliedPromo = null;
+    if (promo_code && String(promo_code).trim()) {
+      const ev = await promos.evaluatePromo(client, { codeRaw: promo_code, eventId: event_id, userId, subtotal });
+      if (!ev.ok) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: ev.reason || 'This promo code can’t be applied.' });
+      }
+      appliedPromo = ev.promo;
+      discountAmount = Math.min(ev.discount, gst.round2(subtotal + gstAmount));
+    }
+    const finalTotal = gst.round2(subtotal + gstAmount - discountAmount);
+    await client.query(
+      'UPDATE bookings SET total_price = $1, discount_amount = $2, promo_code = $3 WHERE id = $4',
+      [finalTotal, discountAmount, appliedPromo ? appliedPromo.code : null, booking.id]
+    );
+    booking.total_price = finalTotal;
+    if (appliedPromo) {
+      await promos.recordRedemption(client, appliedPromo.id, userId, booking.id, discountAmount);
     }
 
     // Decrement available seats (keeps the aggregate count in sync for both flows).
@@ -205,6 +234,10 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     booking.ticket_codes = ticketCodes;
+    booking.subtotal = gst.round2(subtotal);
+    booking.gst = gst.round2(gstAmount);
+    booking.discount = gst.round2(discountAmount);
+    booking.promo_code = appliedPromo ? appliedPromo.code : null;
     res.status(201).json({ message: 'Booking created successfully', booking });
   } catch (error) {
     await client.query('ROLLBACK');

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="/Public/js/api-base-shim.js"></script>
+  <script src="/Public/js/dark-mode.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/Public/favicon.svg">
@@ -92,9 +93,29 @@
               <span>₹<span id="summary-subtotal">0</span></span>
             </div>
             <div class="flex justify-between text-slate-500 text-sm">
-              <span>Service Fee</span>
-              <span>₹0.00</span>
+              <span>GST<span id="summary-gst-rate"></span></span>
+              <span>₹<span id="summary-gst">0</span></span>
             </div>
+
+            <!-- Promo / referral code -->
+            <div id="promo-row" class="pt-1">
+              <div class="flex gap-2">
+                <input id="promo-input" type="text" placeholder="Promo or referral code"
+                  class="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm uppercase focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                <button type="button" id="promo-apply"
+                  class="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-bold hover:bg-slate-700 transition-all">Apply</button>
+              </div>
+              <p id="promo-msg" class="text-xs mt-1"></p>
+            </div>
+
+            <!-- Applied discount -->
+            <div id="discount-line" class="flex justify-between text-emerald-600 text-sm font-semibold hidden">
+              <span>Discount (<span id="discount-code"></span>)
+                <button type="button" id="promo-remove" class="text-slate-400 underline ml-1 font-normal">remove</button>
+              </span>
+              <span>−₹<span id="summary-discount">0</span></span>
+            </div>
+
             <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
               <span class="text-slate-900 font-bold">Total Amount</span>
               <span class="text-2xl font-extrabold text-indigo-600">₹<span id="total-amount">0</span></span>
@@ -448,19 +469,54 @@
     const numTicketsInput = document.getElementById('num-tickets');
     let ticketPrice = 0; // Will be updated by booking.js
 
-    // Single source of truth for the amount to charge. For reserved-seating
-    // events it is the SUM of the selected seats' prices (zones differ);
-    // for general admission it is quantity × flat ticket price.
+    // Tiered GST by ticket price (mirror of backend/utils/gst.js). Free = 0%.
+    const GST_TIERS = [
+      { upTo: 100, rate: 0.05 }, { upTo: 500, rate: 0.12 },
+      { upTo: 1000, rate: 0.18 }, { upTo: Infinity, rate: 0.28 }
+    ];
+    function gstRate(price) {
+      const p = Number(price) || 0;
+      if (p <= 0) return 0;
+      for (const t of GST_TIERS) if (p <= t.upTo) return t.rate;
+      return 0.28;
+    }
+    function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+
+    // Single source of truth for amounts. Reserved-seating events price from
+    // the selected seats (mixed zones); GA is quantity × flat price. GST is
+    // tiered per ticket/seat and added on top.
     function payableQty() {
       if (window.__reservedSeating && typeof window.__getSeatLabels === 'function') {
         return window.__getSeatLabels().length;
       }
       return parseInt(numTicketsInput.value) || 0;
     }
-    function payableTotal() {
+    function payableSubtotal() {
       if (window.__reservedSeating) return Number(window.__seatTotal) || 0;
       return (parseInt(numTicketsInput.value) || 0) * ticketPrice;
     }
+    function payableGst() {
+      if (window.__reservedSeating) return round2(Number(window.__seatGst) || 0);
+      const qty = parseInt(numTicketsInput.value) || 0;
+      return round2(qty * ticketPrice * gstRate(ticketPrice));
+    }
+    // Applied promo/referral code (set by the Apply handler). Discount is
+    // recomputed live from the current subtotal so it stays correct as the
+    // user changes seats/quantity.
+    function payableDiscount() {
+      const promo = window.__promo;
+      if (!promo) return 0;
+      const sub = payableSubtotal();
+      if (sub <= 0) return 0;
+      let d = promo.discount_type === 'percent'
+        ? sub * (Number(promo.discount_value) || 0) / 100
+        : (Number(promo.discount_value) || 0);
+      if (promo.discount_type === 'percent' && promo.max_discount) d = Math.min(d, Number(promo.max_discount));
+      return round2(Math.min(d, round2(sub + payableGst())));
+    }
+    function payableTotal() { return round2(payableSubtotal() + payableGst() - payableDiscount()); }
+    window.payableTotal = payableTotal; // booking.js reads this for the charged amount
+    window.payableDiscount = payableDiscount;
 
     const totalDisplay = document.getElementById('total-amount');
     const btnTotal = document.getElementById('btn-total');
@@ -537,16 +593,37 @@
 
     function updateTotals() {
       const qty = payableQty();
-      const total = payableTotal();
-      totalDisplay.textContent = total;
+      const subtotal = payableSubtotal();
+      const gstAmt = payableGst();
+      const discount = payableDiscount();
+      const total = round2(subtotal + gstAmt - discount);
       summaryQty.textContent = qty;
-      summarySubtotal.textContent = total;
+      summarySubtotal.textContent = subtotal;
+      const gstEl = document.getElementById('summary-gst');
+      if (gstEl) gstEl.textContent = gstAmt;
+      // Applied-discount line.
+      const discLine = document.getElementById('discount-line');
+      const discEl = document.getElementById('summary-discount');
+      const discCode = document.getElementById('discount-code');
+      if (discount > 0 && window.__promo) {
+        if (discEl) discEl.textContent = discount;
+        if (discCode) discCode.textContent = window.__promo.code;
+        if (discLine) discLine.classList.remove('hidden');
+      } else if (discLine) {
+        discLine.classList.add('hidden');
+      }
+      const gstRateEl = document.getElementById('summary-gst-rate');
+      if (gstRateEl) {
+        // Show the % only when it's a single uniform rate (GA). Reserved seats
+        // can mix tiers, so we just show the GST amount there.
+        gstRateEl.textContent = (!window.__reservedSeating && gstRate(ticketPrice) > 0)
+          ? ` (${Math.round(gstRate(ticketPrice) * 100)}%)` : '';
+      }
+      totalDisplay.textContent = total;
       if (submitLabel) {
-        if (ticketPrice <= 0) {
-          submitLabel.innerHTML = `Confirm Registration · ${qty} ticket${qty === 1 ? '' : 's'}`;
-        } else {
-          submitLabel.innerHTML = `Confirm &amp; Pay ₹<span id="btn-total">${total}</span>`;
-        }
+        submitLabel.innerHTML = (total <= 0)
+          ? `Confirm Registration · ${qty} ticket${qty === 1 ? '' : 's'}`
+          : `Confirm &amp; Pay ₹<span id="btn-total">${total}</span>`;
       }
       // If the QR tab is currently open, regenerate the QR with the new total.
       if (qrDetails && !qrDetails.classList.contains('hidden')) refreshQr();
@@ -711,6 +788,67 @@
   </script>
   <script src="/Public/js/ai-chat-widget.js"></script>
 
+  <!-- ── Promo / referral code at checkout ─────────────────────────── -->
+  <script>
+  (function () {
+    const params  = new URLSearchParams(window.location.search);
+    const eventId = params.get('id') || params.get('eventId');
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken') ||
+                  localStorage.getItem('eventhub_token') || localStorage.getItem('auth_token') || '';
+    const input = document.getElementById('promo-input');
+    const applyBtn = document.getElementById('promo-apply');
+    const msg = document.getElementById('promo-msg');
+    if (!input || !applyBtn) return;
+
+    function setMsg(t, ok) {
+      if (!msg) return;
+      msg.textContent = t;
+      msg.className = 'text-xs mt-1 ' + (ok ? 'text-emerald-600' : 'text-rose-500');
+    }
+
+    async function apply() {
+      const code = (input.value || '').trim().toUpperCase();
+      if (!code) { setMsg('Enter a code', false); return; }
+      const subtotal = (typeof payableSubtotal === 'function') ? payableSubtotal() : 0;
+      if (subtotal <= 0) { setMsg('Add ticket(s)/seat(s) first, then apply a code.', false); return; }
+      applyBtn.disabled = true;
+      try {
+        const res = await fetch('/api/promos/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ code, event_id: eventId, subtotal })
+        });
+        const data = await res.json();
+        if (data && data.valid) {
+          window.__promo = {
+            code: data.code, discount_type: data.discount_type,
+            discount_value: data.discount_value, max_discount: data.max_discount
+          };
+          setMsg(`✓ ${data.code} applied — you save ₹${data.discount}${data.kind === 'referral' ? ' (referral)' : ''}`, true);
+        } else {
+          window.__promo = null;
+          setMsg((data && data.reason) || 'Invalid code', false);
+        }
+      } catch (e) {
+        setMsg('Could not check that code — try again.', false);
+      } finally {
+        applyBtn.disabled = false;
+        if (typeof updateTotals === 'function') updateTotals();
+      }
+    }
+
+    applyBtn.addEventListener('click', apply);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); apply(); } });
+    // Remove (delegated — the line is shown dynamically).
+    document.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'promo-remove') {
+        window.__promo = null; input.value = ''; setMsg('', true);
+        if (typeof updateTotals === 'function') updateTotals();
+      }
+    });
+  })();
+  </script>
+
   <!-- ── Live seat-map integration (reserved-seating events only) ───── -->
   <script>
   (function () {
@@ -765,22 +903,19 @@
           apiBase: '',           // same-origin → nginx proxies /api + /socket.io
           onChange: (sel) => {
             const count = sel.length;
-            const total = sel.reduce((s, x) => s + Number(x.price || 0), 0);
+            const subtotal = sel.reduce((s, x) => s + Number(x.price || 0), 0);
+            const gstAmt = sel.reduce((s, x) => s + Number(x.price || 0) * (typeof gstRate === 'function' ? gstRate(x.price) : 0), 0);
+            window.__seatSelection = sel;
+            window.__seatTotal = subtotal;
+            window.__seatGst = gstAmt;
             if (numInput) numInput.value = count || 1;
-            if (summaryQty) summaryQty.textContent = count;
-            if (summarySub) summarySub.textContent = total;
-            if (totalAmt)   totalAmt.textContent   = total;
             if (selSummary) {
               selSummary.textContent = count
-                ? `Selected: ${sel.map((s) => s.label).join(', ')}  ·  ₹${total}`
+                ? `Selected: ${sel.map((s) => s.label).join(', ')}`
                 : 'No seats selected yet.';
             }
-            if (submitLabel) {
-              submitLabel.innerHTML = total > 0
-                ? `Confirm &amp; Pay ₹${total}`
-                : `Confirm Registration · ${count} seat${count === 1 ? '' : 's'}`;
-            }
-            window.__seatTotal = total;
+            // Render Subtotal + GST + Total + button consistently.
+            if (typeof updateTotals === 'function') updateTotals();
           }
         });
 
